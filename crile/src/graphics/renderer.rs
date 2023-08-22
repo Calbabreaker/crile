@@ -22,19 +22,19 @@ impl Vertex {
 const VERTICES: &[Vertex] = &[
     Vertex {
         position: Vector2::new(-0.5, -0.5),
-        uvs: Vector2::new(0.0, 0.0),
+        uvs: Vector2::new(0.0, 1.0),
     },
     Vertex {
         position: Vector2::new(0.5, -0.5),
-        uvs: Vector2::new(1.0, 0.0),
-    },
-    Vertex {
-        position: Vector2::new(0.5, 0.5),
         uvs: Vector2::new(1.0, 1.0),
     },
     Vertex {
+        position: Vector2::new(0.5, 0.5),
+        uvs: Vector2::new(1.0, 0.0),
+    },
+    Vertex {
         position: Vector2::new(-0.5, 0.5),
-        uvs: Vector2::new(0.0, 1.0),
+        uvs: Vector2::new(0.0, 0.0),
     },
 ];
 
@@ -44,6 +44,8 @@ pub struct Renderer {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
+    texture: wgpu::Texture,
+    bind_group: wgpu::BindGroup,
 }
 
 impl Renderer {
@@ -68,11 +70,95 @@ impl Renderer {
             .device
             .create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
+        let image = image::load_from_memory(include_bytes!("test.png")).unwrap();
+        let size = wgpu::Extent3d {
+            width: image.width(),
+            height: image.height(),
+            depth_or_array_layers: 1,
+        };
+
+        let texture = api.device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+
+        api.queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &image.to_rgba8(),
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * image.width()),
+                rows_per_image: Some(image.height()),
+            },
+            size,
+        );
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = api.device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let bind_group_layout =
+            api.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                multisampled: false,
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                            count: None,
+                        },
+                    ],
+                    label: None,
+                });
+
+        let bind_group = api.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+            label: None,
+        });
+
         let render_pipeline_layout =
             api.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: None,
-                    bind_group_layouts: &[],
+                    bind_group_layouts: &[&bind_group_layout],
                     push_constant_ranges: &[],
                 });
 
@@ -117,6 +203,8 @@ impl Renderer {
             vertex_buffer,
             render_pipeline,
             index_buffer,
+            texture,
+            bind_group,
         }
     }
 
@@ -125,6 +213,7 @@ impl Renderer {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.draw_indexed(0..INDICIES.len() as u32, 0, 0..1);
     }
 }

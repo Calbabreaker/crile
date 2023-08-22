@@ -40,7 +40,6 @@ impl RendererAPI {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     features: wgpu::Features::empty(),
-                    // WebGL doesn't support all of wgpu's features
                     limits: wgpu::Limits::default(),
                     label: None,
                 },
