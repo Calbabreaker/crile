@@ -1,19 +1,42 @@
 use crate::{
     events::{process_event, Event},
-    window::WindowSystem,
+    renderer::{MainRenderer, RenderInstance},
+    window::Window,
 };
 
 pub struct Engine {
-    pub window: WindowSystem,
+    pub main_renderer: MainRenderer,
+    window: Window,
     should_close: bool,
 }
 
 impl Engine {
     pub fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
+        let window = Window::new(&event_loop);
         Self {
-            window: WindowSystem::new(&event_loop),
+            main_renderer: pollster::block_on(MainRenderer::new(&window)),
+            window,
             should_close: false,
         }
+    }
+
+    fn update(&mut self, app: &mut impl Application) {
+        app.update(self);
+        self.window.request_redraw();
+    }
+
+    fn render(&mut self, app: &mut impl Application) {
+        match self.main_renderer.begin_frame() {
+            Err(wgpu::SurfaceError::Lost) => self.main_renderer.resize(self.window.size()),
+            Err(wgpu::SurfaceError::OutOfMemory) => panic!("GPU out of memory"),
+            Err(e) => log::error!("{:?}", e),
+            Ok(mut instance) => {
+                self.main_renderer.begin_render_pass(&mut instance);
+                self.main_renderer.present_frame(instance);
+
+                app.render(self);
+            }
+        };
     }
 
     pub fn request_close(&mut self) {
@@ -35,11 +58,10 @@ pub fn run(mut app: impl Application + 'static) {
     event_loop.run(move |event, _, control_flow| {
         match event {
             winit::event::Event::MainEventsCleared => {
-                app.update(&mut engine);
-                engine.window.request_redraw();
+                engine.update(&mut app);
             }
             winit::event::Event::RedrawRequested(_) => {
-                app.render(&mut engine);
+                engine.render(&mut app);
             }
             winit::event::Event::NewEvents(_) => (),
             winit::event::Event::RedrawEventsCleared => (),

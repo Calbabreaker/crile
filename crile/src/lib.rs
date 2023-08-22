@@ -1,6 +1,7 @@
 mod engine;
 mod events;
 mod math;
+mod renderer;
 mod window;
 
 pub use engine::*;

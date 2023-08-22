@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 glam = "0.24"
 log = "0.4"
+pollster = "0.3"
+wgpu = "0.17"
 winit = "0.28"
 
 [dev-dependencies]
