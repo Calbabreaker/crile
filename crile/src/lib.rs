@@ -1,7 +1,7 @@
 mod engine;
 mod events;
+mod graphics;
 mod math;
-mod renderer;
 mod window;
 
 pub use engine::*;

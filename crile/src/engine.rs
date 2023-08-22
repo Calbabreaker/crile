@@ -1,6 +1,6 @@
 use crate::{
     events::{process_event, Event},
-    renderer::{Renderer, RendererAPI},
+    graphics::{Renderer, RendererAPI},
     window::Window,
 };
 
