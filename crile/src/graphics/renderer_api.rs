@@ -78,17 +78,24 @@ impl RendererAPI {
         self.surface.configure(&self.device, &self.config);
     }
 
-    pub fn begin_frame(&self) -> Result<RenderInstance, wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
-        Ok(RenderInstance {
-            encoder: self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None }),
-            view: output
-                .texture
-                .create_view(&wgpu::TextureViewDescriptor::default()),
-            output,
-        })
+    pub fn begin_frame(&self) -> Option<RenderInstance> {
+        match self.surface.get_current_texture() {
+            Err(wgpu::SurfaceError::OutOfMemory) => panic!("GPU out of memory"),
+            Err(wgpu::SurfaceError::Lost) => {
+                self.surface.configure(&self.device, &self.config);
+                None
+            }
+            Err(_) => None,
+            Ok(output) => Some(RenderInstance {
+                encoder: self
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None }),
+                view: output
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default()),
+                output,
+            }),
+        }
     }
 
     pub fn present_frame(&self, render_instance: RenderInstance) {

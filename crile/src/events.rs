@@ -1,4 +1,4 @@
-pub use winit::event::{ElementState, MouseButton, VirtualKeyCode};
+pub use winit::event::{ElementState, MouseButton, VirtualKeyCode as KeyCode};
 
 use crate::Vector2;
 
@@ -13,7 +13,7 @@ pub enum Event {
     },
     KeyboardInput {
         state: ElementState,
-        keycode: VirtualKeyCode,
+        keycode: KeyCode,
     },
     WindowClose,
     Unknown,

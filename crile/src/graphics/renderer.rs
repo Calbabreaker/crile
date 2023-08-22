@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::Vector2;
+use crate::{window::Window, Vector2};
 
 use super::renderer_api::{RenderInstance, RendererAPI};
 
@@ -46,10 +46,12 @@ pub struct Renderer {
     index_buffer: wgpu::Buffer,
     texture: wgpu::Texture,
     bind_group: wgpu::BindGroup,
+    pub api: RendererAPI,
 }
 
 impl Renderer {
-    pub fn new(api: &RendererAPI) -> Self {
+    pub async fn new(window: &Window) -> Self {
+        let api = RendererAPI::new(window).await;
         let vertex_buffer = api
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -205,11 +207,12 @@ impl Renderer {
             index_buffer,
             texture,
             bind_group,
+            api,
         }
     }
 
-    pub fn render(&self, instance: &mut RenderInstance, renderer_api: &RendererAPI) {
-        let mut render_pass = renderer_api.begin_render_pass(instance);
+    pub fn render(&self, instance: &mut RenderInstance) {
+        let mut render_pass = self.api.begin_render_pass(instance);
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
