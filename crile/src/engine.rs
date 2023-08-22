@@ -1,11 +1,19 @@
 use crate::{
     events::{process_event, Event},
-    renderer::{MainRenderer, RenderInstance},
+    renderer::{Renderer, RendererAPI},
     window::Window,
 };
 
+pub trait Application {
+    fn init(&mut self, engine: &mut Engine);
+    fn update(&mut self, engine: &mut Engine);
+    fn render(&mut self, engine: &mut Engine);
+    fn event(&mut self, engine: &mut Engine, event: &Event);
+}
+
 pub struct Engine {
-    pub main_renderer: MainRenderer,
+    renderer_api: RendererAPI,
+    renderer: Renderer,
     window: Window,
     should_close: bool,
 }
@@ -13,8 +21,10 @@ pub struct Engine {
 impl Engine {
     pub fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
         let window = Window::new(&event_loop);
+        let renderer_api = pollster::block_on(RendererAPI::new(&window));
         Self {
-            main_renderer: pollster::block_on(MainRenderer::new(&window)),
+            renderer: Renderer::new(&renderer_api),
+            renderer_api,
             window,
             should_close: false,
         }
@@ -26,29 +36,29 @@ impl Engine {
     }
 
     fn render(&mut self, app: &mut impl Application) {
-        match self.main_renderer.begin_frame() {
-            Err(wgpu::SurfaceError::Lost) => self.main_renderer.resize(self.window.size()),
+        match self.renderer_api.begin_frame() {
+            Ok(mut instance) => {
+                app.render(self);
+                self.renderer.render(&mut instance, &self.renderer_api);
+                self.renderer_api.present_frame(instance);
+            }
+            Err(wgpu::SurfaceError::Lost) => self.renderer_api.resize(self.window.size()),
             Err(wgpu::SurfaceError::OutOfMemory) => panic!("GPU out of memory"),
             Err(e) => log::error!("{:?}", e),
-            Ok(mut instance) => {
-                self.main_renderer.begin_render_pass(&mut instance);
-                self.main_renderer.present_frame(instance);
-
-                app.render(self);
-            }
         };
+    }
+
+    pub fn event(&mut self, app: &mut impl Application, event: &Event) {
+        match event {
+            Event::WindowResize { size } => self.renderer_api.resize(*size),
+            _ => (),
+        };
+        app.event(self, event);
     }
 
     pub fn request_close(&mut self) {
         self.should_close = true;
     }
-}
-
-pub trait Application {
-    fn init(&mut self, engine: &mut Engine);
-    fn update(&mut self, engine: &mut Engine);
-    fn render(&mut self, engine: &mut Engine);
-    fn event(&mut self, engine: &mut Engine, event: &Event);
 }
 
 pub fn run(mut app: impl Application + 'static) {
@@ -65,10 +75,7 @@ pub fn run(mut app: impl Application + 'static) {
             }
             winit::event::Event::NewEvents(_) => (),
             winit::event::Event::RedrawEventsCleared => (),
-            event => {
-                let event = process_event(event);
-                app.event(&mut engine, &event);
-            }
+            event => engine.event(&mut app, &process_event(event)),
         };
 
         if engine.should_close {
