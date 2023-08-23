@@ -1,6 +1,7 @@
 use crate::{
     events::{convert_event, Event},
     graphics::Renderer,
+    time::Time,
     window::Window,
 };
 
@@ -14,6 +15,7 @@ pub trait Application {
 pub struct Engine {
     pub renderer: Renderer,
     pub window: Window,
+    pub time: Time,
     should_close: bool,
 }
 
@@ -22,12 +24,14 @@ impl Engine {
         let window = Window::new(&event_loop);
         Self {
             renderer: pollster::block_on(Renderer::new(&window)),
+            time: Time::new(),
             window,
             should_close: false,
         }
     }
 
     fn update(&mut self, app: &mut impl Application) {
+        self.time.update();
         app.update(self);
         app.render(self);
     }
@@ -52,6 +56,7 @@ impl Engine {
 pub fn run(mut app: impl Application + 'static) -> ! {
     let event_loop = winit::event_loop::EventLoop::new();
     let mut engine = Engine::new(&event_loop);
+    app.init(&mut engine);
 
     event_loop.run(move |event, _, control_flow| {
         if let Some(event) = convert_event(event) {

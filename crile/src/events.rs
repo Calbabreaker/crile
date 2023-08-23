@@ -420,7 +420,7 @@ pub enum Event {
     WindowClose,
 }
 
-pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
+pub fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
     Some(match event {
         winit::event::Event::MainEventsCleared => Event::ApplicationUpdate,
         winit::event::Event::WindowEvent { ref event, .. } => match event {
