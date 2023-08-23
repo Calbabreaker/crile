@@ -3,8 +3,11 @@ pub struct TestApp {}
 
 impl crile::Application for TestApp {
     fn init(&mut self, engine: &mut crile::Engine) {}
+
     fn update(&mut self, engine: &mut crile::Engine) {
-        println!("Framerate: {}", engine.time.frame_rate());
+        if engine.input.key_just_pressed(crile::KeyCode::Space) {
+            println!("Framerate: {}", engine.time.frame_rate());
+        }
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
@@ -15,7 +18,7 @@ impl crile::Application for TestApp {
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
-        // dbg!(event);
+        dbg!(event);
         match event {
             crile::Event::WindowClose => engine.request_close(),
             _ => (),

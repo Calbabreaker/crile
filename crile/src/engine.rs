@@ -1,6 +1,7 @@
 use crate::{
     events::{convert_event, Event},
     graphics::Renderer,
+    input::Input,
     time::Time,
     window::Window,
 };
@@ -16,6 +17,7 @@ pub struct Engine {
     pub renderer: Renderer,
     pub window: Window,
     pub time: Time,
+    pub input: Input,
     should_close: bool,
 }
 
@@ -25,6 +27,7 @@ impl Engine {
         Self {
             renderer: pollster::block_on(Renderer::new(&window)),
             time: Time::new(),
+            input: Input::default(),
             window,
             should_close: false,
         }
@@ -34,6 +37,7 @@ impl Engine {
         self.time.update();
         app.update(self);
         app.render(self);
+        self.input.clear();
     }
 
     fn event(&mut self, app: &mut impl Application, event: &Event) {
@@ -45,6 +49,8 @@ impl Engine {
             Event::WindowResize { size } => self.renderer.api.resize(*size),
             _ => (),
         };
+
+        self.input.process_event(event);
         app.event(self, event);
     }
 
