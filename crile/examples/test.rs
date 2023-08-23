@@ -28,5 +28,5 @@ impl crile::Application for TestApp {
 
 fn main() {
     env_logger::init();
-    crile::run(TestApp::default());
+    crile::run(TestApp::default()).unwrap_or_else(|error| log::error!("{error}"));
 }

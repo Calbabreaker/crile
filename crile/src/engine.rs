@@ -23,7 +23,7 @@ pub struct Engine {
 
 impl Engine {
     fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
-        let window = Window::new(&event_loop);
+        let window = Window::new(event_loop);
         Self {
             renderer: pollster::block_on(Renderer::new(&window)),
             time: Time::new(),
@@ -59,8 +59,8 @@ impl Engine {
     }
 }
 
-pub fn run(mut app: impl Application + 'static) -> ! {
-    let event_loop = winit::event_loop::EventLoop::new();
+pub fn run(mut app: impl Application + 'static) -> Result<(), crate::Error> {
+    let event_loop = winit::event_loop::EventLoop::new()?;
     let mut engine = Engine::new(&event_loop);
     app.init(&mut engine);
 
@@ -72,5 +72,6 @@ pub fn run(mut app: impl Application + 'static) -> ! {
         if engine.should_close {
             *control_flow = winit::event_loop::ControlFlow::Exit;
         }
-    });
+    })?;
+    Ok(())
 }

@@ -73,8 +73,8 @@ impl RendererAPI {
     }
 
     pub fn resize(&mut self, size: Vector2U) {
-        self.config.width = size.x as u32;
-        self.config.height = size.y as u32;
+        self.config.width = size.x;
+        self.config.height = size.y;
         self.surface.configure(&self.device, &self.config);
     }
 

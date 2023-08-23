@@ -75,9 +75,14 @@ impl Input {
     /// Update an internal state with crile::Event
     pub fn process_event(&mut self, event: &Event) {
         match event {
-            Event::KeyInput { code, state } => match state {
-                ButtonState::Pressed => self.key_state.press(*code),
-                ButtonState::Released => self.key_state.release(*code),
+            Event::KeyInput {
+                keycode,
+                state,
+                repeat: false,
+                ..
+            } => match state {
+                ButtonState::Pressed => self.key_state.press(*keycode),
+                ButtonState::Released => self.key_state.release(*keycode),
             },
             Event::MouseInput { button, state } => match state {
                 ButtonState::Pressed => self.mouse_state.press(*button),
