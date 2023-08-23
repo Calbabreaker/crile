@@ -1,4 +1,4 @@
-use crate::{window::Window, Vector2};
+use crate::{window::Window, Vector2U};
 
 pub struct RenderInstance {
     encoder: wgpu::CommandEncoder,
@@ -72,7 +72,7 @@ impl RendererAPI {
         }
     }
 
-    pub fn resize(&mut self, size: Vector2) {
+    pub fn resize(&mut self, size: Vector2U) {
         self.config.width = size.x as u32;
         self.config.height = size.y as u32;
         self.surface.configure(&self.device, &self.config);

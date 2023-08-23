@@ -1,5 +1,5 @@
 use crate::{
-    events::{process_event, Event},
+    events::{convert_event, Event},
     graphics::Renderer,
     window::Window,
 };
@@ -27,8 +27,17 @@ impl Engine {
         }
     }
 
+    fn update(&mut self, app: &mut impl Application) {
+        app.update(self);
+        app.render(self);
+    }
+
     fn event(&mut self, app: &mut impl Application, event: &Event) {
         match event {
+            Event::ApplicationUpdate => {
+                self.update(app);
+                return;
+            }
             Event::WindowResize { size } => self.renderer.api.resize(*size),
             _ => (),
         };
@@ -40,23 +49,14 @@ impl Engine {
     }
 }
 
-pub fn run(mut app: impl Application + 'static) {
+pub fn run(mut app: impl Application + 'static) -> ! {
     let event_loop = winit::event_loop::EventLoop::new();
     let mut engine = Engine::new(&event_loop);
 
     event_loop.run(move |event, _, control_flow| {
-        match event {
-            winit::event::Event::MainEventsCleared => {
-                app.update(&mut engine);
-                engine.window.request_redraw();
-            }
-            winit::event::Event::RedrawRequested(_) => {
-                app.render(&mut engine);
-            }
-            winit::event::Event::NewEvents(_) => {}
-            winit::event::Event::RedrawEventsCleared => {}
-            event => engine.event(&mut app, &process_event(event)),
-        };
+        if let Some(event) = convert_event(event) {
+            engine.event(&mut app, &event);
+        }
 
         if engine.should_close {
             *control_flow = winit::event_loop::ControlFlow::Exit;

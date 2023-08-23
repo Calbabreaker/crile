@@ -12,10 +12,6 @@ impl Window {
         }
     }
 
-    pub fn request_redraw(&self) {
-        self.window.request_redraw();
-    }
-
     pub fn size(&self) -> crate::Vector2 {
         let size = self.window.inner_size();
         crate::Vector2::new(size.width as f32, size.height as f32)

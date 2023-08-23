@@ -12,6 +12,7 @@ impl crile::Application for TestApp {
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
+        dbg!(event);
         match event {
             crile::Event::WindowClose => engine.request_close(),
             _ => (),
@@ -21,5 +22,5 @@ impl crile::Application for TestApp {
 
 fn main() {
     env_logger::init();
-    crile::run(TestApp::default())
+    crile::run(TestApp::default());
 }
