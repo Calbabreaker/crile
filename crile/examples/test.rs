@@ -18,7 +18,6 @@ impl crile::Application for TestApp {
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
-        dbg!(event);
         match event {
             crile::Event::WindowClose => engine.request_close(),
             _ => (),

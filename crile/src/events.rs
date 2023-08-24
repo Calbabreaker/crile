@@ -5,7 +5,7 @@ pub use winit::{
 
 use crate::{Vector2, Vector2U};
 
-// We create our event enum nstead of using winit so we can manage it ourselves.
+// We create our own event enum instead of using winit so we can manage it ourselves.
 #[derive(Debug, PartialEq)]
 pub enum Event {
     WindowResize {

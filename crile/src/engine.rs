@@ -70,7 +70,7 @@ pub fn run(mut app: impl Application + 'static) -> Result<(), crate::Error> {
         }
 
         if engine.should_close {
-            *control_flow = winit::event_loop::ControlFlow::Exit;
+            control_flow.set_exit()
         }
     })?;
     Ok(())

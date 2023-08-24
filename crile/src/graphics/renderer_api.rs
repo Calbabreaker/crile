@@ -52,13 +52,23 @@ impl RendererAPI {
 
         let surface_capabilities = surface.get_capabilities(&adapter);
 
+        // Prefer SRGB surface formats
+        let surface_format = surface_capabilities
+            .formats
+            .iter()
+            .find(|f| f.is_srgb())
+            .unwrap_or_else(|| {
+                log::warn!("SRGB surface not supported, colors will come out darker");
+                &surface_capabilities.formats[0]
+            });
+
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             present_mode: surface_capabilities.present_modes[0],
-            format: surface_capabilities.formats[0],
+            format: *surface_format,
             alpha_mode: surface_capabilities.alpha_modes[0],
-            width: size.x as u32,
-            height: size.y as u32,
+            width: size.x,
+            height: size.y,
             view_formats: Vec::default(),
         };
 
@@ -75,14 +85,32 @@ impl RendererAPI {
     pub fn resize(&mut self, size: Vector2U) {
         self.config.width = size.x;
         self.config.height = size.y;
-        self.surface.configure(&self.device, &self.config);
+        self.reconfigure();
+    }
+
+    /// Tries to enable/disable vsync
+    /// On some platforms disabling vsync is not possible
+    pub fn set_vsync(&mut self, enable: bool) {
+        match enable {
+            true => self.config.present_mode = wgpu::PresentMode::AutoVsync,
+            false => self.config.present_mode = wgpu::PresentMode::AutoNoVsync,
+        }
+        self.reconfigure();
+    }
+
+    pub fn vsync_enabled(&self) -> bool {
+        use wgpu::PresentMode::*;
+        match self.config.present_mode {
+            AutoVsync | Fifo | FifoRelaxed => true,
+            AutoNoVsync | Mailbox | Immediate => false,
+        }
     }
 
     pub fn begin_frame(&self) -> Option<RenderInstance> {
         match self.surface.get_current_texture() {
             Err(wgpu::SurfaceError::OutOfMemory) => panic!("GPU out of memory"),
             Err(wgpu::SurfaceError::Lost) => {
-                self.surface.configure(&self.device, &self.config);
+                self.reconfigure();
                 None
             }
             Err(_) => None,
@@ -127,5 +155,9 @@ impl RendererAPI {
                 })],
                 depth_stencil_attachment: None,
             })
+    }
+
+    fn reconfigure(&self) {
+        self.surface.configure(&self.device, &self.config);
     }
 }
