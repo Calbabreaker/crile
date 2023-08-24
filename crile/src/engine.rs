@@ -4,12 +4,13 @@ use crate::{
     input::Input,
     time::Time,
     window::Window,
+    RenderInstance,
 };
 
 pub trait Application {
     fn init(&mut self, engine: &mut Engine);
     fn update(&mut self, engine: &mut Engine);
-    fn render(&mut self, engine: &mut Engine);
+    fn render(&mut self, engine: &mut Engine, instance: &mut RenderInstance);
     fn event(&mut self, engine: &mut Engine, event: &Event);
 }
 
@@ -36,14 +37,26 @@ impl Engine {
     fn update(&mut self, app: &mut impl Application) {
         self.time.update();
         app.update(self);
-        app.render(self);
         self.input.clear();
+        self.window.request_redraw();
+    }
+
+    fn render(&mut self, app: &mut impl Application) {
+        if let Some(mut instance) = self.renderer.api.begin_frame() {
+            app.render(self, &mut instance);
+            self.window.pre_present_notify();
+            self.renderer.api.present_frame(instance);
+        }
     }
 
     fn event(&mut self, app: &mut impl Application, event: &Event) {
         match event {
             Event::ApplicationUpdate => {
                 self.update(app);
+                return;
+            }
+            Event::ApplicationRender => {
+                self.render(app);
                 return;
             }
             Event::WindowResize { size } => self.renderer.api.resize(*size),

@@ -10,4 +10,5 @@ mod window;
 pub use engine::*;
 pub use error::*;
 pub use events::*;
+pub use graphics::*;
 pub use math::*;

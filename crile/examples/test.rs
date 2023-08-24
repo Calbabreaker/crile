@@ -2,19 +2,18 @@
 pub struct TestApp {}
 
 impl crile::Application for TestApp {
-    fn init(&mut self, engine: &mut crile::Engine) {}
-
-    fn update(&mut self, engine: &mut crile::Engine) {
-        if engine.input.key_just_pressed(crile::KeyCode::Space) {
-            println!("Framerate: {}", engine.time.frame_rate());
-        }
+    fn init(&mut self, engine: &mut crile::Engine) {
+        engine.renderer.api.set_vsync(true);
     }
 
-    fn render(&mut self, engine: &mut crile::Engine) {
-        if let Some(mut instance) = engine.renderer.api.begin_frame() {
-            engine.renderer.render(&mut instance);
-            engine.renderer.api.present_frame(instance);
-        }
+    fn update(&mut self, engine: &mut crile::Engine) {
+        // if engine.input.key_just_pressed(crile::KeyCode::Space) {
+        println!("Framerate: {}", engine.time.framerate());
+        // }
+    }
+
+    fn render(&mut self, engine: &mut crile::Engine, instance: &mut crile::RenderInstance) {
+        engine.renderer.render(instance);
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
@@ -26,6 +25,8 @@ impl crile::Application for TestApp {
 }
 
 fn main() {
-    env_logger::init();
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Warn)
+        .init();
     crile::run(TestApp::default()).unwrap_or_else(|error| log::error!("{error}"));
 }

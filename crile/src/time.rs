@@ -28,7 +28,7 @@ impl Time {
         self.delta.as_secs_f32()
     }
 
-    pub fn frame_rate(&self) -> f32 {
+    pub fn framerate(&self) -> f32 {
         1. / self.delta()
     }
 }
