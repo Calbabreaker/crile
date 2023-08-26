@@ -7,7 +7,7 @@ pub struct RenderInstance {
 }
 
 impl RenderInstance {
-    pub fn begin_render_pass<'a>(&'a mut self) -> wgpu::RenderPass {
+    pub fn begin_render_pass(&mut self) -> wgpu::RenderPass {
         self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

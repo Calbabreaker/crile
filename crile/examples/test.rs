@@ -1,10 +1,10 @@
+#![allow(unused)]
+
 #[derive(Default)]
 pub struct TestApp {}
 
 impl crile::Application for TestApp {
-    fn init(&mut self, engine: &mut crile::Engine) {
-        engine.renderer.api.set_vsync(true);
-    }
+    fn init(&mut self, engine: &mut crile::Engine) {}
 
     fn update(&mut self, engine: &mut crile::Engine) {
         // if engine.input.key_just_pressed(crile::KeyCode::Space) {
