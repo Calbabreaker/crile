@@ -127,8 +127,7 @@ impl RendererAPI {
     }
 
     pub fn present_frame(&self, render_instance: RenderInstance) {
-        self.queue
-            .submit(std::iter::once(render_instance.encoder.finish()));
+        self.queue.submit([render_instance.encoder.finish()]);
         render_instance.output.present();
     }
 

@@ -8,10 +8,17 @@ struct VertexOutput {
     @location(0) uvs: vec2<f32>,
 };
 
+struct CameraUniform {
+    view_projection: mat4x4<f32>,
+}
+
+@group(1) @binding(0)
+var<uniform> camera: CameraUniform;
+
 @vertex
 fn vs_main(vertex: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.position = vec4<f32>(vertex.position.x, vertex.position.y, 0.0, 1.0);
+    out.position = camera.view_projection * vec4<f32>(vertex.position.x, vertex.position.y, 0.0, 1.0);
     out.uvs = vertex.uvs;
     return out;
 }

@@ -4,7 +4,7 @@ use crate::{
     input::Input,
     time::Time,
     window::Window,
-    RenderInstance,
+    Camera, RenderInstance,
 };
 
 pub trait Application {
@@ -19,6 +19,7 @@ pub struct Engine {
     pub window: Window,
     pub time: Time,
     pub input: Input,
+    pub camera: Camera,
     should_close: bool,
 }
 
@@ -29,6 +30,7 @@ impl Engine {
             renderer: pollster::block_on(Renderer::new(&window)),
             time: Time::new(),
             input: Input::default(),
+            camera: Camera::new(window.size().as_vec2()),
             window,
             should_close: false,
         }
@@ -43,6 +45,7 @@ impl Engine {
 
     fn render(&mut self, app: &mut impl Application) {
         if let Some(mut instance) = self.renderer.api.begin_frame() {
+            self.renderer.begin(&self.camera);
             app.render(self, &mut instance);
             self.window.pre_present_notify();
             self.renderer.api.present_frame(instance);
@@ -59,7 +62,10 @@ impl Engine {
                 self.render(app);
                 return;
             }
-            Event::WindowResize { size } => self.renderer.api.resize(*size),
+            Event::WindowResize { size } => {
+                self.renderer.api.resize(*size);
+                self.camera.resize(size.as_vec2());
+            }
             _ => (),
         };
 

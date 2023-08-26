@@ -1,8 +1,14 @@
 use wgpu::util::DeviceExt;
 
-use crate::{window::Window, Vector2};
+use crate::{window::Window, Camera, Matrix4, Vector2};
 
 use super::renderer_api::{RenderInstance, RendererAPI};
+
+#[repr(C)]
+#[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct CameraUniform {
+    view_projection: Matrix4,
+}
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -45,6 +51,8 @@ pub struct Renderer {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     texture: wgpu::Texture,
+    camera_bind_group: wgpu::BindGroup,
+    uniform_buffer: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
     pub api: RendererAPI,
 }
@@ -67,6 +75,13 @@ impl Renderer {
                 contents: bytemuck::cast_slice(INDICIES),
                 usage: wgpu::BufferUsages::INDEX,
             });
+
+        let uniform_buffer = api.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            mapped_at_creation: false,
+            size: std::mem::size_of::<CameraUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
         let shader = api
             .device
@@ -117,6 +132,31 @@ impl Renderer {
             ..Default::default()
         });
 
+        let camera_group_layout =
+            api.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        count: None,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        visibility: wgpu::ShaderStages::VERTEX,
+                    }],
+                    label: None,
+                });
+
+        let camera_bind_group = api.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+            label: None,
+        });
+
         let bind_group_layout =
             api.device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -160,7 +200,7 @@ impl Renderer {
             api.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: None,
-                    bind_group_layouts: &[&bind_group_layout],
+                    bind_group_layouts: &[&bind_group_layout, &camera_group_layout],
                     push_constant_ranges: &[],
                 });
 
@@ -206,9 +246,21 @@ impl Renderer {
             render_pipeline,
             index_buffer,
             texture,
+            uniform_buffer,
             bind_group,
+            camera_bind_group,
             api,
         }
+    }
+
+    pub fn begin(&self, camera: &Camera) {
+        self.api.queue.write_buffer(
+            &self.uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[CameraUniform {
+                view_projection: camera.get_projection(),
+            }]),
+        );
     }
 
     pub fn render(&self, instance: &mut RenderInstance) {
@@ -217,6 +269,7 @@ impl Renderer {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
         render_pass.draw_indexed(0..INDICIES.len() as u32, 0, 0..1);
     }
 }
