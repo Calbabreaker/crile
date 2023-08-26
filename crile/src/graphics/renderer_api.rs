@@ -6,6 +6,28 @@ pub struct RenderInstance {
     output: wgpu::SurfaceTexture,
 }
 
+impl RenderInstance {
+    pub fn begin_render_pass<'a>(&'a mut self) -> wgpu::RenderPass {
+        self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: None,
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 0.0,
+                    }),
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: None,
+        })
+    }
+}
+
 pub struct RendererAPI {
     pub(crate) queue: wgpu::Queue,
     pub(crate) config: wgpu::SurfaceConfiguration,
@@ -129,31 +151,6 @@ impl RendererAPI {
     pub fn present_frame(&self, render_instance: RenderInstance) {
         self.queue.submit([render_instance.encoder.finish()]);
         render_instance.output.present();
-    }
-
-    pub fn begin_render_pass<'a>(
-        &'a self,
-        render_instance: &'a mut RenderInstance,
-    ) -> wgpu::RenderPass {
-        render_instance
-            .encoder
-            .begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &render_instance.view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 0.0,
-                        }),
-                        store: true,
-                    },
-                })],
-                depth_stencil_attachment: None,
-            })
     }
 
     fn reconfigure(&self) {

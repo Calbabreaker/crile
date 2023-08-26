@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::{window::Window, Camera, Matrix4, Vector2};
+use crate::{Camera, Matrix4, Vector2};
 
 use super::renderer_api::{RenderInstance, RendererAPI};
 
@@ -46,7 +46,7 @@ const VERTICES: &[Vertex] = &[
 
 const INDICIES: &[u32] = &[0, 1, 2, 2, 3, 0];
 
-pub struct Renderer {
+pub struct Renderer2D {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -54,12 +54,10 @@ pub struct Renderer {
     camera_bind_group: wgpu::BindGroup,
     uniform_buffer: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
-    pub api: RendererAPI,
 }
 
-impl Renderer {
-    pub async fn new(window: &Window) -> Self {
-        let api = RendererAPI::new(window).await;
+impl Renderer2D {
+    pub fn new(api: &RendererAPI) -> Self {
         let vertex_buffer = api
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -249,12 +247,11 @@ impl Renderer {
             uniform_buffer,
             bind_group,
             camera_bind_group,
-            api,
         }
     }
 
-    pub fn begin(&self, camera: &Camera) {
-        self.api.queue.write_buffer(
+    pub fn begin(&self, api: &RendererAPI, camera: &Camera) {
+        api.queue.write_buffer(
             &self.uniform_buffer,
             0,
             bytemuck::cast_slice(&[CameraUniform {
@@ -264,7 +261,7 @@ impl Renderer {
     }
 
     pub fn render(&self, instance: &mut RenderInstance) {
-        let mut render_pass = self.api.begin_render_pass(instance);
+        let mut render_pass = instance.begin_render_pass();
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);

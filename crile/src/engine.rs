@@ -1,10 +1,10 @@
 use crate::{
     events::{convert_event, Event},
-    graphics::Renderer,
+    graphics::Renderer2D,
     input::Input,
     time::Time,
     window::Window,
-    Camera, RenderInstance,
+    Camera, RenderInstance, RendererAPI,
 };
 
 pub trait Application {
@@ -15,7 +15,8 @@ pub trait Application {
 }
 
 pub struct Engine {
-    pub renderer: Renderer,
+    pub renderer: Renderer2D,
+    pub renderer_api: RendererAPI,
     pub window: Window,
     pub time: Time,
     pub input: Input,
@@ -26,8 +27,10 @@ pub struct Engine {
 impl Engine {
     fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
         let window = Window::new(event_loop);
+        let renderer_api = pollster::block_on(RendererAPI::new(&window));
         Self {
-            renderer: pollster::block_on(Renderer::new(&window)),
+            renderer: Renderer2D::new(&renderer_api),
+            renderer_api,
             time: Time::new(),
             input: Input::default(),
             camera: Camera::new(window.size().as_vec2()),
@@ -44,11 +47,11 @@ impl Engine {
     }
 
     fn render(&mut self, app: &mut impl Application) {
-        if let Some(mut instance) = self.renderer.api.begin_frame() {
-            self.renderer.begin(&self.camera);
+        if let Some(mut instance) = self.renderer_api.begin_frame() {
+            self.renderer.begin(&self.renderer_api, &self.camera);
             app.render(self, &mut instance);
             self.window.pre_present_notify();
-            self.renderer.api.present_frame(instance);
+            self.renderer_api.present_frame(instance);
         }
     }
 
@@ -63,7 +66,7 @@ impl Engine {
                 return;
             }
             Event::WindowResize { size } => {
-                self.renderer.api.resize(*size);
+                self.renderer_api.resize(*size);
                 self.camera.resize(size.as_vec2());
             }
             _ => (),
