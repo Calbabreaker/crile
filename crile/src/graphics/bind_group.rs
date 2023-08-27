@@ -7,7 +7,7 @@ pub struct BindGroupEntry<'a> {
 }
 
 impl<'a> BindGroupEntry<'a> {
-    pub fn from_buffer(visibility: wgpu::ShaderStages, buffer: &'a Buffer) -> Self {
+    pub fn from_buffer<T>(visibility: wgpu::ShaderStages, buffer: &'a Buffer<T>) -> Self {
         Self {
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
@@ -15,7 +15,7 @@ impl<'a> BindGroupEntry<'a> {
                 min_binding_size: None,
             },
             visibility,
-            resource: buffer.buffer.as_entire_binding(),
+            resource: buffer.gpu_buffer.as_entire_binding(),
         }
     }
 
@@ -27,44 +27,44 @@ impl<'a> BindGroupEntry<'a> {
                     view_dimension: wgpu::TextureViewDimension::D2,
                     sample_type: wgpu::TextureSampleType::Float { filterable: true },
                 },
-                resource: wgpu::BindingResource::TextureView(&texture.view),
+                resource: wgpu::BindingResource::TextureView(&texture.gpu_view),
                 visibility: wgpu::ShaderStages::FRAGMENT,
             },
             Self {
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 visibility: wgpu::ShaderStages::FRAGMENT,
-                resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                resource: wgpu::BindingResource::Sampler(&texture.gpu_sampler),
             },
         ]
     }
 }
 
 pub struct BindGroup {
-    pub group: wgpu::BindGroup,
-    pub layout: wgpu::BindGroupLayout,
+    pub gpu_group: wgpu::BindGroup,
+    pub gpu_layout: wgpu::BindGroupLayout,
 }
 
 impl BindGroup {
     pub fn new(api: &RendererAPI, entries: &[BindGroupEntry]) -> Self {
-        let bind_group_layout =
-            api.device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: None,
-                    entries: &entries
-                        .iter()
-                        .enumerate()
-                        .map(|(i, entry)| wgpu::BindGroupLayoutEntry {
-                            binding: i as u32,
-                            visibility: entry.visibility,
-                            ty: entry.ty,
-                            count: None,
-                        })
-                        .collect::<Vec<_>>(),
-                });
+        let gpu_layout = api
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &entries
+                    .iter()
+                    .enumerate()
+                    .map(|(i, entry)| wgpu::BindGroupLayoutEntry {
+                        binding: i as u32,
+                        visibility: entry.visibility,
+                        ty: entry.ty,
+                        count: None,
+                    })
+                    .collect::<Vec<_>>(),
+            });
 
-        let bind_group = api.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let gpu_group = api.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: &bind_group_layout,
+            layout: &gpu_layout,
             entries: &entries
                 .iter()
                 .enumerate()
@@ -76,8 +76,8 @@ impl BindGroup {
         });
 
         Self {
-            layout: bind_group_layout,
-            group: bind_group,
+            gpu_layout,
+            gpu_group,
         }
     }
 }

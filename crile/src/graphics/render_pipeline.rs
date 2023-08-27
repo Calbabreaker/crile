@@ -1,56 +1,44 @@
-use crate::{BindGroup, Buffer, RenderInstance, RendererAPI};
+use crate::{BindGroup, RendererAPI};
 
 pub struct RenderPipelineConfig<'a> {
     pub shader: wgpu::ShaderModuleDescriptor<'a>,
     pub bind_groups: Vec<BindGroup>,
-    pub vertex_buffers: Vec<Buffer>,
-    pub index_buffer: Buffer,
+    pub vertex_buffer_layouts: &'a [wgpu::VertexBufferLayout<'a>],
 }
 
 pub struct RenderPipeline {
-    pub pipeline: wgpu::RenderPipeline,
+    pub gpu_pipeline: wgpu::RenderPipeline,
     pub bind_groups: Vec<BindGroup>,
-    pub vertex_buffers: Vec<Buffer>,
-    pub index_buffer: Buffer,
 }
 
 impl RenderPipeline {
     pub fn new(api: &RendererAPI, config: RenderPipelineConfig) -> Self {
-        let render_pipeline_layout =
+        let gpu_pipeline_layout =
             api.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: None,
                     bind_group_layouts: &config
                         .bind_groups
                         .iter()
-                        .map(|bind_group| &bind_group.layout)
+                        .map(|bind_group| &bind_group.gpu_layout)
                         .collect::<Vec<_>>(),
                     push_constant_ranges: &[],
                 });
 
-        let shader = api.device.create_shader_module(config.shader);
+        let gpu_shader = api.device.create_shader_module(config.shader);
 
-        let pipeline = api
+        let gpu_pipeline = api
             .device
             .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: None,
-                layout: Some(&render_pipeline_layout),
+                layout: Some(&gpu_pipeline_layout),
                 vertex: wgpu::VertexState {
-                    module: &shader,
+                    module: &gpu_shader,
                     entry_point: "vs_main",
-                    buffers: &config
-                        .vertex_buffers
-                        .iter()
-                        .map(|buffer| {
-                            buffer
-                                .layout
-                                .clone()
-                                .expect("vertex buffer should have layout")
-                        })
-                        .collect::<Vec<_>>(),
+                    buffers: &config.vertex_buffer_layouts,
                 },
                 fragment: Some(wgpu::FragmentState {
-                    module: &shader,
+                    module: &gpu_shader,
                     entry_point: "fs_main",
                     targets: &[Some(wgpu::ColorTargetState {
                         format: api.config.format,
@@ -77,34 +65,15 @@ impl RenderPipeline {
             });
 
         Self {
-            pipeline,
+            gpu_pipeline,
             bind_groups: config.bind_groups,
-            index_buffer: config.index_buffer,
-            vertex_buffers: config.vertex_buffers,
         }
     }
 
-    pub fn draw_indexed<T: 'static>(&self, render_instance: &mut RenderInstance, indices: &[T]) {
-        let mut render_pass = render_instance.begin_render_pass();
-        render_pass.set_pipeline(&self.pipeline);
+    pub fn bind<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        render_pass.set_pipeline(&self.gpu_pipeline);
         for (i, bind_group) in self.bind_groups.iter().enumerate() {
-            render_pass.set_bind_group(i as u32, &bind_group.group, &[]);
+            render_pass.set_bind_group(i as u32, &bind_group.gpu_group, &[]);
         }
-        for (i, vertex_buffer) in self.vertex_buffers.iter().enumerate() {
-            render_pass.set_vertex_buffer(i as u32, vertex_buffer.buffer.slice(..));
-        }
-        render_pass.set_index_buffer(self.index_buffer.buffer.slice(..), get_index_format::<T>());
-        render_pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
-    }
-}
-
-fn get_index_format<T: 'static>() -> wgpu::IndexFormat {
-    use std::any::TypeId;
-    if TypeId::of::<T>() == TypeId::of::<u32>() {
-        wgpu::IndexFormat::Uint32
-    } else if TypeId::of::<T>() == TypeId::of::<u16>() {
-        wgpu::IndexFormat::Uint16
-    } else {
-        panic!("Only u16 or u32 expected");
     }
 }

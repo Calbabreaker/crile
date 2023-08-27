@@ -1,9 +1,9 @@
 use crate::RendererAPI;
 
 pub struct Texture {
-    pub texture: wgpu::Texture,
-    pub view: wgpu::TextureView,
-    pub sampler: wgpu::Sampler,
+    pub gpu_texture: wgpu::Texture,
+    pub gpu_view: wgpu::TextureView,
+    pub gpu_sampler: wgpu::Sampler,
 }
 
 impl Texture {
@@ -14,7 +14,7 @@ impl Texture {
             depth_or_array_layers: 1,
         };
 
-        let texture = api.device.create_texture(&wgpu::TextureDescriptor {
+        let gpu_texture = api.device.create_texture(&wgpu::TextureDescriptor {
             label: None,
             size,
             mip_level_count: 1,
@@ -27,7 +27,7 @@ impl Texture {
 
         api.queue.write_texture(
             wgpu::ImageCopyTexture {
-                texture: &texture,
+                texture: &gpu_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -41,8 +41,8 @@ impl Texture {
             size,
         );
 
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = api.device.create_sampler(&wgpu::SamplerDescriptor {
+        let gpu_view = gpu_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let gpu_sampler = api.device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -53,9 +53,9 @@ impl Texture {
         });
 
         Self {
-            texture,
-            view,
-            sampler,
+            gpu_texture,
+            gpu_view,
+            gpu_sampler,
         }
     }
 }

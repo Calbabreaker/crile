@@ -1,9 +1,7 @@
 use crate::{
-    BindGroup, BindGroupEntry, Buffer, Camera, Matrix4, RenderPipeline, RenderPipelineConfig,
-    Texture, Vector2,
+    BindGroup, BindGroupEntry, Buffer, BufferKind, Camera, Matrix4, RenderInstance, RenderPipeline,
+    RenderPipelineConfig, RendererAPI, Texture, Vector2,
 };
-
-use super::renderer_api::{RenderInstance, RendererAPI};
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -49,17 +47,17 @@ const INDICIES: &[u16] = &[0, 1, 2, 2, 3, 0];
 
 pub struct Renderer2D {
     render_pipeline: RenderPipeline,
-    camera_uniform_buffer: Buffer,
+    camera_uniform_buffer: Buffer<CameraUniform>,
+    vertex_buffer: Buffer<Vertex>,
+    index_buffer: Buffer<u16>,
 }
 
 impl Renderer2D {
     pub fn new(api: &RendererAPI) -> Self {
-        let mut vertex_buffer = Buffer::new_static(api, wgpu::BufferUsages::VERTEX, VERTICES);
-        vertex_buffer.layout = Some(Vertex::LAYOUT);
-        let index_buffer = Buffer::new_static(api, wgpu::BufferUsages::INDEX, INDICIES);
+        let vertex_buffer = Buffer::new_static(api, BufferKind::Vertex, VERTICES);
+        let index_buffer = Buffer::new_static(api, BufferKind::Index, INDICIES);
 
-        let camera_uniform_buffer =
-            Buffer::new_dynamic::<CameraUniform>(api, wgpu::BufferUsages::UNIFORM, 1);
+        let camera_uniform_buffer = Buffer::new_dynamic(api, BufferKind::Uniform, 1);
         let camera_bind_group = BindGroup::new(
             api,
             &[BindGroupEntry::from_buffer(
@@ -77,14 +75,15 @@ impl Renderer2D {
             RenderPipelineConfig {
                 shader: wgpu::include_wgsl!("./shader.wgsl"),
                 bind_groups: vec![camera_bind_group, texture_bind_group],
-                index_buffer,
-                vertex_buffers: vec![vertex_buffer],
+                vertex_buffer_layouts: &[Vertex::LAYOUT],
             },
         );
 
         Self {
             render_pipeline,
             camera_uniform_buffer,
+            index_buffer,
+            vertex_buffer,
         }
     }
 
@@ -98,6 +97,10 @@ impl Renderer2D {
     }
 
     pub fn render(&self, instance: &mut RenderInstance) {
-        self.render_pipeline.draw_indexed(instance, &INDICIES);
+        let mut render_pass = instance.begin_render_pass();
+        self.render_pipeline.bind(&mut render_pass);
+        self.index_buffer.bind(&mut render_pass, 0);
+        self.vertex_buffer.bind(&mut render_pass, 0);
+        render_pass.draw_indexed(0..INDICIES.len() as u32, 0, 0..1)
     }
 }
