@@ -15,7 +15,7 @@ pub trait Application {
 }
 
 pub struct Engine {
-    pub renderer: Renderer2D,
+    pub renderer_2d: Renderer2D,
     pub renderer_api: RendererAPI,
     pub window: Window,
     pub time: Time,
@@ -29,7 +29,7 @@ impl Engine {
         let window = Window::new(event_loop);
         let renderer_api = pollster::block_on(RendererAPI::new(&window));
         Self {
-            renderer: Renderer2D::new(&renderer_api),
+            renderer_2d: Renderer2D::new(&renderer_api),
             renderer_api,
             time: Time::default(),
             input: Input::default(),
@@ -48,7 +48,6 @@ impl Engine {
 
     fn render(&mut self, app: &mut impl Application) {
         if let Some(mut instance) = self.renderer_api.begin_frame() {
-            self.renderer.begin(&self.renderer_api, &self.camera);
             app.render(self, &mut instance);
             self.window.pre_present_notify();
             self.renderer_api.present_frame(instance);

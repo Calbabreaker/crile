@@ -2,9 +2,9 @@ use crate::{Matrix4, Vector2};
 
 pub struct Camera {
     aspect_ratio: f32,
-    near: f32,
-    far: f32,
-    ortho_size: f32,
+    pub near: f32,
+    pub far: f32,
+    pub ortho_size: f32,
 }
 
 impl Default for Camera {

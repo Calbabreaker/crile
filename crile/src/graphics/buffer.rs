@@ -59,22 +59,43 @@ impl<T: bytemuck::Pod> VertexBuffer<T> {
 
 pub trait Indexable {
     fn get_index_format() -> wgpu::IndexFormat;
+    fn from_usize(x: usize) -> Self;
 }
 
-impl Indexable for u16 {
-    fn get_index_format() -> wgpu::IndexFormat {
-        wgpu::IndexFormat::Uint16
-    }
+macro_rules! impl_indexable {
+    ($bit:ident, $format:ident) => {
+        impl Indexable for $bit {
+            fn get_index_format() -> wgpu::IndexFormat {
+                wgpu::IndexFormat::$format
+            }
+
+            fn from_usize(x: usize) -> Self {
+                x as $bit
+            }
+        }
+    };
 }
 
-impl Indexable for u32 {
-    fn get_index_format() -> wgpu::IndexFormat {
-        wgpu::IndexFormat::Uint32
-    }
-}
+impl_indexable!(u32, Uint32);
+impl_indexable!(u16, Uint16);
 
 impl<T: Indexable + bytemuck::Pod> IndexBuffer<T> {
     pub fn bind<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         render_pass.set_index_buffer(self.gpu_buffer.slice(..), T::get_index_format())
+    }
+
+    pub fn new_quad_index(api: &RendererAPI, quad_count: usize) -> IndexBuffer<T> {
+        let indicies: Vec<T> = [0, 1, 2, 2, 3, 0]
+            .iter()
+            .cycle()
+            .take(quad_count * 6)
+            .enumerate()
+            .map(|(i, quad_count)| {
+                let offset = i / 6 * 4;
+                T::from_usize(offset + quad_count)
+            })
+            .collect();
+
+        IndexBuffer::new_static(api, &indicies)
     }
 }
