@@ -6,15 +6,17 @@ pub struct Time {
     delta: Duration,
 }
 
-impl Time {
-    pub fn new() -> Self {
+impl Default for Time {
+    fn default() -> Self {
         Self {
             last_frame: Instant::now(),
             start: Instant::now(),
             delta: Duration::ZERO,
         }
     }
+}
 
+impl Time {
     pub fn update(&mut self) {
         self.delta = self.last_frame.elapsed();
         self.last_frame = Instant::now();

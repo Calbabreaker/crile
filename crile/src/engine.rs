@@ -31,7 +31,7 @@ impl Engine {
         Self {
             renderer: Renderer2D::new(&renderer_api),
             renderer_api,
-            time: Time::new(),
+            time: Time::default(),
             input: Input::default(),
             camera: Camera::new(window.size().as_vec2()),
             window,

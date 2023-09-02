@@ -1,4 +1,4 @@
-use crate::{Buffer, RendererAPI, Texture};
+use crate::{RendererAPI, Texture, UniformBuffer};
 
 pub struct BindGroupEntry<'a> {
     pub ty: wgpu::BindingType,
@@ -7,7 +7,10 @@ pub struct BindGroupEntry<'a> {
 }
 
 impl<'a> BindGroupEntry<'a> {
-    pub fn from_buffer<T>(visibility: wgpu::ShaderStages, buffer: &'a Buffer<T>) -> Self {
+    pub fn from_uniform<T: bytemuck::Pod>(
+        visibility: wgpu::ShaderStages,
+        buffer: &'a UniformBuffer<T>,
+    ) -> Self {
         Self {
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,

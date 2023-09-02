@@ -35,7 +35,7 @@ impl RenderPipeline {
                 vertex: wgpu::VertexState {
                     module: &gpu_shader,
                     entry_point: "vs_main",
-                    buffers: &config.vertex_buffer_layouts,
+                    buffers: config.vertex_buffer_layouts,
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &gpu_shader,

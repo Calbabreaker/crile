@@ -38,9 +38,8 @@ pub struct RendererAPI {
 impl RendererAPI {
     pub async fn new(window: &Window) -> Self {
         // Init with backends from environment variables or the default
-        let backends = wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::all());
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends,
+            backends: wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::all()),
             dx12_shader_compiler: wgpu::Dx12Compiler::default(),
         });
 
@@ -70,8 +69,6 @@ impl RendererAPI {
             .await
             .expect("Failed to request a device!");
 
-        let size = window.size();
-
         let surface_capabilities = surface.get_capabilities(&adapter);
 
         // Prefer SRGB surface formats
@@ -84,6 +81,7 @@ impl RendererAPI {
                 &surface_capabilities.formats[0]
             });
 
+        let size = window.size();
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             present_mode: surface_capabilities.present_modes[0],
