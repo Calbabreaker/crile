@@ -1,4 +1,4 @@
-use crate::{window::Window, Vector2U};
+use crate::{window::Window, Color, Vector2U};
 
 pub struct RenderInstance {
     encoder: wgpu::CommandEncoder,
@@ -7,20 +7,14 @@ pub struct RenderInstance {
 }
 
 impl RenderInstance {
-    pub fn begin_render_pass(&mut self) -> wgpu::RenderPass {
+    pub fn begin_render_pass(&mut self, color: Option<Color>) -> wgpu::RenderPass {
         self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    // load: wgpu::LoadOp::Clear(wgpu::Color {
-                    //     r: 0.0,
-                    //     g: 0.0,
-                    //     b: 0.0,
-                    //     a: 0.0,
-                    // }),
-                    load: wgpu::LoadOp::Load,
+                    load: color.map_or(wgpu::LoadOp::Load, |c| wgpu::LoadOp::Clear(c.into())),
                     store: true,
                 },
             })],

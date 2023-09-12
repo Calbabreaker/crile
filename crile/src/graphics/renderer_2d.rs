@@ -39,7 +39,7 @@ const VERTEX_UVS: &[Vector2] = &[
     Vector2::new(0.0, 0.0),
 ];
 
-const MAX_QUADS: usize = 100000;
+const MAX_QUADS: usize = 100;
 
 pub struct Renderer2D {
     render_pipeline: RenderPipeline,
@@ -98,7 +98,7 @@ impl Renderer2D {
 
     /// Adds a quad to the batch the be rendered
     /// If the batch is full, it will render immediatly to free the batch
-    pub fn draw_quad(&mut self, transform: &Matrix4, color: &Color) -> Result<(), crate::Error> {
+    pub fn draw_quad(&mut self, transform: &Matrix4, color: &Color) {
         for i in 0..4 {
             let vertex = &mut self.quad_verticies[self.quads_in_batch * 4 + i];
             let position = transform.mul_vec4(VERTEX_POSITIONS[i]);
@@ -108,11 +108,10 @@ impl Renderer2D {
         }
 
         self.quads_in_batch += 1;
-        Ok(())
     }
 
     pub fn flush(&mut self, api: &RendererAPI, instance: &mut RenderInstance) {
-        let mut render_pass = instance.begin_render_pass();
+        let mut render_pass = instance.begin_render_pass(Some(Color::from_rgb(0, 0, 0)));
         let vertices_slice = &self.quad_verticies[0..self.quads_in_batch * 4];
         self.vertex_buffer.update(api, vertices_slice);
 

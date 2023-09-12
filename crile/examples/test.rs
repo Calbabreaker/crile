@@ -5,7 +5,7 @@ pub struct TestApp {}
 
 impl crile::Application for TestApp {
     fn init(&mut self, engine: &mut crile::Engine) {
-        engine.camera.ortho_size = 100.0;
+        engine.camera.ortho_size = 10.0;
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
@@ -19,8 +19,8 @@ impl crile::Application for TestApp {
             .renderer_2d
             .begin(&engine.renderer_api, &engine.camera);
 
-        for x in -100..200 {
-            for y in -100..200 {
+        for x in -10..10 {
+            for y in -10..10 {
                 let position = crile::Vector3::new(x as f32, y as f32, 0.0);
                 engine.renderer_2d.draw_quad(
                     &crile::Matrix4::from_translation(position),
