@@ -83,20 +83,4 @@ impl<T: Indexable + bytemuck::Pod> IndexBuffer<T> {
     pub fn bind<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         render_pass.set_index_buffer(self.gpu_buffer.slice(..), T::get_index_format())
     }
-
-    /// Creates an index buffer that indexes intoa vertex buffer containing quad verticies
-    pub fn new_quad_index(api: &RendererAPI, quad_count: usize) -> IndexBuffer<T> {
-        let indicies: Vec<T> = [0, 1, 2, 2, 3, 0]
-            .iter()
-            .cycle()
-            .take(quad_count * 6)
-            .enumerate()
-            .map(|(i, quad_count)| {
-                let offset = i / 6 * 4;
-                T::from_usize(offset + quad_count)
-            })
-            .collect();
-
-        IndexBuffer::new_static(api, &indicies)
-    }
 }

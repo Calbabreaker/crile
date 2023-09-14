@@ -61,8 +61,4 @@ impl RenderPipeline {
 
         Self { gpu_pipeline }
     }
-
-    pub fn bind<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        render_pass.set_pipeline(&self.gpu_pipeline);
-    }
 }

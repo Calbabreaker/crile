@@ -1,9 +1,12 @@
+use std::num::NonZeroU32;
+
 use crate::{RendererAPI, Texture, UniformBuffer};
 
 pub struct BindGroupEntry<'a> {
     pub ty: wgpu::BindingType,
     pub resource: wgpu::BindingResource<'a>,
     pub visibility: wgpu::ShaderStages,
+    pub count: Option<NonZeroU32>,
 }
 
 impl<'a> BindGroupEntry<'a> {
@@ -19,6 +22,7 @@ impl<'a> BindGroupEntry<'a> {
             },
             visibility,
             resource: buffer.gpu_buffer.as_entire_binding(),
+            count: None,
         }
     }
 
@@ -32,11 +36,13 @@ impl<'a> BindGroupEntry<'a> {
                 },
                 resource: wgpu::BindingResource::TextureView(&texture.gpu_view),
                 visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
             },
             Self {
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 resource: wgpu::BindingResource::Sampler(&texture.gpu_sampler),
+                count: None,
             },
         ]
     }
@@ -49,20 +55,22 @@ pub struct BindGroup {
 
 impl BindGroup {
     pub fn new(api: &RendererAPI, entries: &[BindGroupEntry]) -> Self {
+        let layout_entries = entries
+            .iter()
+            .enumerate()
+            .map(|(i, entry)| wgpu::BindGroupLayoutEntry {
+                binding: i as u32,
+                visibility: entry.visibility,
+                ty: entry.ty,
+                count: entry.count,
+            })
+            .collect::<Vec<_>>();
+
         let gpu_layout = api
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: None,
-                entries: &entries
-                    .iter()
-                    .enumerate()
-                    .map(|(i, entry)| wgpu::BindGroupLayoutEntry {
-                        binding: i as u32,
-                        visibility: entry.visibility,
-                        ty: entry.ty,
-                        count: None,
-                    })
-                    .collect::<Vec<_>>(),
+                entries: &layout_entries,
             });
 
         let gpu_group = api.device.create_bind_group(&wgpu::BindGroupDescriptor {

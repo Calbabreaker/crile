@@ -1,24 +1,26 @@
 #![allow(unused)]
 
 #[derive(Default)]
-pub struct TestApp {
-    batch: crile::BatchData,
-}
+pub struct TestApp {}
 
 impl crile::Application for TestApp {
     fn init(&mut self, engine: &mut crile::Engine) {
         engine.camera.ortho_size = 10.0;
-        self.batch.textures.push(crile::Texture::new(
-            &engine.renderer_api,
-            1,
-            1,
-            &[255, 255, 255, 255],
-        ));
+        // self.batch.textures.push(crile::Texture::new(
+        //     &engine.renderer_api,
+        //     1,
+        //     1,
+        //     &[255, 255, 255, 255],
+        // ));
+        // let image = image::open("assets/test.png").unwrap();
+        // self.batch
+        //     .textures
+        //     .push(crile::Texture::from_image(&engine.renderer_api, image))
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
         // if engine.input.key_just_pressed(crile::KeyCode::Space) {
-        // println!("Framerate: {}", engine.time.framerate());
+        println!("Framerate: {}", engine.time.framerate());
         // }
     }
 
@@ -27,22 +29,22 @@ impl crile::Application for TestApp {
             .renderer_2d
             .begin(&engine.renderer_api, &engine.camera);
 
-        let rows = 10;
-        let cols = 10;
-        self.batch.sprites = (0..rows * cols)
-            .map(|i| {
-                let position = crile::Vector3::new((i % cols) as f32, (i / rows) as f32, 0.0);
-                crile::SpriteData {
-                    texture_index: 0,
-                    transform: crile::Matrix4::from_translation(position),
-                    color: crile::Color::from_hex(0xffffff),
-                }
-            })
-            .collect::<Vec<_>>();
+        // let rows = 10;
+        // let cols = 10;
+        // self.batch.sprites = (0..rows * cols)
+        //     .map(|i| {
+        //         let position = crile::Vector3::new((i % cols) as f32, (i / rows) as f32, 0.0);
+        //         crile::SpriteData {
+        //             texture_index: i % 2,
+        //             transform: crile::Matrix4::from_translation(position),
+        //             color: crile::Color::from_hex(0xffffff),
+        //         }
+        //     })
+        //     .collect::<Vec<_>>();
 
         engine
             .renderer_2d
-            .draw_batch(&engine.renderer_api, instance, &self.batch);
+            .draw_batch(&engine.renderer_api, instance);
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
