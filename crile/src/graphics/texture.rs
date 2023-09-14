@@ -7,10 +7,16 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn new(api: &RendererAPI, image: image::DynamicImage) -> Self {
+    pub fn from_image(api: &RendererAPI, image: image::DynamicImage) -> Self {
+        Self::new(api, image.width(), image.height(), &image.to_rgba8())
+    }
+
+    /// Creats a new texture to be rendrered
+    /// Note: only expects rgba8 images
+    pub fn new(api: &RendererAPI, width: u32, height: u32, data: &[u8]) -> Self {
         let size = wgpu::Extent3d {
-            width: image.width(),
-            height: image.height(),
+            width,
+            height,
             depth_or_array_layers: 1,
         };
 
@@ -32,13 +38,17 @@ impl Texture {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            &image.to_rgba8(),
+            data,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * image.width()),
-                rows_per_image: Some(image.height()),
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
             },
-            size,
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
         );
 
         let gpu_view = gpu_texture.create_view(&wgpu::TextureViewDescriptor::default());

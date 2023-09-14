@@ -52,10 +52,13 @@ impl RendererAPI {
             .await
             .expect("Failed to find GPU adapter!");
 
+        let adapter_info = adapter.get_info();
+        log::info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
+
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
+                    features: wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
                     limits: wgpu::Limits::default(),
                     label: None,
                 },

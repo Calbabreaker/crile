@@ -1,14 +1,13 @@
-use crate::{BindGroup, RendererAPI};
+use crate::RendererAPI;
 
 pub struct RenderPipelineConfig<'a> {
     pub shader: wgpu::ShaderModuleDescriptor<'a>,
-    pub bind_groups: Vec<BindGroup>,
+    pub bind_group_layouts: &'a [&'a wgpu::BindGroupLayout],
     pub vertex_buffer_layouts: &'a [wgpu::VertexBufferLayout<'a>],
 }
 
 pub struct RenderPipeline {
     pub gpu_pipeline: wgpu::RenderPipeline,
-    pub bind_groups: Vec<BindGroup>,
 }
 
 impl RenderPipeline {
@@ -17,11 +16,7 @@ impl RenderPipeline {
             api.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: None,
-                    bind_group_layouts: &config
-                        .bind_groups
-                        .iter()
-                        .map(|bind_group| &bind_group.gpu_layout)
-                        .collect::<Vec<_>>(),
+                    bind_group_layouts: config.bind_group_layouts,
                     push_constant_ranges: &[],
                 });
 
@@ -64,16 +59,10 @@ impl RenderPipeline {
                 multiview: None,
             });
 
-        Self {
-            gpu_pipeline,
-            bind_groups: config.bind_groups,
-        }
+        Self { gpu_pipeline }
     }
 
     pub fn bind<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         render_pass.set_pipeline(&self.gpu_pipeline);
-        for (i, bind_group) in self.bind_groups.iter().enumerate() {
-            render_pass.set_bind_group(i as u32, &bind_group.gpu_group, &[]);
-        }
     }
 }
