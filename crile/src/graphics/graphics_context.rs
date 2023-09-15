@@ -1,6 +1,6 @@
 use crate::{window::Window, Color, Vector2U};
 
-pub struct RenderInstance {
+struct FrameContext {
     encoder: wgpu::CommandEncoder,
     view: wgpu::TextureView,
     output: wgpu::SurfaceTexture,
@@ -23,14 +23,15 @@ impl RenderInstance {
     }
 }
 
-pub struct RendererAPI {
+pub struct GraphicsContext {
     pub(crate) queue: wgpu::Queue,
     pub(crate) config: wgpu::SurfaceConfiguration,
     pub(crate) device: wgpu::Device,
     surface: wgpu::Surface,
+    frame: Option<FrameContext>,
 }
 
-impl RendererAPI {
+impl GraphicsContext {
     pub async fn new(window: &Window) -> Self {
         // Init with backends from environment variables or the default
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -97,13 +98,14 @@ impl RendererAPI {
             config,
             device,
             surface,
+            frame: None,
         }
     }
 
     pub fn resize(&mut self, size: Vector2U) {
         self.config.width = size.x;
         self.config.height = size.y;
-        self.reconfigure();
+        self.surface.configure(&self.device, &self.config);
     }
 
     /// Tries to enable/disable vsync
@@ -113,7 +115,7 @@ impl RendererAPI {
             true => self.config.present_mode = wgpu::PresentMode::AutoVsync,
             false => self.config.present_mode = wgpu::PresentMode::AutoNoVsync,
         }
-        self.reconfigure();
+        self.surface.configure(&self.device, &self.config);
     }
 
     pub fn vsync_enabled(&self) -> bool {
@@ -124,32 +126,35 @@ impl RendererAPI {
         }
     }
 
-    pub fn begin_frame(&self) -> Option<RenderInstance> {
-        match self.surface.get_current_texture() {
-            Err(wgpu::SurfaceError::OutOfMemory) => panic!("GPU out of memory"),
-            Err(wgpu::SurfaceError::Lost) => {
-                self.reconfigure();
-                None
+    pub fn begin_frame(&self) {
+        assert!(self.frame.is_none(), "called begin frame before end frame");
+
+        let output = match self.surface.get_current_texture() {
+            Err(_) => {
+                // Surface lost or something so reconfigure and try to reobtain
+                self.surface.configure(&self.device, &self.config);
+                match self.surface.get_current_texture() {
+                    Ok(output) => output,
+                    Err(error) => panic!("failed to get surface texture {error}"),
+                }
             }
-            Err(_) => None,
-            Ok(output) => Some(RenderInstance {
-                encoder: self
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None }),
-                view: output
-                    .texture
-                    .create_view(&wgpu::TextureViewDescriptor::default()),
-                output,
-            }),
-        }
+            Err(wgpu::SurfaceError::OutOfMemory) => panic!("GPU out of memory"),
+            Ok(output) => output,
+        };
+
+        self.frame = Some(FrameContext {
+            encoder: self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None }),
+            view: output
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default()),
+            output,
+        });
     }
 
-    pub fn present_frame(&self, render_instance: RenderInstance) {
+    pub fn end_frame(&self) {
         self.queue.submit([render_instance.encoder.finish()]);
         render_instance.output.present();
-    }
-
-    fn reconfigure(&self) {
-        self.surface.configure(&self.device, &self.config);
     }
 }

@@ -1,4 +1,4 @@
-use crate::RendererAPI;
+use crate::GraphicsContext;
 
 pub struct RenderPipelineConfig<'a> {
     pub shader: wgpu::ShaderModuleDescriptor<'a>,
@@ -11,18 +11,18 @@ pub struct RenderPipeline {
 }
 
 impl RenderPipeline {
-    pub fn new(api: &RendererAPI, config: RenderPipelineConfig) -> Self {
+    pub fn new(gfx: &GraphicsContext, config: RenderPipelineConfig) -> Self {
         let gpu_pipeline_layout =
-            api.device
+            gfx.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: None,
                     bind_group_layouts: config.bind_group_layouts,
                     push_constant_ranges: &[],
                 });
 
-        let gpu_shader = api.device.create_shader_module(config.shader);
+        let gpu_shader = gfx.device.create_shader_module(config.shader);
 
-        let gpu_pipeline = api
+        let gpu_pipeline = gfx
             .device
             .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: None,
@@ -36,7 +36,7 @@ impl RenderPipeline {
                     module: &gpu_shader,
                     entry_point: "fs_main",
                     targets: &[Some(wgpu::ColorTargetState {
-                        format: api.config.format,
+                        format: gfx.config.format,
                         blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],

@@ -1,4 +1,4 @@
-use crate::RendererAPI;
+use crate::GraphicsContext;
 
 pub struct Texture {
     pub gpu_texture: wgpu::Texture,
@@ -7,20 +7,20 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn from_image(api: &RendererAPI, image: image::DynamicImage) -> Self {
-        Self::new(api, image.width(), image.height(), &image.to_rgba8())
+    pub fn from_image(gfx: &GraphicsContext, image: image::DynamicImage) -> Self {
+        Self::new(gfx, image.width(), image.height(), &image.to_rgba8())
     }
 
     /// Creats a new texture to be rendrered
     /// Note: only expects rgba8 images
-    pub fn new(api: &RendererAPI, width: u32, height: u32, data: &[u8]) -> Self {
+    pub fn new(gfx: &GraphicsContext, width: u32, height: u32, data: &[u8]) -> Self {
         let size = wgpu::Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
 
-        let gpu_texture = api.device.create_texture(&wgpu::TextureDescriptor {
+        let gpu_texture = gfx.device.create_texture(&wgpu::TextureDescriptor {
             label: None,
             size,
             mip_level_count: 1,
@@ -31,7 +31,7 @@ impl Texture {
             view_formats: &[],
         });
 
-        api.queue.write_texture(
+        gfx.queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &gpu_texture,
                 mip_level: 0,
@@ -52,7 +52,7 @@ impl Texture {
         );
 
         let gpu_view = gpu_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let gpu_sampler = api.device.create_sampler(&wgpu::SamplerDescriptor {
+        let gpu_sampler = gfx.device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,

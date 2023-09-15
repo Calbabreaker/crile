@@ -1,6 +1,6 @@
 use crate::{
-    BindGroup, BindGroupEntry, Camera, Color, Matrix4, Mesh, RenderInstance, RenderPipeline,
-    RenderPipelineConfig, RendererAPI, Texture, UniformBuffer, Vertex,
+    BindGroup, BindGroupEntry, Camera, Color, GraphicsContext, Matrix4, Mesh, RenderInstance,
+    RenderPipeline, RenderPipelineConfig, Texture, UniformBuffer, Vertex,
 };
 
 #[repr(C)]
@@ -35,12 +35,12 @@ pub struct Renderer2D {
 }
 
 impl Renderer2D {
-    pub fn new(api: &RendererAPI) -> Self {
-        let square_mesh = Mesh::new_square(api);
+    pub fn new(gfx: &GraphicsContext) -> Self {
+        let square_mesh = Mesh::new_square(gfx);
 
-        let camera_uniform_buffer = UniformBuffer::new_dynamic(api, 1);
+        let camera_uniform_buffer = UniformBuffer::new_dynamic(gfx, 1);
         let camera_bind_group = BindGroup::new(
-            api,
+            gfx,
             &[BindGroupEntry::from_uniform(
                 wgpu::ShaderStages::VERTEX,
                 &camera_uniform_buffer,
@@ -48,12 +48,12 @@ impl Renderer2D {
         );
 
         // let image = image::open("assets/test.png").unwrap();
-        // let texture = Texture::from_image(api, image);
-        let texture = Texture::new(api, 1, 1, &[255, 255, 255, 255]);
-        let texture_bind_group = BindGroup::new(api, &BindGroupEntry::from_texture(&texture));
+        // let texture = Texture::from_image(gfx, image);
+        let texture = Texture::new(gfx, 1, 1, &[255, 255, 255, 255]);
+        let texture_bind_group = BindGroup::new(gfx, &BindGroupEntry::from_texture(&texture));
 
         let render_pipeline = RenderPipeline::new(
-            api,
+            gfx,
             RenderPipelineConfig {
                 shader: wgpu::include_wgsl!("./instance.wgsl"),
                 bind_group_layouts: &[
@@ -73,16 +73,16 @@ impl Renderer2D {
         }
     }
 
-    pub fn begin(&mut self, api: &RendererAPI, camera: &Camera) {
+    pub fn begin(&mut self, gfx: &GraphicsContext, camera: &Camera) {
         self.camera_uniform_buffer.update(
-            api,
+            gfx,
             &[CameraUniform {
                 view_projection: camera.get_projection(),
             }],
         );
     }
 
-    pub fn draw_instances(&mut self, api: &RendererAPI, instance: &mut RenderInstance) {
+    pub fn draw_instances(&mut self, gfx: &GraphicsContext, instance: &mut RenderInstance) {
         let mut render_pass = instance.begin_render_pass(Some(Color::from_rgb(0, 0, 0)));
 
         render_pass.set_pipeline(&self.render_pipeline.gpu_pipeline);

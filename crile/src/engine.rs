@@ -4,7 +4,7 @@ use crate::{
     input::Input,
     time::Time,
     window::Window,
-    Camera, RenderInstance, RendererAPI,
+    Camera, GraphicsContext, RenderInstance,
 };
 
 pub trait Application {
@@ -16,7 +16,7 @@ pub trait Application {
 
 pub struct Engine {
     pub renderer_2d: Renderer2D,
-    pub renderer_api: RendererAPI,
+    pub gfx: GraphicsContext,
     pub window: Window,
     pub time: Time,
     pub input: Input,
@@ -27,10 +27,10 @@ pub struct Engine {
 impl Engine {
     fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
         let window = Window::new(event_loop);
-        let renderer_api = pollster::block_on(RendererAPI::new(&window));
+        let gfx = pollster::block_on(GraphicsContext::new(&window));
         Self {
-            renderer_2d: Renderer2D::new(&renderer_api),
-            renderer_api,
+            renderer_2d: Renderer2D::new(&gfx),
+            gfx,
             time: Time::default(),
             input: Input::default(),
             camera: Camera::new(window.size().as_vec2()),
@@ -47,10 +47,10 @@ impl Engine {
     }
 
     fn render(&mut self, app: &mut impl Application) {
-        if let Some(mut instance) = self.renderer_api.begin_frame() {
+        if let Some(mut instance) = self.gfx.begin_frame() {
             app.render(self, &mut instance);
             self.window.pre_present_notify();
-            self.renderer_api.present_frame(instance);
+            self.renderer_gfx.present_frame(instance);
         }
     }
 
@@ -65,7 +65,7 @@ impl Engine {
                 return;
             }
             Event::WindowResize { size } => {
-                self.renderer_api.resize(*size);
+                self.renderer_gfx.resize(*size);
                 self.camera.resize(size.as_vec2());
             }
             _ => (),

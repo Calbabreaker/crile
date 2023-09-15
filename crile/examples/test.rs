@@ -7,7 +7,7 @@ impl crile::Application for TestApp {
     fn init(&mut self, engine: &mut crile::Engine) {
         engine.camera.ortho_size = 10.0;
         // self.batch.textures.push(crile::Texture::new(
-        //     &engine.renderer_api,
+        //     &engine.renderer_gfx,
         //     1,
         //     1,
         //     &[255, 255, 255, 255],
@@ -15,19 +15,17 @@ impl crile::Application for TestApp {
         // let image = image::open("assets/test.png").unwrap();
         // self.batch
         //     .textures
-        //     .push(crile::Texture::from_image(&engine.renderer_api, image))
+        //     .push(crile::Texture::from_image(&engine.renderer_gfx, image))
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
         // if engine.input.key_just_pressed(crile::KeyCode::Space) {
-        println!("Framerate: {}", engine.time.framerate());
+        // println!("Framerate: {}", engine.time.framerate());
         // }
     }
 
     fn render(&mut self, engine: &mut crile::Engine, instance: &mut crile::RenderInstance) {
-        engine
-            .renderer_2d
-            .begin(&engine.renderer_api, &engine.camera);
+        engine.renderer_2d.begin(&engine.gfx, &engine.camera);
 
         // let rows = 10;
         // let cols = 10;
@@ -42,9 +40,7 @@ impl crile::Application for TestApp {
         //     })
         //     .collect::<Vec<_>>();
 
-        engine
-            .renderer_2d
-            .draw_batch(&engine.renderer_api, instance);
+        engine.renderer_2d.draw_instances(&engine.gfx, instance);
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {

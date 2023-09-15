@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::RendererAPI;
+use crate::GraphicsContext;
 
 macro_rules! create_buffer_type {
     ($name: ident, $usage: ident $(, $restraint:path )?) => {
@@ -13,9 +13,9 @@ macro_rules! create_buffer_type {
         where
             T: bytemuck::Pod + $($restraint)*,
         {
-            pub fn new_static(api: &RendererAPI, data: &[T]) -> Self {
+            pub fn new_static(gfx: &GraphicsContext, data: &[T]) -> Self {
                 Self {
-                    gpu_buffer: api
+                    gpu_buffer: gfx
                         .device
                         .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                             label: None,
@@ -26,9 +26,9 @@ macro_rules! create_buffer_type {
                 }
             }
 
-            pub fn new_dynamic(api: &RendererAPI, max_length: usize) -> Self {
+            pub fn new_dynamic(gfx: &GraphicsContext, max_length: usize) -> Self {
                 Self {
-                    gpu_buffer: api.device.create_buffer(&wgpu::BufferDescriptor {
+                    gpu_buffer: gfx.device.create_buffer(&wgpu::BufferDescriptor {
                         label: None,
                         size: (max_length * std::mem::size_of::<T>()) as u64,
                         mapped_at_creation: false,
@@ -38,8 +38,8 @@ macro_rules! create_buffer_type {
                 }
             }
 
-            pub fn update(&self, api: &RendererAPI, data: &[T]) {
-                api.queue
+            pub fn update(&self, gfx: &GraphicsContext, data: &[T]) {
+                gfx.queue
                     .write_buffer(&self.gpu_buffer, 0, bytemuck::cast_slice(data));
             }
 

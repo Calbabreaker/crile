@@ -1,6 +1,6 @@
 use std::num::NonZeroU32;
 
-use crate::{RendererAPI, Texture, UniformBuffer};
+use crate::{GraphicsContext, Texture, UniformBuffer};
 
 pub struct BindGroupEntry<'a> {
     pub ty: wgpu::BindingType,
@@ -54,7 +54,7 @@ pub struct BindGroup {
 }
 
 impl BindGroup {
-    pub fn new(api: &RendererAPI, entries: &[BindGroupEntry]) -> Self {
+    pub fn new(gfx: &GraphicsContext, entries: &[BindGroupEntry]) -> Self {
         let layout_entries = entries
             .iter()
             .enumerate()
@@ -66,14 +66,14 @@ impl BindGroup {
             })
             .collect::<Vec<_>>();
 
-        let gpu_layout = api
+        let gpu_layout = gfx
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: None,
                 entries: &layout_entries,
             });
 
-        let gpu_group = api.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let gpu_group = gfx.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: &gpu_layout,
             entries: &entries
