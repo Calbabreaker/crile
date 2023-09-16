@@ -24,9 +24,8 @@ impl crile::Application for TestApp {
         // }
     }
 
-    fn render(&mut self, engine: &mut crile::Engine) {
-        let mut render_pass =
-            crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK)).unwrap();
+    fn render(&mut self, engine: &mut crile::Engine) -> Result<(), crile::EngineError> {
+        let mut render_pass = crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK))?;
 
         // let rows = 10;
         // let cols = 10;
@@ -48,6 +47,8 @@ impl crile::Application for TestApp {
                 transform: crile::Matrix4::from_translation(crile::Vector3::new(0., 0., 0.)),
             },
         );
+
+        Ok(())
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {

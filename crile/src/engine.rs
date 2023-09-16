@@ -1,15 +1,11 @@
 use crate::{
-    events::{convert_event, Event},
-    input::Input,
-    time::Time,
-    window::Window,
-    Camera, EngineError, GraphicsContext,
+    input::Input, time::Time, window::Window, Camera, EngineError, Event, GraphicsContext,
 };
 
 pub trait Application {
     fn init(&mut self, engine: &mut Engine);
     fn update(&mut self, engine: &mut Engine);
-    fn render(&mut self, engine: &mut Engine);
+    fn render(&mut self, engine: &mut Engine) -> Result<(), EngineError>;
     fn event(&mut self, engine: &mut Engine, event: &Event);
 }
 
@@ -45,7 +41,7 @@ impl Engine {
 
     fn render(&mut self, app: &mut impl Application) -> Result<(), EngineError> {
         self.gfx.begin_frame()?;
-        app.render(self);
+        app.render(self)?;
         self.window.pre_present_notify();
         self.gfx.end_frame()?;
         Ok(())
@@ -53,14 +49,6 @@ impl Engine {
 
     fn event(&mut self, app: &mut impl Application, event: &Event) {
         match event {
-            Event::ApplicationUpdate => {
-                self.update(app);
-                return;
-            }
-            Event::ApplicationRender => {
-                self.render(app).unwrap();
-                return;
-            }
             Event::WindowResize { size } => {
                 self.gfx.resize(*size);
                 self.camera.resize(size.as_vec2());
@@ -83,13 +71,32 @@ pub fn run(mut app: impl Application + 'static) -> Result<(), EngineError> {
     app.init(&mut engine);
 
     event_loop.run(move |event, _, control_flow| {
-        if let Some(event) = convert_event(event) {
-            engine.event(&mut app, &event);
+        if let Err(err) = handle_event(&mut engine, &mut app, event) {
+            log::error!("{err}");
+            control_flow.set_exit()
         }
 
         if engine.should_close {
             control_flow.set_exit()
         }
     })?;
+    Ok(())
+}
+
+fn handle_event(
+    engine: &mut Engine,
+    app: &mut impl Application,
+    event: winit::event::Event<()>,
+) -> Result<(), EngineError> {
+    match event {
+        winit::event::Event::AboutToWait => engine.update(app),
+        winit::event::Event::RedrawRequested(_) => engine.render(app)?,
+        event => {
+            if let Some(event) = crate::events::convert_event(event) {
+                engine.event(app, &event);
+            }
+        }
+    }
+
     Ok(())
 }

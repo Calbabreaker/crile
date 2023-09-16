@@ -20,7 +20,7 @@ impl<'a> RenderPass<'a> {
         clear_color: Option<Color>,
     ) -> Result<Self, EngineError> {
         let frame = gfx.frame.as_mut().ok_or(EngineError::RenderError(
-            "tried to create render pass before beginning frame".to_string(),
+            "tried to create render pass but frame doesn't exist".to_string(),
         ))?;
 
         let gpu_render_pass = frame

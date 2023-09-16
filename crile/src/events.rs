@@ -30,15 +30,11 @@ pub enum Event {
         /// Represents the physical key on the keyboard not accounting for keyboard layouts
         keycode: KeyCode,
     },
-    ApplicationUpdate,
-    ApplicationRender,
     WindowClose,
 }
 
 pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
     Some(match event {
-        winit::event::Event::AboutToWait => Event::ApplicationUpdate,
-        winit::event::Event::RedrawRequested(_) => Event::ApplicationRender,
         winit::event::Event::WindowEvent { ref event, .. } => match event {
             winit::event::WindowEvent::CloseRequested => Event::WindowClose,
             winit::event::WindowEvent::Resized(size) => Event::WindowResize {
