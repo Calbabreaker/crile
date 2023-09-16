@@ -30,6 +30,13 @@ impl From<Color> for wgpu::Color {
 }
 
 impl Color {
+    pub const BLACK: Color = Color {
+        r: 0.,
+        g: 0.,
+        b: 0.,
+        a: 1.,
+    };
+
     pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self {
             r: r as f32 / 255.,

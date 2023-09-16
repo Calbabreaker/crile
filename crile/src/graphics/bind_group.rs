@@ -1,6 +1,6 @@
 use std::num::NonZeroU32;
 
-use crate::{GraphicsContext, Texture, UniformBuffer};
+use crate::{Texture, WGPUContext};
 
 pub struct BindGroupEntry<'a> {
     pub ty: wgpu::BindingType,
@@ -10,10 +10,7 @@ pub struct BindGroupEntry<'a> {
 }
 
 impl<'a> BindGroupEntry<'a> {
-    pub fn from_uniform<T: bytemuck::Pod>(
-        visibility: wgpu::ShaderStages,
-        buffer: &'a UniformBuffer<T>,
-    ) -> Self {
+    pub fn from_uniform(visibility: wgpu::ShaderStages, buffer: &'a wgpu::Buffer) -> Self {
         Self {
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
@@ -21,7 +18,7 @@ impl<'a> BindGroupEntry<'a> {
                 min_binding_size: None,
             },
             visibility,
-            resource: buffer.gpu_buffer.as_entire_binding(),
+            resource: buffer.as_entire_binding(),
             count: None,
         }
     }
@@ -54,7 +51,7 @@ pub struct BindGroup {
 }
 
 impl BindGroup {
-    pub fn new(gfx: &GraphicsContext, entries: &[BindGroupEntry]) -> Self {
+    pub fn new(wgpu: &WGPUContext, entries: &[BindGroupEntry]) -> Self {
         let layout_entries = entries
             .iter()
             .enumerate()
@@ -66,14 +63,14 @@ impl BindGroup {
             })
             .collect::<Vec<_>>();
 
-        let gpu_layout = gfx
+        let gpu_layout = wgpu
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: None,
                 entries: &layout_entries,
             });
 
-        let gpu_group = gfx.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let gpu_group = wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: &gpu_layout,
             entries: &entries

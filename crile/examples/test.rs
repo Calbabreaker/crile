@@ -24,8 +24,9 @@ impl crile::Application for TestApp {
         // }
     }
 
-    fn render(&mut self, engine: &mut crile::Engine, instance: &mut crile::RenderInstance) {
-        engine.renderer_2d.begin(&engine.gfx, &engine.camera);
+    fn render(&mut self, engine: &mut crile::Engine) {
+        let mut render_pass =
+            crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK)).unwrap();
 
         // let rows = 10;
         // let cols = 10;
@@ -40,7 +41,13 @@ impl crile::Application for TestApp {
         //     })
         //     .collect::<Vec<_>>();
 
-        engine.renderer_2d.draw_instances(&engine.gfx, instance);
+        render_pass.draw_mesh_indexed(
+            &render_pass.gfx_data.square_mesh,
+            &render_pass.gfx_data.white_texture,
+            crile::DrawUniform {
+                transform: crile::Matrix4::from_translation(crile::Vector3::new(0., 0., 0.)),
+            },
+        );
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {

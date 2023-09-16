@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::GraphicsContext;
+use crate::WGPUContext;
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -25,25 +25,17 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(gfx: &GraphicsContext, vertices: &[Vertex], indicies: &[u16]) -> Self {
+    pub fn new(wgpu: &WGPUContext, vertices: &[Vertex], indicies: &[u16]) -> Self {
         Self {
-            vertex_buffer: Self::create_buffer(gfx, wgpu::BufferUsages::VERTEX, &vertices),
-            index_buffer: Self::create_buffer(gfx, wgpu::BufferUsages::INDEX, &indicies),
+            vertex_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::VERTEX, &vertices),
+            index_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::INDEX, &indicies),
             index_count: indicies.len() as u32,
         }
     }
 
-    pub fn new_square(gfx: &GraphicsContext) -> Self {
-        // Vector4::new(-0.5, -0.5, 0.0, 1.0),
-        // Vector4::new(0.5, -0.5, 0.0, 1.0),
-        // Vector4::new(0.5, 0.5, 0.0, 1.0),
-        // Vector4::new(-0.5, 0.5, 0.0, 1.0),
-        // Vector2::new(0.0, 1.0),
-        // Vector2::new(1.0, 1.0),
-        // Vector2::new(1.0, 0.0),
-        // Vector2::new(0.0, 0.0),
+    pub fn new_square(wgpu: &WGPUContext) -> Self {
         Self::new(
-            gfx,
+            wgpu,
             &[
                 Vertex {
                     position: [0.0, 0.0],
@@ -67,11 +59,11 @@ impl Mesh {
     }
 
     fn create_buffer<T: bytemuck::Pod>(
-        gfx: &GraphicsContext,
+        wgpu: &WGPUContext,
         usage: wgpu::BufferUsages,
         data: &[T],
     ) -> wgpu::Buffer {
-        gfx.device
+        wgpu.device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: None,
                 usage,

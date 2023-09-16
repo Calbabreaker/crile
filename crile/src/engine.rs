@@ -1,21 +1,19 @@
 use crate::{
     events::{convert_event, Event},
-    graphics::Renderer2D,
     input::Input,
     time::Time,
     window::Window,
-    Camera, GraphicsContext, RenderInstance,
+    Camera, EngineError, GraphicsContext,
 };
 
 pub trait Application {
     fn init(&mut self, engine: &mut Engine);
     fn update(&mut self, engine: &mut Engine);
-    fn render(&mut self, engine: &mut Engine, instance: &mut RenderInstance);
+    fn render(&mut self, engine: &mut Engine);
     fn event(&mut self, engine: &mut Engine, event: &Event);
 }
 
 pub struct Engine {
-    pub renderer_2d: Renderer2D,
     pub gfx: GraphicsContext,
     pub window: Window,
     pub time: Time,
@@ -27,9 +25,8 @@ pub struct Engine {
 impl Engine {
     fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
         let window = Window::new(event_loop);
-        let gfx = pollster::block_on(GraphicsContext::new(&window));
+        let gfx = GraphicsContext::new(&window);
         Self {
-            renderer_2d: Renderer2D::new(&gfx),
             gfx,
             time: Time::default(),
             input: Input::default(),
@@ -46,12 +43,12 @@ impl Engine {
         self.window.request_redraw();
     }
 
-    fn render(&mut self, app: &mut impl Application) {
-        if let Some(mut instance) = self.gfx.begin_frame() {
-            app.render(self, &mut instance);
-            self.window.pre_present_notify();
-            self.renderer_gfx.present_frame(instance);
-        }
+    fn render(&mut self, app: &mut impl Application) -> Result<(), EngineError> {
+        self.gfx.begin_frame()?;
+        app.render(self);
+        self.window.pre_present_notify();
+        self.gfx.end_frame()?;
+        Ok(())
     }
 
     fn event(&mut self, app: &mut impl Application, event: &Event) {
@@ -61,11 +58,11 @@ impl Engine {
                 return;
             }
             Event::ApplicationRender => {
-                self.render(app);
+                self.render(app).unwrap();
                 return;
             }
             Event::WindowResize { size } => {
-                self.renderer_gfx.resize(*size);
+                self.gfx.resize(*size);
                 self.camera.resize(size.as_vec2());
             }
             _ => (),
@@ -80,7 +77,7 @@ impl Engine {
     }
 }
 
-pub fn run(mut app: impl Application + 'static) -> Result<(), crate::Error> {
+pub fn run(mut app: impl Application + 'static) -> Result<(), EngineError> {
     let event_loop = winit::event_loop::EventLoop::new()?;
     let mut engine = Engine::new(&event_loop);
     app.init(&mut engine);

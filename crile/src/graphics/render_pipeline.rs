@@ -1,7 +1,7 @@
-use crate::GraphicsContext;
+use crate::WGPUContext;
 
 pub struct RenderPipelineConfig<'a> {
-    pub shader: wgpu::ShaderModuleDescriptor<'a>,
+    pub shader: &'a wgpu::ShaderModule,
     pub bind_group_layouts: &'a [&'a wgpu::BindGroupLayout],
     pub vertex_buffer_layouts: &'a [wgpu::VertexBufferLayout<'a>],
 }
@@ -11,32 +11,30 @@ pub struct RenderPipeline {
 }
 
 impl RenderPipeline {
-    pub fn new(gfx: &GraphicsContext, config: RenderPipelineConfig) -> Self {
+    pub fn new(wgpu: &WGPUContext, config: RenderPipelineConfig) -> Self {
         let gpu_pipeline_layout =
-            gfx.device
+            wgpu.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: None,
                     bind_group_layouts: config.bind_group_layouts,
                     push_constant_ranges: &[],
                 });
 
-        let gpu_shader = gfx.device.create_shader_module(config.shader);
-
-        let gpu_pipeline = gfx
+        let gpu_pipeline = wgpu
             .device
             .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: None,
                 layout: Some(&gpu_pipeline_layout),
                 vertex: wgpu::VertexState {
-                    module: &gpu_shader,
+                    module: config.shader,
                     entry_point: "vs_main",
                     buffers: config.vertex_buffer_layouts,
                 },
                 fragment: Some(wgpu::FragmentState {
-                    module: &gpu_shader,
+                    module: &config.shader,
                     entry_point: "fs_main",
                     targets: &[Some(wgpu::ColorTargetState {
-                        format: gfx.config.format,
+                        format: wgpu.surface_config.format,
                         blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
