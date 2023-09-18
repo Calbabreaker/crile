@@ -1,9 +1,9 @@
-use crate::WGPUContext;
+use crate::{ArcId, WGPUContext};
 
 pub struct Texture {
-    pub gpu_texture: wgpu::Texture,
-    pub gpu_view: wgpu::TextureView,
-    pub gpu_sampler: wgpu::Sampler,
+    pub gpu_texture: ArcId<wgpu::Texture>,
+    pub gpu_view: ArcId<wgpu::TextureView>,
+    pub gpu_sampler: ArcId<wgpu::Sampler>,
 }
 
 impl Texture {
@@ -63,9 +63,9 @@ impl Texture {
         });
 
         Self {
-            gpu_texture,
-            gpu_view,
-            gpu_sampler,
+            gpu_texture: gpu_texture.into(),
+            gpu_view: gpu_view.into(),
+            gpu_sampler: gpu_sampler.into(),
         }
     }
 }

@@ -4,14 +4,14 @@ use crate::WGPUContext;
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Vertex {
+pub struct MeshVertex {
     position: [f32; 2],
     texture_coords: [f32; 2],
 }
 
-impl Vertex {
+impl MeshVertex {
     pub const LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<Vertex>() as u64,
+        array_stride: std::mem::size_of::<MeshVertex>() as u64,
         step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2],
     };
@@ -25,7 +25,7 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(wgpu: &WGPUContext, vertices: &[Vertex], indicies: &[u16]) -> Self {
+    pub fn new(wgpu: &WGPUContext, vertices: &[MeshVertex], indicies: &[u16]) -> Self {
         Self {
             vertex_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::VERTEX, &vertices),
             index_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::INDEX, &indicies),
@@ -37,19 +37,19 @@ impl Mesh {
         Self::new(
             wgpu,
             &[
-                Vertex {
+                MeshVertex {
                     position: [0.0, 0.0],
                     texture_coords: [0.0, 1.0],
                 },
-                Vertex {
+                MeshVertex {
                     position: [1.0, 0.0],
                     texture_coords: [1.0, 1.0],
                 },
-                Vertex {
+                MeshVertex {
                     position: [1.0, 1.0],
                     texture_coords: [1.0, 0.0],
                 },
-                Vertex {
+                MeshVertex {
                     position: [0.0, 1.0],
                     texture_coords: [0.0, 0.0],
                 },

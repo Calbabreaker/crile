@@ -1,5 +1,6 @@
 use crate::{
-    Color, EngineError, GraphicsContext, GraphicsContextData, Matrix4, Mesh, Texture, WGPUContext,
+    BindGroupEntries, Color, EngineError, GraphicsContext, GraphicsContextData, Matrix4, Mesh,
+    MeshVertex, RenderPipelineConfig, Texture, WGPUContext,
 };
 
 #[repr(C)]
@@ -10,7 +11,7 @@ pub struct DrawUniform {
 
 pub struct RenderPass<'a> {
     wgpu: &'a WGPUContext,
-    pub gfx_data: &'a GraphicsContextData,
+    pub gfx_data: &'a mut GraphicsContextData,
     gpu_render_pass: wgpu::RenderPass<'a>,
 }
 
@@ -43,7 +44,7 @@ impl<'a> RenderPass<'a> {
 
         Ok(Self {
             // We need to get references to WGPUContext and GraphicsContextData since GraphicsContext is being mutably borrowed already when begin_render_pass (can't access it)
-            gfx_data: &gfx.data,
+            gfx_data: &mut gfx.data,
             wgpu: &gfx.wgpu,
             gpu_render_pass,
         })
@@ -62,16 +63,42 @@ impl<'a> RenderPass<'a> {
             bytemuck::cast_slice(&[uniform]),
         );
 
-        self.gpu_render_pass
-            .set_pipeline(&data.render_pipeline.gpu_pipeline);
+        let (texture_bind_group, texture_bind_group_layout) = data.bind_group_cache.get(
+            self.wgpu,
+            BindGroupEntries::new()
+                .texture(wgpu::ShaderStages::FRAGMENT, &texture.gpu_view)
+                .sampler(wgpu::ShaderStages::FRAGMENT, &texture.gpu_sampler),
+        );
+
+        let (uniform_bind_group, uniform_bind_group_layout) = data.bind_group_cache.get(
+            self.wgpu,
+            BindGroupEntries::new().buffer(
+                wgpu::ShaderStages::FRAGMENT,
+                &data.draw_uniform_buffer,
+                wgpu::BufferBindingType::Uniform,
+                None,
+                false,
+            ),
+        );
+
+        let render_pipeline = data.render_pipeline_cache.get(
+            self.wgpu,
+            RenderPipelineConfig {
+                shader: data.instance_shader,
+                vertex_buffer_layouts: &[MeshVertex::LAYOUT],
+                bind_group_layouts: &[texture_bind_group_layout, uniform_bind_group_layout],
+            },
+        );
+
+        self.gpu_render_pass.set_pipeline(render_pipeline);
         self.gpu_render_pass
             .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         self.gpu_render_pass
             .set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
         self.gpu_render_pass
-            .set_bind_group(0, &data.uniform_bind_group.gpu_group, &[]);
+            .set_bind_group(0, &uniform_bind_group, &[]);
         self.gpu_render_pass
-            .set_bind_group(1, &data.texture_bind_group.gpu_group, &[]);
+            .set_bind_group(1, &texture_bind_group, &[]);
         self.gpu_render_pass
             .draw_indexed(0..mesh.index_count, 0, 0..10);
     }

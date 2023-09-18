@@ -1,91 +1,148 @@
-use std::num::NonZeroU32;
+use std::{collections::HashMap, num::NonZeroU64};
 
-use crate::{Texture, WGPUContext};
+use crate::{ArcId, WGPUContext};
 
-pub struct BindGroupEntry<'a> {
-    pub ty: wgpu::BindingType,
-    pub resource: wgpu::BindingResource<'a>,
-    pub visibility: wgpu::ShaderStages,
-    pub count: Option<NonZeroU32>,
+/// Key to differentiate between bind groups in cache
+/// Not every property is used, only the ones that change
+#[derive(Hash, PartialEq, Eq)]
+enum BindGroupEntryKey {
+    Buffer { id: u64, size: Option<NonZeroU64> },
+    Texture { id: u64 },
+    Sampler { id: u64 },
 }
 
-impl<'a> BindGroupEntry<'a> {
-    pub fn from_uniform(visibility: wgpu::ShaderStages, buffer: &'a wgpu::Buffer) -> Self {
-        Self {
+/// Everytime we need to use a different buffer or texture, or the layout buffer or texture changes, we need to recreate the bind group
+#[derive(Default)]
+pub struct BindGroupEntries<'a> {
+    keys: Vec<BindGroupEntryKey>,
+    layouts: Vec<wgpu::BindGroupLayoutEntry>,
+    groups: Vec<wgpu::BindGroupEntry<'a>>,
+}
+
+impl<'a> BindGroupEntries<'a> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn buffer(
+        mut self,
+        visibility: wgpu::ShaderStages,
+        buffer: &'a ArcId<wgpu::Buffer>,
+        ty: wgpu::BufferBindingType,
+        size: Option<NonZeroU64>,
+        has_dynamic_offset: bool,
+    ) -> Self {
+        self.keys.push(BindGroupEntryKey::Buffer {
+            id: buffer.id(),
+            size,
+        });
+        self.layouts.push(wgpu::BindGroupLayoutEntry {
+            binding: self.layouts.len() as u32,
             ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
+                ty,
+                has_dynamic_offset,
                 min_binding_size: None,
             },
             visibility,
-            resource: buffer.as_entire_binding(),
             count: None,
-        }
+        });
+        self.groups.push(wgpu::BindGroupEntry {
+            binding: self.groups.len() as u32,
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer,
+                offset: 0,
+                size,
+            }),
+        });
+        self
     }
 
-    pub fn from_texture(texture: &'a Texture) -> Vec<Self> {
-        vec![
-            Self {
-                ty: wgpu::BindingType::Texture {
-                    multisampled: false,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                },
-                resource: wgpu::BindingResource::TextureView(&texture.gpu_view),
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                count: None,
+    pub fn texture(
+        mut self,
+        visibility: wgpu::ShaderStages,
+        view: &'a ArcId<wgpu::TextureView>,
+    ) -> Self {
+        self.keys.push(BindGroupEntryKey::Sampler { id: view.id() });
+        self.layouts.push(wgpu::BindGroupLayoutEntry {
+            binding: self.layouts.len() as u32,
+            visibility,
+            ty: wgpu::BindingType::Texture {
+                multisampled: false,
+                view_dimension: wgpu::TextureViewDimension::D2,
+                sample_type: wgpu::TextureSampleType::Float { filterable: true },
             },
-            Self {
-                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                resource: wgpu::BindingResource::Sampler(&texture.gpu_sampler),
-                count: None,
-            },
-        ]
+            count: None,
+        });
+        self.groups.push(wgpu::BindGroupEntry {
+            binding: self.groups.len() as u32,
+            resource: wgpu::BindingResource::TextureView(view),
+        });
+        self
+    }
+
+    pub fn sampler(
+        mut self,
+        visibility: wgpu::ShaderStages,
+        sampler: &'a ArcId<wgpu::Sampler>,
+    ) -> Self {
+        self.keys
+            .push(BindGroupEntryKey::Sampler { id: sampler.id() });
+        self.layouts.push(wgpu::BindGroupLayoutEntry {
+            binding: self.layouts.len() as u32,
+            visibility,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+        });
+        self.groups.push(wgpu::BindGroupEntry {
+            binding: self.groups.len() as u32,
+            resource: wgpu::BindingResource::Sampler(sampler),
+        });
+        self
     }
 }
 
-pub struct BindGroup {
-    pub gpu_group: wgpu::BindGroup,
-    pub gpu_layout: wgpu::BindGroupLayout,
+#[derive(Default)]
+pub struct BindGroupCache {
+    // The layout sometimes doesn't have to change if the group does
+    group_cache: HashMap<Vec<BindGroupEntryKey>, ArcId<wgpu::BindGroup>>,
+    layout_cache: HashMap<Vec<wgpu::BindGroupLayoutEntry>, ArcId<wgpu::BindGroupLayout>>,
 }
 
-impl BindGroup {
-    pub fn new(wgpu: &WGPUContext, entries: &[BindGroupEntry]) -> Self {
-        let layout_entries = entries
-            .iter()
-            .enumerate()
-            .map(|(i, entry)| wgpu::BindGroupLayoutEntry {
-                binding: i as u32,
-                visibility: entry.visibility,
-                ty: entry.ty,
-                count: entry.count,
-            })
-            .collect::<Vec<_>>();
-
-        let gpu_layout = wgpu
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: None,
-                entries: &layout_entries,
-            });
-
-        let gpu_group = wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &gpu_layout,
-            entries: &entries
-                .iter()
-                .enumerate()
-                .map(|(i, entry)| wgpu::BindGroupEntry {
-                    binding: i as u32,
-                    resource: entry.resource.clone(),
+impl BindGroupCache {
+    pub fn get(
+        &mut self,
+        wgpu: &WGPUContext,
+        entries: BindGroupEntries,
+    ) -> (ArcId<wgpu::BindGroup>, ArcId<wgpu::BindGroupLayout>) {
+        let layout = self.layout(wgpu, entries.layouts);
+        let group = self.group_cache.entry(entries.keys).or_insert_with(|| {
+            wgpu.device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: None,
+                    layout: &layout,
+                    entries: &entries.groups,
                 })
-                .collect::<Vec<_>>(),
+                .into()
         });
 
-        Self {
-            gpu_layout,
-            gpu_group,
-        }
+        (group.clone(), layout.clone())
+    }
+
+    fn layout(
+        &mut self,
+        wgpu: &WGPUContext,
+        entries: Vec<wgpu::BindGroupLayoutEntry>,
+    ) -> ArcId<wgpu::BindGroupLayout> {
+        self.layout_cache
+            .entry_ref(entries)
+            .or_insert_with(|| {
+                wgpu.device
+                    .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                        label: None,
+                        entries: &entries,
+                    })
+                    .into()
+            })
+            .clone()
     }
 }

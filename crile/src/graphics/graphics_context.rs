@@ -1,4 +1,7 @@
-use crate::{window::Window, EngineError, Mesh, Texture, Vector2U};
+use crate::{
+    window::Window, ArcId, BindGroupCache, EngineError, Mesh, RenderPipelineCache, Texture,
+    Vector2U,
+};
 
 pub struct GraphicsContext {
     pub(crate) wgpu: WGPUContext,
@@ -96,65 +99,41 @@ pub struct FrameContext {
 }
 
 pub struct GraphicsContextData {
-    pub white_texture: Texture,
-    pub square_mesh: Mesh,
-    pub instance_shader: wgpu::ShaderModule,
+    pub white_texture: ArcId<Texture>,
+    pub square_mesh: ArcId<Mesh>,
+    pub instance_shader: ArcId<wgpu::ShaderModule>,
 
-    pub render_pipeline: crate::RenderPipeline,
-    pub texture_bind_group: crate::BindGroup,
-    pub uniform_bind_group: crate::BindGroup,
-    pub draw_uniform_buffer: wgpu::Buffer,
+    pub render_pipeline_cache: RenderPipelineCache,
+    pub bind_group_cache: BindGroupCache,
+    // pub texture_bind_group: crate::BindGroup,
+    // pub uniform_bind_group: crate::BindGroup,
+    pub draw_uniform_buffer: ArcId<wgpu::Buffer>,
 }
 
 impl GraphicsContextData {
     pub fn new(wgpu: &WGPUContext) -> Self {
-        let square_mesh = Mesh::new_square(&wgpu);
-        let white_texture = Texture::new(&wgpu, 1, 1, &[255, 255, 255, 255]);
+        let square_mesh = Mesh::new_square(&wgpu).into();
+        let white_texture = Texture::new(&wgpu, 1, 1, &[255, 255, 255, 255]).into();
 
         let instance_shader = wgpu
             .device
-            .create_shader_module(wgpu::include_wgsl!("./instance.wgsl"));
-
-        use crate::*;
-
-        // Please cache me
-        let texture_bind_group =
-            BindGroup::new(&wgpu, &BindGroupEntry::from_texture(&white_texture));
+            .create_shader_module(wgpu::include_wgsl!("./instance.wgsl"))
+            .into();
 
         let draw_uniform_buffer = wgpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
-            size: std::mem::size_of::<DrawUniform>() as u64,
+            size: std::mem::size_of::<crate::DrawUniform>() as u64,
         });
 
-        let uniform_bind_group = BindGroup::new(
-            &wgpu,
-            &[BindGroupEntry::from_uniform(
-                wgpu::ShaderStages::VERTEX,
-                &draw_uniform_buffer,
-            )],
-        );
-
-        let render_pipeline = RenderPipeline::new(
-            &wgpu,
-            RenderPipelineConfig {
-                shader: &instance_shader,
-                bind_group_layouts: &[
-                    &uniform_bind_group.gpu_layout,
-                    &texture_bind_group.gpu_layout,
-                ],
-                vertex_buffer_layouts: &[Vertex::LAYOUT],
-            },
-        );
         Self {
             white_texture,
             square_mesh,
             instance_shader,
-            draw_uniform_buffer,
-            render_pipeline,
-            texture_bind_group,
-            uniform_bind_group,
+            bind_group_cache: BindGroupCache::default(),
+            render_pipeline_cache: RenderPipelineCache::default(),
+            draw_uniform_buffer: draw_uniform_buffer.into(),
         }
     }
 }
