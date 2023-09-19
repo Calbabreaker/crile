@@ -1,3 +1,5 @@
+use std::num::NonZeroU64;
+
 use crate::{
     BindGroupEntries, Color, EngineError, GfxCaches, GfxData, GraphicsContext, Matrix4, Mesh,
     MeshVertex, RefId, RenderPipelineConfig, Texture, WGPUContext,
@@ -63,25 +65,31 @@ impl<'a> RenderPass<'a> {
     }
 
     pub fn draw_mesh_indexed<U: bytemuck::Pod>(&mut self, params: DrawMeshParams<'a, U>) {
+        let uniform_size = std::mem::size_of::<U>() as u64;
+        let uniform_alloc = self
+            .caches
+            .buffer_allocator
+            .allocate(self.wgpu, uniform_size);
+
         self.wgpu.queue.write_buffer(
-            &self.caches.uniform_buffer,
-            0,
+            &uniform_alloc.buffer,
+            uniform_alloc.offset,
             bytemuck::cast_slice(&[params.uniform]),
         );
 
         // SAFETY: bind groups and render pipelines caches return a RefId<T>.
         // We can't use RefId<T> by itself since they will be dropped at the end of this function.
-        // std::mem::transmute needs to be used to convert to a 'static RefId<T> which unsafe
-        // This requires the caches to not delete anything or be deleted
+        // std::mem::transmute needs to be used to convert to a 'static RefId<T> which is unsafe
+        // This requires the caches to not delete anything or be deleted to be safe
         unsafe {
             let (uniform_bind_group, uniform_bind_group_layout) = self.caches.bind_group.get(
                 self.wgpu,
                 &BindGroupEntries::new().buffer(
                     wgpu::ShaderStages::VERTEX,
-                    &self.caches.uniform_buffer,
+                    &uniform_alloc.buffer,
                     wgpu::BufferBindingType::Uniform,
-                    None,
-                    false,
+                    NonZeroU64::new(uniform_size),
+                    true,
                 ),
             );
 
@@ -108,8 +116,11 @@ impl<'a> RenderPass<'a> {
             );
             self.gpu_render_pass
                 .set_vertex_buffer(0, params.mesh.vertex_buffer.slice(..));
-            self.gpu_render_pass
-                .set_bind_group(0, &uniform_bind_group, &[]);
+            self.gpu_render_pass.set_bind_group(
+                0,
+                &uniform_bind_group,
+                &[uniform_alloc.offset as u32],
+            );
             self.gpu_render_pass
                 .set_bind_group(1, &texture_bind_group, &[]);
             self.gpu_render_pass

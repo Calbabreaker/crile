@@ -1,6 +1,6 @@
 use crate::{
-    window::Window, BindGroupCache, EngineError, Mesh, RefId, RenderPipelineCache, Texture,
-    Vector2U,
+    window::Window, BindGroupCache, DynamicBufferAllocator, EngineError, Mesh, RefId,
+    RenderPipelineCache, Texture, Vector2U,
 };
 
 pub struct GraphicsContext {
@@ -14,28 +14,32 @@ impl GraphicsContext {
     pub fn new(window: &Window) -> Self {
         let wgpu = pollster::block_on(WGPUContext::new(window));
 
-        let instance_shader = wgpu
+        let single_draw_shader = wgpu
             .device
-            .create_shader_module(wgpu::include_wgsl!("./instance.wgsl"))
+            .create_shader_module(wgpu::include_wgsl!("./single_draw.wgsl"))
             .into();
 
-        let draw_uniform_buffer = wgpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-            size: std::mem::size_of::<crate::DrawUniform>() as u64,
-        });
+        let buffer_allocator = DynamicBufferAllocator::new(
+            &wgpu,
+            wgpu.limits.min_uniform_buffer_offset_alignment as u64,
+            wgpu::BufferDescriptor {
+                label: None,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+                size: wgpu.limits.max_uniform_buffer_binding_size as u64,
+            },
+        );
 
         Self {
             data: GfxData {
                 square_mesh: Mesh::new_square(&wgpu),
                 white_texture: Texture::new(&wgpu, 1, 1, &[255, 255, 255, 255]),
-                instance_shader,
+                single_draw_shader,
             },
             caches: GfxCaches {
                 bind_group: BindGroupCache::default(),
                 render_pipeline: RenderPipelineCache::default(),
-                uniform_buffer: draw_uniform_buffer.into(),
+                buffer_allocator,
             },
             wgpu,
             frame: None,
@@ -99,6 +103,8 @@ impl GraphicsContext {
             output,
         });
 
+        self.caches.buffer_allocator.free();
+
         Ok(())
     }
 
@@ -123,13 +129,13 @@ pub struct FrameContext {
 pub struct GfxCaches {
     pub render_pipeline: RenderPipelineCache,
     pub bind_group: BindGroupCache,
-    pub uniform_buffer: RefId<wgpu::Buffer>,
+    pub buffer_allocator: DynamicBufferAllocator,
 }
 
 pub struct GfxData {
     pub white_texture: Texture,
     pub square_mesh: Mesh,
-    pub instance_shader: RefId<wgpu::ShaderModule>,
+    pub single_draw_shader: RefId<wgpu::ShaderModule>,
 }
 
 pub struct WGPUContext {
@@ -137,6 +143,7 @@ pub struct WGPUContext {
     pub device: wgpu::Device,
     pub surface: wgpu::Surface,
     pub surface_config: wgpu::SurfaceConfiguration,
+    pub limits: wgpu::Limits,
 }
 
 impl WGPUContext {
@@ -202,6 +209,7 @@ impl WGPUContext {
         surface.configure(&device, &surface_config);
 
         Self {
+            limits: device.limits(),
             queue,
             surface_config,
             device,

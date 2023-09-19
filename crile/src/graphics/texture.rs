@@ -1,5 +1,6 @@
 use crate::{RefId, WGPUContext};
 
+#[derive(Clone)]
 pub struct Texture {
     pub gpu_texture: RefId<wgpu::Texture>,
     pub gpu_view: RefId<wgpu::TextureView>,

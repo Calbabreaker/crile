@@ -1,3 +1,5 @@
+// Non-instanced (one draw call per mesh) shader
+
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) texture_coords: vec2<f32>,
