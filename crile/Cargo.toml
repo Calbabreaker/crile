@@ -3,12 +3,10 @@ name = "crile"
 version = "0.0.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 bytemuck = { version = "1", features = ["derive"] }
 glam = { version = "0.24", features = ["bytemuck"] }
-hashbrown = "0.14.0"
+hashbrown = "0.14"
 image = { version = "0.24", default-features = false, features = ["png", "jpeg"] }
 log = "0.4"
 pollster = "0.3"

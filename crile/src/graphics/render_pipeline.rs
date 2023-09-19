@@ -21,7 +21,7 @@ pub struct RenderPipelineCache {
 }
 
 impl RenderPipelineCache {
-    pub unsafe fn get(
+    pub fn get(
         &mut self,
         wgpu: &WGPUContext,
         config: RenderPipelineConfig,
@@ -70,7 +70,8 @@ impl RenderPipelineCache {
                     .into()
             });
 
-        std::mem::transmute(pipeline)
+        // SAFETY: see bind group cache
+        unsafe { std::mem::transmute(pipeline) }
     }
 
     fn get_layout(

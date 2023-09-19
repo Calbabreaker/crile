@@ -13,7 +13,6 @@ enum BindGroupEntryKey {
     Sampler { id: u64 },
 }
 
-/// Everytime we need to use a different buffer or texture, or the layout buffer or texture changes, we need to recreate the bind group
 #[derive(Default)]
 pub struct BindGroupEntries<'a> {
     keys: Vec<BindGroupEntryKey>,
@@ -103,6 +102,8 @@ impl<'a> BindGroupEntries<'a> {
     }
 }
 
+/// Everytime we need to use a different buffer or texture, or the layout buffer or texture changes, we need to recreate the bind group
+/// This cache allows for that only when necessery
 #[derive(Default)]
 pub struct BindGroupCache {
     // The layout sometimes doesn't have to change if the group does
@@ -111,7 +112,7 @@ pub struct BindGroupCache {
 }
 
 impl BindGroupCache {
-    pub unsafe fn get(
+    pub fn get(
         &mut self,
         wgpu: &WGPUContext,
         entries: &BindGroupEntries,
@@ -133,10 +134,14 @@ impl BindGroupCache {
                     .into()
             });
 
-        (std::mem::transmute(group), layout)
+        // SAFETY: bind groups and render pipelines caches return a RefId<T>.
+        // We can't use RefId<T> by itself since they will be dropped at the end of this function.
+        // std::mem::transmute needs to be used to convert to a 'static RefId<T> which is unsafe
+        // This requires the caches to not delete anything or be deleted while a frame is in progress to be safe
+        unsafe { (std::mem::transmute(group), layout) }
     }
 
-    pub unsafe fn get_layout(
+    pub fn get_layout(
         &mut self,
         wgpu: &WGPUContext,
         entries: &[wgpu::BindGroupLayoutEntry],
@@ -149,6 +154,6 @@ impl BindGroupCache {
                 })
                 .into()
         });
-        std::mem::transmute(layout)
+        unsafe { std::mem::transmute(layout) }
     }
 }
