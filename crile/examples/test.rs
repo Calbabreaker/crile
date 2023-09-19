@@ -1,11 +1,20 @@
 #![allow(unused)]
 
 #[derive(Default)]
-pub struct TestApp {}
+pub struct TestApp {
+    camera: crile::Camera,
+    textures: Vec<crile::Texture>,
+}
 
 impl crile::Application for TestApp {
     fn init(&mut self, engine: &mut crile::Engine) {
-        engine.camera.ortho_size = 10.0;
+        self.camera.resize(engine.window.size().as_vec2());
+        self.camera.ortho_size = 10.0;
+        self.textures.push(crile::Texture::from_image(
+            &engine.gfx.wgpu,
+            image::open("assets/test.png").unwrap(),
+        ));
+
         // self.batch.textures.push(crile::Texture::new(
         //     &engine.renderer_gfx,
         //     1,
@@ -40,13 +49,15 @@ impl crile::Application for TestApp {
         //     })
         //     .collect::<Vec<_>>();
 
-        render_pass.draw_mesh_indexed(
-            &render_pass.gfx_data.square_mesh,
-            &render_pass.gfx_data.white_texture,
-            crile::DrawUniform {
-                transform: crile::Matrix4::from_translation(crile::Vector3::new(0., 0., 0.)),
+        render_pass.draw_mesh_indexed(crile::DrawMeshParams {
+            mesh: &render_pass.data.square_mesh,
+            texture: &self.textures[0],
+            uniform: crile::DrawUniform {
+                transform: self.camera.get_projection()
+                    * crile::Matrix4::from_translation(crile::Vector3::new(0., 0., 0.)),
             },
-        );
+            shader: crile::RefId::clone(&render_pass.data.instance_shader),
+        });
 
         Ok(())
     }
@@ -54,6 +65,7 @@ impl crile::Application for TestApp {
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
         match event {
             crile::Event::WindowClose => engine.request_close(),
+            crile::Event::WindowResize { size } => self.camera.resize(size.as_vec2()),
             _ => (),
         }
     }

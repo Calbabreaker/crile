@@ -1,18 +1,17 @@
-use std::sync::{atomic::AtomicU64, Arc};
+use std::{rc::Rc, sync::atomic::AtomicU64};
 
-/// Wraps the object T in an Arc with a unique id
+/// Wraps the object T in an reference counted smart pointer with a unique id
 /// Allows keeping unique objects and useful for hashing and comparing T
-pub struct ArcId<T> {
-    // Can't use memory location of Arc as the id
-    pub object: Arc<T>,
+pub struct RefId<T> {
+    pub object: Rc<T>,
     id: u64,
 }
 
-impl<T> ArcId<T> {
+impl<T> RefId<T> {
     pub fn new(object: T) -> Self {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         Self {
-            object: Arc::new(object),
+            object: Rc::new(object),
             id: COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         }
     }
@@ -22,7 +21,7 @@ impl<T> ArcId<T> {
     }
 }
 
-impl<T> Clone for ArcId<T> {
+impl<T> Clone for RefId<T> {
     fn clone(&self) -> Self {
         Self {
             object: self.object.clone(),
@@ -31,27 +30,27 @@ impl<T> Clone for ArcId<T> {
     }
 }
 
-impl<T> From<T> for ArcId<T> {
+impl<T> From<T> for RefId<T> {
     fn from(value: T) -> Self {
         Self::new(value)
     }
 }
 
-impl<T> std::hash::Hash for ArcId<T> {
+impl<T> std::hash::Hash for RefId<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl<T> PartialEq for ArcId<T> {
+impl<T> PartialEq for RefId<T> {
     fn eq(&self, other: &Self) -> bool {
         other.id == self.id
     }
 }
 
-impl<T> Eq for ArcId<T> {}
+impl<T> Eq for RefId<T> {}
 
-impl<T> std::ops::Deref for ArcId<T> {
+impl<T> std::ops::Deref for RefId<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -59,8 +58,8 @@ impl<T> std::ops::Deref for ArcId<T> {
     }
 }
 
-impl<T> AsRef<T> for ArcId<T> {
+impl<T> AsRef<T> for RefId<T> {
     fn as_ref(&self) -> &T {
-        self.object.as_ref()
+        &self.object
     }
 }

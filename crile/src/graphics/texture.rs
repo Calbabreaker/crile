@@ -1,9 +1,9 @@
-use crate::{ArcId, WGPUContext};
+use crate::{RefId, WGPUContext};
 
 pub struct Texture {
-    pub gpu_texture: ArcId<wgpu::Texture>,
-    pub gpu_view: ArcId<wgpu::TextureView>,
-    pub gpu_sampler: ArcId<wgpu::Sampler>,
+    pub gpu_texture: RefId<wgpu::Texture>,
+    pub gpu_view: RefId<wgpu::TextureView>,
+    pub gpu_sampler: RefId<wgpu::Sampler>,
 }
 
 impl Texture {

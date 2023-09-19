@@ -1,6 +1,4 @@
-use crate::{
-    input::Input, time::Time, window::Window, Camera, EngineError, Event, GraphicsContext,
-};
+use crate::{input::Input, time::Time, window::Window, EngineError, Event, GraphicsContext};
 
 pub trait Application {
     fn init(&mut self, engine: &mut Engine);
@@ -14,7 +12,6 @@ pub struct Engine {
     pub window: Window,
     pub time: Time,
     pub input: Input,
-    pub camera: Camera,
     should_close: bool,
 }
 
@@ -26,7 +23,6 @@ impl Engine {
             gfx,
             time: Time::default(),
             input: Input::default(),
-            camera: Camera::new(window.size().as_vec2()),
             window,
             should_close: false,
         }
@@ -49,10 +45,7 @@ impl Engine {
 
     fn event(&mut self, app: &mut impl Application, event: &Event) {
         match event {
-            Event::WindowResize { size } => {
-                self.gfx.resize(*size);
-                self.camera.resize(size.as_vec2());
-            }
+            Event::WindowResize { size } => self.gfx.resize(*size),
             _ => (),
         };
 

@@ -1,20 +1,42 @@
 use crate::{
-    window::Window, ArcId, BindGroupCache, EngineError, Mesh, RenderPipelineCache, Texture,
+    window::Window, BindGroupCache, EngineError, Mesh, RefId, RenderPipelineCache, Texture,
     Vector2U,
 };
 
 pub struct GraphicsContext {
-    pub(crate) wgpu: WGPUContext,
+    pub wgpu: WGPUContext,
     pub frame: Option<FrameContext>,
-    pub data: GraphicsContextData,
+    pub data: GfxData,
+    pub caches: GfxCaches,
 }
 
 impl GraphicsContext {
     pub fn new(window: &Window) -> Self {
         let wgpu = pollster::block_on(WGPUContext::new(window));
 
+        let instance_shader = wgpu
+            .device
+            .create_shader_module(wgpu::include_wgsl!("./instance.wgsl"))
+            .into();
+
+        let draw_uniform_buffer = wgpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+            size: std::mem::size_of::<crate::DrawUniform>() as u64,
+        });
+
         Self {
-            data: GraphicsContextData::new(&wgpu),
+            data: GfxData {
+                square_mesh: Mesh::new_square(&wgpu),
+                white_texture: Texture::new(&wgpu, 1, 1, &[255, 255, 255, 255]),
+                instance_shader,
+            },
+            caches: GfxCaches {
+                bind_group: BindGroupCache::default(),
+                render_pipeline: RenderPipelineCache::default(),
+                uniform_buffer: draw_uniform_buffer.into(),
+            },
             wgpu,
             frame: None,
         }
@@ -98,44 +120,16 @@ pub struct FrameContext {
     pub output: wgpu::SurfaceTexture,
 }
 
-pub struct GraphicsContextData {
-    pub white_texture: ArcId<Texture>,
-    pub square_mesh: ArcId<Mesh>,
-    pub instance_shader: ArcId<wgpu::ShaderModule>,
-
-    pub render_pipeline_cache: RenderPipelineCache,
-    pub bind_group_cache: BindGroupCache,
-    // pub texture_bind_group: crate::BindGroup,
-    // pub uniform_bind_group: crate::BindGroup,
-    pub draw_uniform_buffer: ArcId<wgpu::Buffer>,
+pub struct GfxCaches {
+    pub render_pipeline: RenderPipelineCache,
+    pub bind_group: BindGroupCache,
+    pub uniform_buffer: RefId<wgpu::Buffer>,
 }
 
-impl GraphicsContextData {
-    pub fn new(wgpu: &WGPUContext) -> Self {
-        let square_mesh = Mesh::new_square(&wgpu).into();
-        let white_texture = Texture::new(&wgpu, 1, 1, &[255, 255, 255, 255]).into();
-
-        let instance_shader = wgpu
-            .device
-            .create_shader_module(wgpu::include_wgsl!("./instance.wgsl"))
-            .into();
-
-        let draw_uniform_buffer = wgpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-            size: std::mem::size_of::<crate::DrawUniform>() as u64,
-        });
-
-        Self {
-            white_texture,
-            square_mesh,
-            instance_shader,
-            bind_group_cache: BindGroupCache::default(),
-            render_pipeline_cache: RenderPipelineCache::default(),
-            draw_uniform_buffer: draw_uniform_buffer.into(),
-        }
-    }
+pub struct GfxData {
+    pub white_texture: Texture,
+    pub square_mesh: Mesh,
+    pub instance_shader: RefId<wgpu::ShaderModule>,
 }
 
 pub struct WGPUContext {
