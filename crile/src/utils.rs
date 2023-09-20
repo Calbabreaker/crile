@@ -88,3 +88,9 @@ impl<T> RefHolder<T> {
         self.refs.clear()
     }
 }
+
+impl<T> Default for RefHolder<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

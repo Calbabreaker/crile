@@ -69,7 +69,7 @@ impl<'a> RenderPass<'a> {
     }
 
     pub fn draw_mesh_instanced(&mut self, mesh: &'a Mesh, instances: &[Instance]) {
-        let instances_size = (std::mem::size_of::<Instance>() * instances.len()) as u64;
+        let instances_size = std::mem::size_of_val(instances) as u64;
         let instances_alloc = self
             .caches
             .storage_buffer_allocator
@@ -123,7 +123,7 @@ impl<'a> RenderPass<'a> {
     }
 
     pub fn set_uniform<U: bytemuck::Pod>(&mut self, uniform: U) {
-        let uniform_size = std::mem::size_of::<U>() as u64;
+        let uniform_size = std::mem::size_of_val(&uniform) as u64;
         let uniform_alloc = self
             .caches
             .uniform_buffer_allocator

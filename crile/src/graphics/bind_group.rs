@@ -74,7 +74,7 @@ impl<'a> BindGroupEntries<'a> {
         self.sampler_layout(visibility)
     }
 
-    // Layout only versions of the functions above (to be used when creating the pipeline
+    // Layout only versions of the functions above (to be used when creating the pipeline)
     pub fn buffer_layout(
         mut self,
         visibility: wgpu::ShaderStages,

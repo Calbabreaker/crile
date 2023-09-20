@@ -27,8 +27,8 @@ pub struct Mesh {
 impl Mesh {
     pub fn new(wgpu: &WGPUContext, vertices: &[MeshVertex], indicies: &[u16]) -> Self {
         Self {
-            vertex_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::VERTEX, &vertices),
-            index_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::INDEX, &indicies),
+            vertex_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::VERTEX, vertices),
+            index_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::INDEX, indicies),
             index_count: indicies.len() as u32,
         }
     }

@@ -8,7 +8,7 @@ struct DynamicBufferSpace {
 impl DynamicBufferSpace {
     fn new(wgpu: &WGPUContext, descriptor: &wgpu::BufferDescriptor) -> Self {
         Self {
-            buffer: wgpu.device.create_buffer(&descriptor).into(),
+            buffer: wgpu.device.create_buffer(descriptor).into(),
             cursor: 0,
         }
     }
