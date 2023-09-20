@@ -4,6 +4,7 @@
 pub struct TestApp {
     camera: crile::Camera,
     textures: Vec<crile::Texture>,
+    instances: Vec<crile::Instance>,
 }
 
 impl crile::Application for TestApp {
@@ -16,6 +17,18 @@ impl crile::Application for TestApp {
         ));
         self.textures[0].sampler_config = crile::SamplerConfig::nearest();
         self.textures.push(engine.gfx.data.white_texture.clone());
+
+        let rows = 500;
+        let cols = 500;
+        self.instances = (0..rows * cols)
+            .map(|i| {
+                let position = glam::Vec3::new((i % cols) as f32, (i / rows) as f32, 0.0);
+                crile::Instance {
+                    transform: glam::Mat4::from_translation(position),
+                    color: crile::Color::WHITE,
+                }
+            })
+            .collect();
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
@@ -27,17 +40,12 @@ impl crile::Application for TestApp {
     fn render(&mut self, engine: &mut crile::Engine) -> Result<(), crile::EngineError> {
         let mut render_pass = crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK))?;
 
-        let rows = 500;
-        let cols = 500;
-        println!("Drawing {0} quads", rows * cols);
-        for i in (0..rows * cols) {
-            let position = glam::Vec3::new((i % cols) as f32, (i / rows) as f32, 0.0);
-            render_pass.set_uniform(crile::DrawUniform {
-                transform: self.camera.get_projection() * glam::Mat4::from_translation(position),
-            });
-            render_pass.set_texture(&self.textures[i % 2]);
-            render_pass.draw_mesh(&render_pass.data.square_mesh);
-        }
+        render_pass.set_shader(render_pass.data.instanced_shader.clone());
+        render_pass.set_uniform(crile::DrawUniform {
+            transform: self.camera.get_projection(),
+        });
+        render_pass.set_texture(&self.textures[0]);
+        render_pass.draw_mesh_instanced(&render_pass.data.square_mesh, &self.instances);
 
         Ok(())
     }

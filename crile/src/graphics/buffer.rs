@@ -28,11 +28,14 @@ pub struct DynamicBufferAllocator {
 }
 
 impl DynamicBufferAllocator {
-    pub fn new(
-        wgpu: &WGPUContext,
-        alignment: u64,
-        descriptor: wgpu::BufferDescriptor<'static>,
-    ) -> Self {
+    pub fn new(wgpu: &WGPUContext, alignment: u64, usage: wgpu::BufferUsages, size: u64) -> Self {
+        let descriptor = wgpu::BufferDescriptor {
+            label: None,
+            size,
+            usage,
+            mapped_at_creation: false,
+        };
+
         Self {
             buffer_spaces: vec![DynamicBufferSpace::new(wgpu, &descriptor)],
             alignment,
@@ -46,7 +49,9 @@ impl DynamicBufferAllocator {
         let size = (size / self.alignment + 1) * self.alignment;
         assert!(
             size <= self.descriptor.size,
-            "requested size is greater than buffer size"
+            "requested size ({0}) is greater than buffer size ({1})",
+            size,
+            self.descriptor.size
         );
 
         // Find space where size fits

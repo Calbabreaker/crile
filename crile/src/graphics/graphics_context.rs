@@ -24,15 +24,18 @@ impl GraphicsContext {
                 .create_shader_module(wgpu::include_wgsl!("./instanced.wgsl")),
         );
 
-        let buffer_allocator = DynamicBufferAllocator::new(
+        let uniform_buffer_allocator = DynamicBufferAllocator::new(
             &wgpu,
             wgpu.limits.min_uniform_buffer_offset_alignment as u64,
-            wgpu::BufferDescriptor {
-                label: None,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-                size: wgpu.limits.max_uniform_buffer_binding_size as u64,
-            },
+            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            wgpu.limits.max_uniform_buffer_binding_size as u64,
+        );
+
+        let storage_buffer_allocator = DynamicBufferAllocator::new(
+            &wgpu,
+            wgpu.limits.min_storage_buffer_offset_alignment as u64,
+            wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            wgpu.limits.max_storage_buffer_binding_size as u64,
         );
 
         Self {
@@ -46,7 +49,8 @@ impl GraphicsContext {
                 bind_group: BindGroupCache::default(),
                 render_pipeline: RenderPipelineCache::default(),
                 sampler: SamplerCache::default(),
-                buffer_allocator,
+                uniform_buffer_allocator,
+                storage_buffer_allocator,
             },
             wgpu,
             frame: None,
@@ -110,7 +114,7 @@ impl GraphicsContext {
             output,
         });
 
-        self.caches.buffer_allocator.free();
+        self.caches.uniform_buffer_allocator.free();
 
         Ok(())
     }
@@ -136,7 +140,8 @@ pub struct FrameContext {
 pub struct GfxCaches {
     pub render_pipeline: RenderPipelineCache,
     pub bind_group: BindGroupCache,
-    pub buffer_allocator: DynamicBufferAllocator,
+    pub uniform_buffer_allocator: DynamicBufferAllocator,
+    pub storage_buffer_allocator: DynamicBufferAllocator,
     pub sampler: SamplerCache,
 }
 

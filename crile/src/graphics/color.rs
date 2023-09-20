@@ -37,6 +37,13 @@ impl Color {
         a: 1.,
     };
 
+    pub const WHITE: Color = Color {
+        r: 1.,
+        g: 1.,
+        b: 1.,
+        a: 1.,
+    };
+
     pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self {
             r: r as f32 / 255.,

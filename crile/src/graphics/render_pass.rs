@@ -11,6 +11,13 @@ pub struct DrawUniform {
     pub transform: glam::Mat4,
 }
 
+#[repr(C)]
+#[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Instance {
+    pub transform: glam::Mat4,
+    pub color: Color,
+}
+
 pub struct RenderPass<'a> {
     gpu_render_pass: wgpu::RenderPass<'a>,
     shader: RefId<wgpu::ShaderModule>,
@@ -61,7 +68,45 @@ impl<'a> RenderPass<'a> {
         })
     }
 
-    pub fn draw_mesh(&mut self, mesh: &'a Mesh) {
+    pub fn draw_mesh_instanced(&mut self, mesh: &'a Mesh, instances: &[Instance]) {
+        let instances_size = (std::mem::size_of::<Instance>() * instances.len()) as u64;
+        let instances_alloc = self
+            .caches
+            .storage_buffer_allocator
+            .allocate(self.wgpu, instances_size);
+
+        self.wgpu.queue.write_buffer(
+            &instances_alloc.buffer,
+            instances_alloc.offset,
+            bytemuck::cast_slice(instances),
+        );
+
+        let instances_bind_group = self.caches.bind_group.get(
+            self.wgpu,
+            &BindGroupEntries::new().buffer(
+                wgpu::ShaderStages::VERTEX,
+                &instances_alloc.buffer,
+                wgpu::BufferBindingType::Storage { read_only: true },
+                NonZeroU64::new(instances_size),
+                true,
+            ),
+        );
+
+        self.gpu_render_pass.set_bind_group(
+            2,
+            &instances_bind_group,
+            &[instances_alloc.offset as u32],
+        );
+        self.update_pipeline();
+        self.gpu_render_pass
+            .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        self.gpu_render_pass
+            .set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        self.gpu_render_pass
+            .draw_indexed(0..mesh.index_count, 0, 0..instances.len() as u32);
+    }
+
+    pub fn draw_mesh_single(&mut self, mesh: &'a Mesh) {
         self.update_pipeline();
         self.gpu_render_pass
             .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
@@ -88,7 +133,7 @@ impl<'a> RenderPass<'a> {
         let uniform_size = std::mem::size_of::<U>() as u64;
         let uniform_alloc = self
             .caches
-            .buffer_allocator
+            .uniform_buffer_allocator
             .allocate(self.wgpu, uniform_size);
 
         self.wgpu.queue.write_buffer(
@@ -119,7 +164,7 @@ impl<'a> RenderPass<'a> {
 
     pub fn update_pipeline(&mut self) {
         if self.dirty_pipline {
-            let uniform_bind_group_layout = self.caches.bind_group.get_layout(
+            let uniform_layout = self.caches.bind_group.get_layout(
                 self.wgpu,
                 &BindGroupEntries::new().buffer_layout(
                     wgpu::ShaderStages::VERTEX,
@@ -128,11 +173,20 @@ impl<'a> RenderPass<'a> {
                 ),
             );
 
-            let texture_bind_group_layout = self.caches.bind_group.get_layout(
+            let texture_layout = self.caches.bind_group.get_layout(
                 self.wgpu,
                 &BindGroupEntries::new()
                     .texture_layout(wgpu::ShaderStages::FRAGMENT)
                     .sampler_layout(wgpu::ShaderStages::FRAGMENT),
+            );
+
+            let instances_layout = self.caches.bind_group.get_layout(
+                self.wgpu,
+                &BindGroupEntries::new().buffer_layout(
+                    wgpu::ShaderStages::VERTEX,
+                    wgpu::BufferBindingType::Storage { read_only: true },
+                    true,
+                ),
             );
 
             let render_pipeline = self.caches.render_pipeline.get(
@@ -141,7 +195,7 @@ impl<'a> RenderPass<'a> {
                     shader: self.shader.clone(),
                     vertex_buffer_layouts: &[MeshVertex::LAYOUT],
                 },
-                &[&uniform_bind_group_layout, &texture_bind_group_layout],
+                &[&uniform_layout, &texture_layout, &instances_layout],
             );
 
             self.gpu_render_pass.set_pipeline(render_pipeline);
