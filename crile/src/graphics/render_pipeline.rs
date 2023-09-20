@@ -7,7 +7,7 @@ use crate::{RefId, WGPUContext};
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct RenderPipelineConfig {
-    pub shader: RefId<wgpu::ShaderModule>,
+    pub shader: RefId<Shader>,
     pub vertex_buffer_layouts: &'static [wgpu::VertexBufferLayout<'static>],
 }
 
@@ -24,8 +24,8 @@ impl RenderPipelineCache {
         &mut self,
         wgpu: &WGPUContext,
         config: RenderPipelineConfig,
-        bind_group_layouts: &[&RefId<wgpu::BindGroupLayout>],
-    ) -> &'static RefId<wgpu::RenderPipeline> {
+        bind_group_layouts: &[RefId<wgpu::BindGroupLayout>],
+    ) -> RefId<wgpu::RenderPipeline> {
         let layout = self.get_layout(wgpu, bind_group_layouts);
         let pipeline = self
             .pipeline_cache
@@ -36,12 +36,12 @@ impl RenderPipelineCache {
                         label: None,
                         layout: Some(&layout),
                         vertex: wgpu::VertexState {
-                            module: &config.shader,
+                            module: &config.shader.module,
                             entry_point: "vs_main",
                             buffers: config.vertex_buffer_layouts,
                         },
                         fragment: Some(wgpu::FragmentState {
-                            module: &config.shader,
+                            module: &config.shader.module,
                             entry_point: "fs_main",
                             targets: &[Some(wgpu::ColorTargetState {
                                 format: wgpu.surface_config.format,
@@ -69,14 +69,13 @@ impl RenderPipelineCache {
                     .into()
             });
 
-        // SAFETY: see bind group cache
-        unsafe { std::mem::transmute(pipeline) }
+        RefId::clone(pipeline)
     }
 
     fn get_layout(
         &mut self,
         wgpu: &WGPUContext,
-        bind_group_layouts: &[&RefId<wgpu::BindGroupLayout>],
+        bind_group_layouts: &[RefId<wgpu::BindGroupLayout>],
     ) -> RefId<wgpu::PipelineLayout> {
         // Calculate hash from bind_group_layouts ids
         let mut hasher = DefaultHasher::new();
@@ -98,5 +97,29 @@ impl RenderPipelineCache {
                 .into()
         });
         RefId::clone(layout)
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub enum ShaderKind {
+    DrawSingle,
+    Instanced,
+}
+
+pub struct Shader {
+    pub module: wgpu::ShaderModule,
+    pub kind: ShaderKind,
+}
+
+impl Shader {
+    pub fn new(
+        wgpu: &WGPUContext,
+        descriptor: wgpu::ShaderModuleDescriptor,
+        kind: ShaderKind,
+    ) -> Self {
+        Self {
+            module: wgpu.device.create_shader_module(descriptor),
+            kind,
+        }
     }
 }

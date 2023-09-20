@@ -63,3 +63,28 @@ impl<T> AsRef<T> for RefId<T> {
         &self.object
     }
 }
+
+pub struct RefHolder<T> {
+    refs: Vec<RefId<T>>,
+}
+
+impl<T> RefHolder<T> {
+    pub fn new() -> RefHolder<T> {
+        Self {
+            refs: Vec::with_capacity(1024),
+        }
+    }
+
+    pub fn hold(&mut self, ref_id: RefId<T>) -> &'static T {
+        let object = unsafe { std::mem::transmute(ref_id.as_ref()) };
+        self.refs.push(ref_id);
+        object
+    }
+
+    /// # Safety
+    /// There must not be any references to T still in use or else T might get dropped and cause
+    /// dangling pointers
+    pub unsafe fn free(&mut self) {
+        self.refs.clear()
+    }
+}

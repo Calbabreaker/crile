@@ -2,7 +2,7 @@ use std::num::NonZeroU64;
 
 use crate::{
     BindGroupEntries, Color, EngineError, GfxCaches, GfxData, GraphicsContext, Mesh, MeshVertex,
-    RefId, RenderPipelineConfig, Texture, WGPUContext,
+    RefId, RenderPipelineConfig, Shader, ShaderKind, Texture, WGPUContext,
 };
 
 #[repr(C)]
@@ -20,7 +20,7 @@ pub struct Instance {
 
 pub struct RenderPass<'a> {
     gpu_render_pass: wgpu::RenderPass<'a>,
-    shader: RefId<wgpu::ShaderModule>,
+    shader: RefId<Shader>,
     dirty_pipline: bool,
 
     wgpu: &'a WGPUContext,
@@ -92,28 +92,22 @@ impl<'a> RenderPass<'a> {
             ),
         );
 
-        self.gpu_render_pass.set_bind_group(
-            2,
-            &instances_bind_group,
-            &[instances_alloc.offset as u32],
-        );
-        self.update_pipeline();
-        self.gpu_render_pass
-            .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        self.gpu_render_pass
-            .set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-        self.gpu_render_pass
-            .draw_indexed(0..mesh.index_count, 0, 0..instances.len() as u32);
+        self.set_bind_group(2, instances_bind_group, &[instances_alloc.offset as u32]);
+        self.draw_mesh(mesh, instances.len() as u32);
     }
 
     pub fn draw_mesh_single(&mut self, mesh: &'a Mesh) {
+        self.draw_mesh(mesh, 1);
+    }
+
+    fn draw_mesh(&mut self, mesh: &'a Mesh, instance_count: u32) {
         self.update_pipeline();
         self.gpu_render_pass
             .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         self.gpu_render_pass
             .set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
         self.gpu_render_pass
-            .draw_indexed(0..mesh.index_count, 0, 0..1);
+            .draw_indexed(0..mesh.index_count, 0, 0..instance_count);
     }
 
     pub fn set_texture(&mut self, texture: &Texture) {
@@ -125,8 +119,7 @@ impl<'a> RenderPass<'a> {
                 .sampler(wgpu::ShaderStages::FRAGMENT, &sampler),
         );
 
-        self.gpu_render_pass
-            .set_bind_group(1, &texture_bind_group, &[]);
+        self.set_bind_group(1, texture_bind_group, &[]);
     }
 
     pub fn set_uniform<U: bytemuck::Pod>(&mut self, uniform: U) {
@@ -153,13 +146,15 @@ impl<'a> RenderPass<'a> {
             ),
         );
 
-        self.gpu_render_pass
-            .set_bind_group(0, &uniform_bind_group, &[uniform_alloc.offset as u32]);
+        self.set_bind_group(0, uniform_bind_group, &[uniform_alloc.offset as u32]);
     }
 
-    pub fn set_shader(&mut self, shader: RefId<wgpu::ShaderModule>) {
-        self.shader = shader;
-        self.dirty_pipline = true;
+    /// Set a shader from self.data or a custom shader
+    pub fn set_shader(&mut self, shader: RefId<Shader>) {
+        if shader != self.shader {
+            self.shader = shader;
+            self.dirty_pipline = true;
+        }
     }
 
     pub fn update_pipeline(&mut self) {
@@ -180,14 +175,19 @@ impl<'a> RenderPass<'a> {
                     .sampler_layout(wgpu::ShaderStages::FRAGMENT),
             );
 
-            let instances_layout = self.caches.bind_group.get_layout(
-                self.wgpu,
-                &BindGroupEntries::new().buffer_layout(
-                    wgpu::ShaderStages::VERTEX,
-                    wgpu::BufferBindingType::Storage { read_only: true },
-                    true,
-                ),
-            );
+            let mut layouts = vec![uniform_layout, texture_layout];
+
+            if self.shader.kind == ShaderKind::Instanced {
+                let instances_layout = self.caches.bind_group.get_layout(
+                    self.wgpu,
+                    &BindGroupEntries::new().buffer_layout(
+                        wgpu::ShaderStages::VERTEX,
+                        wgpu::BufferBindingType::Storage { read_only: true },
+                        true,
+                    ),
+                );
+                layouts.push(instances_layout);
+            }
 
             let render_pipeline = self.caches.render_pipeline.get(
                 self.wgpu,
@@ -195,11 +195,22 @@ impl<'a> RenderPass<'a> {
                     shader: self.shader.clone(),
                     vertex_buffer_layouts: &[MeshVertex::LAYOUT],
                 },
-                &[&uniform_layout, &texture_layout, &instances_layout],
+                &layouts,
             );
 
-            self.gpu_render_pass.set_pipeline(render_pipeline);
+            self.gpu_render_pass
+                .set_pipeline(self.caches.pipeline_holder.hold(render_pipeline));
             self.dirty_pipline = false;
         }
+    }
+
+    fn set_bind_group(&mut self, index: u32, bind_group: RefId<wgpu::BindGroup>, offsets: &[u32]) {
+        self.gpu_render_pass.set_bind_group(
+            index,
+            // We need to use the holder that will hold the RefId until the end of the frame since
+            // render_pipeline requires that and using RefId on it's own might drop the inner value
+            self.caches.bind_group_holder.hold(bind_group),
+            offsets,
+        );
     }
 }

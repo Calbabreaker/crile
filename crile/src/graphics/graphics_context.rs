@@ -1,6 +1,6 @@
 use crate::{
-    window::Window, BindGroupCache, DynamicBufferAllocator, EngineError, Mesh, RefId,
-    RenderPipelineCache, SamplerCache, Texture,
+    window::Window, BindGroupCache, DynamicBufferAllocator, EngineError, Mesh, RefHolder, RefId,
+    RenderPipelineCache, SamplerCache, Shader, ShaderKind, Texture,
 };
 
 pub struct GraphicsContext {
@@ -14,14 +14,16 @@ impl GraphicsContext {
     pub fn new(window: &Window) -> Self {
         let wgpu = pollster::block_on(WGPUContext::new(window));
 
-        let single_draw_shader = RefId::new(
-            wgpu.device
-                .create_shader_module(wgpu::include_wgsl!("./single_draw.wgsl")),
+        let single_draw_shader = Shader::new(
+            &wgpu,
+            wgpu::include_wgsl!("./single_draw.wgsl"),
+            ShaderKind::DrawSingle,
         );
 
-        let instanced_shader = RefId::new(
-            wgpu.device
-                .create_shader_module(wgpu::include_wgsl!("./instanced.wgsl")),
+        let instanced_shader = Shader::new(
+            &wgpu,
+            wgpu::include_wgsl!("./instanced.wgsl"),
+            ShaderKind::Instanced,
         );
 
         let uniform_buffer_allocator = DynamicBufferAllocator::new(
@@ -42,13 +44,15 @@ impl GraphicsContext {
             data: GfxData {
                 square_mesh: Mesh::new_square(&wgpu),
                 white_texture: Texture::new(&wgpu, 1, 1, &[255, 255, 255, 255]),
-                instanced_shader,
-                single_draw_shader,
+                instanced_shader: RefId::new(instanced_shader),
+                single_draw_shader: RefId::new(single_draw_shader),
             },
             caches: GfxCaches {
                 bind_group: BindGroupCache::default(),
                 render_pipeline: RenderPipelineCache::default(),
                 sampler: SamplerCache::default(),
+                pipeline_holder: RefHolder::new(),
+                bind_group_holder: RefHolder::new(),
                 uniform_buffer_allocator,
                 storage_buffer_allocator,
             },
@@ -116,6 +120,12 @@ impl GraphicsContext {
 
         self.caches.uniform_buffer_allocator.free();
         self.caches.storage_buffer_allocator.free();
+        // SAFETY: this gets called at the start of the frame so there should be no references to
+        // bind groups or pipelines
+        unsafe {
+            self.caches.pipeline_holder.free();
+            self.caches.bind_group_holder.free();
+        }
 
         Ok(())
     }
@@ -141,6 +151,8 @@ pub struct FrameContext {
 pub struct GfxCaches {
     pub render_pipeline: RenderPipelineCache,
     pub bind_group: BindGroupCache,
+    pub bind_group_holder: RefHolder<wgpu::BindGroup>,
+    pub pipeline_holder: RefHolder<wgpu::RenderPipeline>,
     pub uniform_buffer_allocator: DynamicBufferAllocator,
     pub storage_buffer_allocator: DynamicBufferAllocator,
     pub sampler: SamplerCache,
@@ -149,8 +161,8 @@ pub struct GfxCaches {
 pub struct GfxData {
     pub white_texture: Texture,
     pub square_mesh: Mesh,
-    pub single_draw_shader: RefId<wgpu::ShaderModule>,
-    pub instanced_shader: RefId<wgpu::ShaderModule>,
+    pub single_draw_shader: RefId<Shader>,
+    pub instanced_shader: RefId<Shader>,
 }
 
 pub struct WGPUContext {

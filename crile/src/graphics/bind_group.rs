@@ -133,7 +133,7 @@ impl BindGroupCache {
         &mut self,
         wgpu: &WGPUContext,
         entries: &BindGroupEntries,
-    ) -> &'static RefId<wgpu::BindGroup> {
+    ) -> RefId<wgpu::BindGroup> {
         let layout = self.get_layout(wgpu, entries);
         let group = self
             .group_cache
@@ -142,24 +142,20 @@ impl BindGroupCache {
                 wgpu.device
                     .create_bind_group(&wgpu::BindGroupDescriptor {
                         label: None,
-                        layout,
+                        layout: layout.as_ref(),
                         entries: &entries.groups,
                     })
                     .into()
             });
 
-        // SAFETY: bind groups and render pipelines caches return a RefId<T>.
-        // We can't use RefId<T> by itself since they will be dropped at the end of this function.
-        // std::mem::transmute needs to be used to convert to a 'static RefId<T> which is unsafe
-        // This requires the caches to not delete anything or be deleted while a frame is in progress to be safe
-        unsafe { std::mem::transmute(group) }
+        RefId::clone(group)
     }
 
     pub fn get_layout(
         &mut self,
         wgpu: &WGPUContext,
         entries: &BindGroupEntries,
-    ) -> &'static RefId<wgpu::BindGroupLayout> {
+    ) -> RefId<wgpu::BindGroupLayout> {
         let layout = self
             .layout_cache
             .entry_ref(entries.layouts.as_slice())
@@ -171,6 +167,7 @@ impl BindGroupCache {
                     })
                     .into()
             });
-        unsafe { std::mem::transmute(layout) }
+
+        RefId::clone(layout)
     }
 }

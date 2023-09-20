@@ -45,7 +45,7 @@ impl DynamicBufferAllocator {
 
     pub fn allocate(&mut self, wgpu: &WGPUContext, size: u64) -> BufferAllocation {
         // TODO: use size.div_ceil once https://github.com/rust-lang/rust/issues/88581 is stablized
-        // Aligns size to alignment
+        // Aligns size to alignment since gpus require the buffer to have a certain alignment
         let size = (size / self.alignment + 1) * self.alignment;
         assert!(
             size <= self.descriptor.size,
