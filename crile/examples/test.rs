@@ -18,8 +18,8 @@ impl crile::Application for TestApp {
         self.textures[0].sampler_config = crile::SamplerConfig::nearest();
         self.textures.push(engine.gfx.data.white_texture.clone());
 
-        let rows = 500;
-        let cols = 500;
+        let rows = 1000;
+        let cols = 1000;
         self.instances = (0..rows * cols)
             .map(|i| {
                 let position = glam::Vec3::new((i % cols) as f32, (i / rows) as f32, 0.0);

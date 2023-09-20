@@ -115,6 +115,7 @@ impl GraphicsContext {
         });
 
         self.caches.uniform_buffer_allocator.free();
+        self.caches.storage_buffer_allocator.free();
 
         Ok(())
     }
