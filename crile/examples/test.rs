@@ -14,6 +14,7 @@ impl crile::Application for TestApp {
             &engine.gfx.wgpu,
             image::open("assets/test.png").unwrap(),
         ));
+        self.textures[0].sampler_config = crile::SamplerConfig::nearest();
         self.textures.push(engine.gfx.data.white_texture.clone());
     }
 
@@ -30,13 +31,13 @@ impl crile::Application for TestApp {
         let cols = 500;
         println!("Drawing {0} quads", rows * cols);
         for i in (0..rows * cols) {
-            let position = crile::Vector3::new((i % cols) as f32, (i / rows) as f32, 0.0);
+            let position = glam::Vec3::new((i % cols) as f32, (i / rows) as f32, 0.0);
             render_pass.draw_mesh_indexed(crile::DrawMeshParams {
                 mesh: &render_pass.data.square_mesh,
                 texture: &self.textures[i % 2],
                 uniform: crile::DrawUniform {
                     transform: self.camera.get_projection()
-                        * crile::Matrix4::from_translation(position),
+                        * glam::Mat4::from_translation(position),
                 },
                 shader: crile::RefId::clone(&render_pass.data.single_draw_shader),
             });

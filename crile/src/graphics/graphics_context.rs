@@ -1,6 +1,6 @@
 use crate::{
     window::Window, BindGroupCache, DynamicBufferAllocator, EngineError, Mesh, RefId,
-    RenderPipelineCache, Texture, Vector2U,
+    RenderPipelineCache, SamplerCache, Texture,
 };
 
 pub struct GraphicsContext {
@@ -14,10 +14,10 @@ impl GraphicsContext {
     pub fn new(window: &Window) -> Self {
         let wgpu = pollster::block_on(WGPUContext::new(window));
 
-        let single_draw_shader = wgpu
-            .device
-            .create_shader_module(wgpu::include_wgsl!("./single_draw.wgsl"))
-            .into();
+        let single_draw_shader = RefId::new(
+            wgpu.device
+                .create_shader_module(wgpu::include_wgsl!("./single_draw.wgsl")),
+        );
 
         let buffer_allocator = DynamicBufferAllocator::new(
             &wgpu,
@@ -39,6 +39,7 @@ impl GraphicsContext {
             caches: GfxCaches {
                 bind_group: BindGroupCache::default(),
                 render_pipeline: RenderPipelineCache::default(),
+                sampler: SamplerCache::default(),
                 buffer_allocator,
             },
             wgpu,
@@ -46,7 +47,7 @@ impl GraphicsContext {
         }
     }
 
-    pub fn resize(&mut self, size: Vector2U) {
+    pub fn resize(&mut self, size: glam::UVec2) {
         let wgpu = &mut self.wgpu;
         wgpu.surface_config.width = size.x;
         wgpu.surface_config.height = size.y;
@@ -130,6 +131,7 @@ pub struct GfxCaches {
     pub render_pipeline: RenderPipelineCache,
     pub bind_group: BindGroupCache,
     pub buffer_allocator: DynamicBufferAllocator,
+    pub sampler: SamplerCache,
 }
 
 pub struct GfxData {

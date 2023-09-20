@@ -1,5 +1,3 @@
-// stdlib hashmap does not have entry_ref
-use hashbrown::HashMap;
 use std::num::NonZeroU64;
 
 use crate::{RefId, WGPUContext};
@@ -107,8 +105,8 @@ impl<'a> BindGroupEntries<'a> {
 #[derive(Default)]
 pub struct BindGroupCache {
     // The layout sometimes doesn't have to change if the group does
-    group_cache: HashMap<Vec<BindGroupEntryKey>, RefId<wgpu::BindGroup>>,
-    layout_cache: HashMap<Vec<wgpu::BindGroupLayoutEntry>, RefId<wgpu::BindGroupLayout>>,
+    group_cache: hashbrown::HashMap<Vec<BindGroupEntryKey>, RefId<wgpu::BindGroup>>,
+    layout_cache: hashbrown::HashMap<Vec<wgpu::BindGroupLayoutEntry>, RefId<wgpu::BindGroupLayout>>,
 }
 
 impl BindGroupCache {

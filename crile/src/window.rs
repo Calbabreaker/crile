@@ -1,5 +1,3 @@
-use crate::Vector2U;
-
 pub struct Window {
     window: winit::window::Window,
 }
@@ -24,9 +22,9 @@ impl Window {
 
     /// Returns the width and height of the window
     /// Guarentees to be at least 1
-    pub fn size(&self) -> Vector2U {
+    pub fn size(&self) -> glam::UVec2 {
         let size = self.window.inner_size();
-        Vector2U::new(size.width.max(1), size.height.max(1))
+        glam::UVec2::new(size.width.max(1), size.height.max(1))
     }
 
     pub(crate) fn handle(&self) -> &winit::window::Window {

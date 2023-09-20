@@ -1,10 +1,12 @@
 use crate::{RefId, WGPUContext};
 
+/// Wrapper around the wgpu texture objects
+/// cheap to clone
 #[derive(Clone)]
 pub struct Texture {
     pub gpu_texture: RefId<wgpu::Texture>,
     pub gpu_view: RefId<wgpu::TextureView>,
-    pub gpu_sampler: RefId<wgpu::Sampler>,
+    pub sampler_config: SamplerConfig,
 }
 
 impl Texture {
@@ -53,20 +55,64 @@ impl Texture {
         );
 
         let gpu_view = gpu_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let gpu_sampler = wgpu.device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
         Self {
             gpu_texture: gpu_texture.into(),
             gpu_view: gpu_view.into(),
-            gpu_sampler: gpu_sampler.into(),
+            sampler_config: SamplerConfig::linear(),
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+pub struct SamplerConfig {
+    pub clamp_u: wgpu::AddressMode,
+    pub clamp_v: wgpu::AddressMode,
+    pub mag: wgpu::FilterMode,
+    pub min: wgpu::FilterMode,
+}
+
+impl SamplerConfig {
+    /// Creates a sampler with bilinear interpolation
+    pub fn linear() -> Self {
+        Self {
+            clamp_u: wgpu::AddressMode::ClampToEdge,
+            clamp_v: wgpu::AddressMode::ClampToEdge,
+            mag: wgpu::FilterMode::Linear,
+            min: wgpu::FilterMode::Linear,
+        }
+    }
+
+    /// Creates a sampler with nearest neighbour interpolation
+    pub fn nearest() -> Self {
+        Self {
+            clamp_u: wgpu::AddressMode::ClampToEdge,
+            clamp_v: wgpu::AddressMode::ClampToEdge,
+            mag: wgpu::FilterMode::Nearest,
+            min: wgpu::FilterMode::Nearest,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct SamplerCache {
+    sampler_cache: hashbrown::HashMap<SamplerConfig, RefId<wgpu::Sampler>>,
+}
+
+impl SamplerCache {
+    pub fn get(&mut self, wgpu: &WGPUContext, config: SamplerConfig) -> RefId<wgpu::Sampler> {
+        let sampler = self.sampler_cache.entry(config).or_insert_with(|| {
+            RefId::new(wgpu.device.create_sampler(&wgpu::SamplerDescriptor {
+                label: None,
+                address_mode_u: config.clamp_u,
+                address_mode_v: config.clamp_v,
+                address_mode_w: wgpu::AddressMode::ClampToEdge,
+                mag_filter: config.mag,
+                min_filter: config.min,
+                mipmap_filter: wgpu::FilterMode::Nearest,
+                ..Default::default()
+            }))
+        });
+
+        RefId::clone(sampler)
     }
 }

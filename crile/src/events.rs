@@ -3,23 +3,21 @@ pub use winit::{
     keyboard::{Key, KeyCode},
 };
 
-use crate::{Vector2, Vector2U};
-
 // We create our own event enum instead of using winit so we can manage it ourselves.
 #[derive(Debug, PartialEq)]
 pub enum Event {
     WindowResize {
-        size: Vector2U,
+        size: glam::UVec2,
     },
     MouseInput {
         state: ButtonState,
         button: MouseButton,
     },
     MouseMoved {
-        position: Vector2,
+        position: glam::Vec2,
     },
     MouseScrolled {
-        delta: Vector2,
+        delta: glam::Vec2,
     },
     KeyInput {
         state: ButtonState,
@@ -38,7 +36,7 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
         winit::event::Event::WindowEvent { ref event, .. } => match event {
             winit::event::WindowEvent::CloseRequested => Event::WindowClose,
             winit::event::WindowEvent::Resized(size) => Event::WindowResize {
-                size: Vector2U::new(size.width, size.height),
+                size: glam::UVec2::new(size.width, size.height),
             },
             winit::event::WindowEvent::KeyboardInput {
                 event:
@@ -61,14 +59,14 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
                 button: *button,
             },
             winit::event::WindowEvent::CursorMoved { position, .. } => Event::MouseMoved {
-                position: Vector2::new(position.x as f32, position.y as f32),
+                position: glam::Vec2::new(position.x as f32, position.y as f32),
             },
             winit::event::WindowEvent::MouseWheel { delta, .. } => match delta {
                 winit::event::MouseScrollDelta::LineDelta(x, y) => Event::MouseScrolled {
-                    delta: Vector2::new(*x, *y),
+                    delta: glam::Vec2::new(*x, *y),
                 },
                 winit::event::MouseScrollDelta::PixelDelta(pos) => Event::MouseScrolled {
-                    delta: Vector2::new(pos.x as f32, pos.y as f32),
+                    delta: glam::Vec2::new(pos.x as f32, pos.y as f32),
                 },
             },
             _ => None?,

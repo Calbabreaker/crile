@@ -1,14 +1,14 @@
 use std::num::NonZeroU64;
 
 use crate::{
-    BindGroupEntries, Color, EngineError, GfxCaches, GfxData, GraphicsContext, Matrix4, Mesh,
-    MeshVertex, RefId, RenderPipelineConfig, Texture, WGPUContext,
+    BindGroupEntries, Color, EngineError, GfxCaches, GfxData, GraphicsContext, Mesh, MeshVertex,
+    RefId, RenderPipelineConfig, Texture, WGPUContext,
 };
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct DrawUniform {
-    pub transform: Matrix4,
+    pub transform: glam::Mat4,
 }
 
 pub struct DrawMeshParams<'a, U: bytemuck::Pod> {
@@ -88,11 +88,15 @@ impl<'a> RenderPass<'a> {
             ),
         );
 
+        let sampler = self
+            .caches
+            .sampler
+            .get(self.wgpu, params.texture.sampler_config);
         let (texture_bind_group, texture_bind_group_layout) = self.caches.bind_group.get(
             self.wgpu,
             &BindGroupEntries::new()
                 .texture(wgpu::ShaderStages::FRAGMENT, &params.texture.gpu_view)
-                .sampler(wgpu::ShaderStages::FRAGMENT, &params.texture.gpu_sampler),
+                .sampler(wgpu::ShaderStages::FRAGMENT, &sampler),
         );
 
         let render_pipeline = self.caches.render_pipeline.get(

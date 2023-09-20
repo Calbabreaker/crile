@@ -1,4 +1,3 @@
-use hashbrown::HashMap;
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
@@ -16,8 +15,8 @@ pub struct RenderPipelineConfig {
 /// Everytime the bind groups, we need to recreate the pipeline
 #[derive(Default)]
 pub struct RenderPipelineCache {
-    pipeline_cache: HashMap<RenderPipelineConfig, RefId<wgpu::RenderPipeline>>,
-    layout_cache: HashMap<u64, RefId<wgpu::PipelineLayout>>,
+    pipeline_cache: hashbrown::HashMap<RenderPipelineConfig, RefId<wgpu::RenderPipeline>>,
+    layout_cache: hashbrown::HashMap<u64, RefId<wgpu::PipelineLayout>>,
 }
 
 impl RenderPipelineCache {
