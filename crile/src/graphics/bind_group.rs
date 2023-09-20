@@ -11,6 +11,7 @@ enum BindGroupEntryKey {
     Sampler { id: u64 },
 }
 
+/// Builder-like pattern to create bind groups
 #[derive(Default)]
 pub struct BindGroupEntries<'a> {
     keys: Vec<BindGroupEntryKey>,
@@ -35,6 +36,51 @@ impl<'a> BindGroupEntries<'a> {
             id: buffer.id(),
             size,
         });
+        self.groups.push(wgpu::BindGroupEntry {
+            binding: self.groups.len() as u32,
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer,
+                offset: 0,
+                size,
+            }),
+        });
+        self.buffer_layout(visibility, ty, has_dynamic_offset)
+    }
+
+    pub fn texture(
+        mut self,
+        visibility: wgpu::ShaderStages,
+        view: &'a RefId<wgpu::TextureView>,
+    ) -> Self {
+        self.keys.push(BindGroupEntryKey::Texture { id: view.id() });
+        self.groups.push(wgpu::BindGroupEntry {
+            binding: self.groups.len() as u32,
+            resource: wgpu::BindingResource::TextureView(view),
+        });
+        self.texture_layout(visibility)
+    }
+
+    pub fn sampler(
+        mut self,
+        visibility: wgpu::ShaderStages,
+        sampler: &'a RefId<wgpu::Sampler>,
+    ) -> Self {
+        self.keys
+            .push(BindGroupEntryKey::Sampler { id: sampler.id() });
+        self.groups.push(wgpu::BindGroupEntry {
+            binding: self.groups.len() as u32,
+            resource: wgpu::BindingResource::Sampler(sampler),
+        });
+        self.sampler_layout(visibility)
+    }
+
+    // Layout only versions of the functions above (to be used when creating the pipeline
+    pub fn buffer_layout(
+        mut self,
+        visibility: wgpu::ShaderStages,
+        ty: wgpu::BufferBindingType,
+        has_dynamic_offset: bool,
+    ) -> Self {
         self.layouts.push(wgpu::BindGroupLayoutEntry {
             binding: self.layouts.len() as u32,
             ty: wgpu::BindingType::Buffer {
@@ -45,23 +91,10 @@ impl<'a> BindGroupEntries<'a> {
             visibility,
             count: None,
         });
-        self.groups.push(wgpu::BindGroupEntry {
-            binding: self.groups.len() as u32,
-            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                buffer,
-                offset: 0,
-                size,
-            }),
-        });
         self
     }
 
-    pub fn texture(
-        mut self,
-        visibility: wgpu::ShaderStages,
-        view: &'a RefId<wgpu::TextureView>,
-    ) -> Self {
-        self.keys.push(BindGroupEntryKey::Texture { id: view.id() });
+    pub fn texture_layout(mut self, visibility: wgpu::ShaderStages) -> Self {
         self.layouts.push(wgpu::BindGroupLayoutEntry {
             binding: self.layouts.len() as u32,
             visibility,
@@ -72,29 +105,15 @@ impl<'a> BindGroupEntries<'a> {
             },
             count: None,
         });
-        self.groups.push(wgpu::BindGroupEntry {
-            binding: self.groups.len() as u32,
-            resource: wgpu::BindingResource::TextureView(view),
-        });
         self
     }
 
-    pub fn sampler(
-        mut self,
-        visibility: wgpu::ShaderStages,
-        sampler: &'a RefId<wgpu::Sampler>,
-    ) -> Self {
-        self.keys
-            .push(BindGroupEntryKey::Sampler { id: sampler.id() });
+    pub fn sampler_layout(mut self, visibility: wgpu::ShaderStages) -> Self {
         self.layouts.push(wgpu::BindGroupLayoutEntry {
             binding: self.layouts.len() as u32,
             visibility,
             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             count: None,
-        });
-        self.groups.push(wgpu::BindGroupEntry {
-            binding: self.groups.len() as u32,
-            resource: wgpu::BindingResource::Sampler(sampler),
         });
         self
     }
@@ -114,11 +133,8 @@ impl BindGroupCache {
         &mut self,
         wgpu: &WGPUContext,
         entries: &BindGroupEntries,
-    ) -> (
-        &'static RefId<wgpu::BindGroup>,
-        &'static RefId<wgpu::BindGroupLayout>,
-    ) {
-        let layout = &self.get_layout(wgpu, &entries.layouts);
+    ) -> &'static RefId<wgpu::BindGroup> {
+        let layout = self.get_layout(wgpu, entries);
         let group = self
             .group_cache
             .entry_ref(entries.keys.as_slice())
@@ -136,22 +152,25 @@ impl BindGroupCache {
         // We can't use RefId<T> by itself since they will be dropped at the end of this function.
         // std::mem::transmute needs to be used to convert to a 'static RefId<T> which is unsafe
         // This requires the caches to not delete anything or be deleted while a frame is in progress to be safe
-        unsafe { (std::mem::transmute(group), layout) }
+        unsafe { std::mem::transmute(group) }
     }
 
     pub fn get_layout(
         &mut self,
         wgpu: &WGPUContext,
-        entries: &[wgpu::BindGroupLayoutEntry],
+        entries: &BindGroupEntries,
     ) -> &'static RefId<wgpu::BindGroupLayout> {
-        let layout = self.layout_cache.entry_ref(entries).or_insert_with(|| {
-            wgpu.device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: None,
-                    entries: &entries,
-                })
-                .into()
-        });
+        let layout = self
+            .layout_cache
+            .entry_ref(entries.layouts.as_slice())
+            .or_insert_with(|| {
+                wgpu.device
+                    .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                        label: None,
+                        entries: &entries.layouts,
+                    })
+                    .into()
+            });
         unsafe { std::mem::transmute(layout) }
     }
 }

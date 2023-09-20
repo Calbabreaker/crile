@@ -32,15 +32,11 @@ impl crile::Application for TestApp {
         println!("Drawing {0} quads", rows * cols);
         for i in (0..rows * cols) {
             let position = glam::Vec3::new((i % cols) as f32, (i / rows) as f32, 0.0);
-            render_pass.draw_mesh_indexed(crile::DrawMeshParams {
-                mesh: &render_pass.data.square_mesh,
-                texture: &self.textures[i % 2],
-                uniform: crile::DrawUniform {
-                    transform: self.camera.get_projection()
-                        * glam::Mat4::from_translation(position),
-                },
-                shader: crile::RefId::clone(&render_pass.data.single_draw_shader),
+            render_pass.set_uniform(crile::DrawUniform {
+                transform: self.camera.get_projection() * glam::Mat4::from_translation(position),
             });
+            render_pass.set_texture(&self.textures[i % 2]);
+            render_pass.draw_mesh(&render_pass.data.square_mesh);
         }
 
         Ok(())

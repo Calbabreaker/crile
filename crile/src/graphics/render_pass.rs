@@ -11,17 +11,12 @@ pub struct DrawUniform {
     pub transform: glam::Mat4,
 }
 
-pub struct DrawMeshParams<'a, U: bytemuck::Pod> {
-    pub mesh: &'a Mesh,
-    pub texture: &'a Texture,
-    pub uniform: U,
-    pub shader: RefId<wgpu::ShaderModule>,
-}
-
 pub struct RenderPass<'a> {
-    wgpu: &'a WGPUContext,
     gpu_render_pass: wgpu::RenderPass<'a>,
+    shader: RefId<wgpu::ShaderModule>,
+    dirty_pipline: bool,
 
+    wgpu: &'a WGPUContext,
     caches: &'a mut GfxCaches,
     pub data: &'a GfxData,
 }
@@ -55,6 +50,8 @@ impl<'a> RenderPass<'a> {
 
         Ok(Self {
             gpu_render_pass,
+            shader: gfx.data.single_draw_shader.clone(),
+            dirty_pipline: true,
 
             // We need to get references to WGPUContext, GfxData, GfxCaches seperataly or rust is
             // going to complain about mutiple borrows
@@ -64,7 +61,30 @@ impl<'a> RenderPass<'a> {
         })
     }
 
-    pub fn draw_mesh_indexed<U: bytemuck::Pod>(&mut self, params: DrawMeshParams<'a, U>) {
+    pub fn draw_mesh(&mut self, mesh: &'a Mesh) {
+        self.update_pipeline();
+        self.gpu_render_pass
+            .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        self.gpu_render_pass
+            .set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        self.gpu_render_pass
+            .draw_indexed(0..mesh.index_count, 0, 0..1);
+    }
+
+    pub fn set_texture(&mut self, texture: &Texture) {
+        let sampler = self.caches.sampler.get(self.wgpu, texture.sampler_config);
+        let texture_bind_group = self.caches.bind_group.get(
+            self.wgpu,
+            &BindGroupEntries::new()
+                .texture(wgpu::ShaderStages::FRAGMENT, &texture.gpu_view)
+                .sampler(wgpu::ShaderStages::FRAGMENT, &sampler),
+        );
+
+        self.gpu_render_pass
+            .set_bind_group(1, &texture_bind_group, &[]);
+    }
+
+    pub fn set_uniform<U: bytemuck::Pod>(&mut self, uniform: U) {
         let uniform_size = std::mem::size_of::<U>() as u64;
         let uniform_alloc = self
             .caches
@@ -74,10 +94,10 @@ impl<'a> RenderPass<'a> {
         self.wgpu.queue.write_buffer(
             &uniform_alloc.buffer,
             uniform_alloc.offset,
-            bytemuck::cast_slice(&[params.uniform]),
+            bytemuck::cast_slice(&[uniform]),
         );
 
-        let (uniform_bind_group, uniform_bind_group_layout) = self.caches.bind_group.get(
+        let uniform_bind_group = self.caches.bind_group.get(
             self.wgpu,
             &BindGroupEntries::new().buffer(
                 wgpu::ShaderStages::VERTEX,
@@ -88,38 +108,44 @@ impl<'a> RenderPass<'a> {
             ),
         );
 
-        let sampler = self
-            .caches
-            .sampler
-            .get(self.wgpu, params.texture.sampler_config);
-        let (texture_bind_group, texture_bind_group_layout) = self.caches.bind_group.get(
-            self.wgpu,
-            &BindGroupEntries::new()
-                .texture(wgpu::ShaderStages::FRAGMENT, &params.texture.gpu_view)
-                .sampler(wgpu::ShaderStages::FRAGMENT, &sampler),
-        );
-
-        let render_pipeline = self.caches.render_pipeline.get(
-            self.wgpu,
-            RenderPipelineConfig {
-                shader: RefId::clone(&params.shader),
-                vertex_buffer_layouts: &[MeshVertex::LAYOUT],
-            },
-            &[&uniform_bind_group_layout, &texture_bind_group_layout],
-        );
-
-        self.gpu_render_pass.set_pipeline(&render_pipeline);
-        self.gpu_render_pass.set_index_buffer(
-            params.mesh.index_buffer.slice(..),
-            wgpu::IndexFormat::Uint16,
-        );
-        self.gpu_render_pass
-            .set_vertex_buffer(0, params.mesh.vertex_buffer.slice(..));
         self.gpu_render_pass
             .set_bind_group(0, &uniform_bind_group, &[uniform_alloc.offset as u32]);
-        self.gpu_render_pass
-            .set_bind_group(1, &texture_bind_group, &[]);
-        self.gpu_render_pass
-            .draw_indexed(0..params.mesh.index_count, 0, 0..10);
+    }
+
+    pub fn set_shader(&mut self, shader: RefId<wgpu::ShaderModule>) {
+        self.shader = shader;
+        self.dirty_pipline = true;
+    }
+
+    pub fn update_pipeline(&mut self) {
+        if self.dirty_pipline {
+            let uniform_bind_group_layout = self.caches.bind_group.get_layout(
+                self.wgpu,
+                &BindGroupEntries::new().buffer_layout(
+                    wgpu::ShaderStages::VERTEX,
+                    wgpu::BufferBindingType::Uniform,
+                    true,
+                ),
+            );
+
+            let texture_bind_group_layout = self.caches.bind_group.get_layout(
+                self.wgpu,
+                &BindGroupEntries::new()
+                    .texture_layout(wgpu::ShaderStages::FRAGMENT)
+                    .sampler_layout(wgpu::ShaderStages::FRAGMENT),
+            );
+
+            let render_pipeline = self.caches.render_pipeline.get(
+                self.wgpu,
+                RenderPipelineConfig {
+                    shader: self.shader.clone(),
+                    vertex_buffer_layouts: &[MeshVertex::LAYOUT],
+                },
+                &[&uniform_bind_group_layout, &texture_bind_group_layout],
+            );
+
+            self.gpu_render_pass.set_pipeline(render_pipeline);
+            self.dirty_pipline = false;
+        }
     }
 }

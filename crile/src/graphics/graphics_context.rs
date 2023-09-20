@@ -19,6 +19,11 @@ impl GraphicsContext {
                 .create_shader_module(wgpu::include_wgsl!("./single_draw.wgsl")),
         );
 
+        let instanced_shader = RefId::new(
+            wgpu.device
+                .create_shader_module(wgpu::include_wgsl!("./instanced.wgsl")),
+        );
+
         let buffer_allocator = DynamicBufferAllocator::new(
             &wgpu,
             wgpu.limits.min_uniform_buffer_offset_alignment as u64,
@@ -34,6 +39,7 @@ impl GraphicsContext {
             data: GfxData {
                 square_mesh: Mesh::new_square(&wgpu),
                 white_texture: Texture::new(&wgpu, 1, 1, &[255, 255, 255, 255]),
+                instanced_shader,
                 single_draw_shader,
             },
             caches: GfxCaches {
@@ -138,6 +144,7 @@ pub struct GfxData {
     pub white_texture: Texture,
     pub square_mesh: Mesh,
     pub single_draw_shader: RefId<wgpu::ShaderModule>,
+    pub instanced_shader: RefId<wgpu::ShaderModule>,
 }
 
 pub struct WGPUContext {
