@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 bytemuck = { version = "1", features = ["derive"] }
+egui = { version = "0.22", optional = true }
 glam = { version = "0.24", features = ["bytemuck"] }
 hashbrown = "0.14"
 image = { version = "0.24", default-features = false, features = ["png", "jpeg"] }
@@ -16,3 +17,6 @@ winit = "0.29.1-beta"
 
 [dev-dependencies]
 env_logger = "0.10"
+
+[features]
+default = ["egui"]

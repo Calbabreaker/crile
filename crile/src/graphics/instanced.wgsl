@@ -27,13 +27,14 @@ fn vs_main(
     @builtin(instance_index) instance_index: u32,
     @location(0) position: vec2<f32>,
     @location(1) texture_coords: vec2<f32>,
+    @location(2) color: vec4<f32>,
 ) -> VertexOutput {
     var instance = instances[instance_index];
 
     var out: VertexOutput;
     out.position = draw.transform * instance.transform * vec4<f32>(position, 0.0, 1.0);
     out.texture_coords = texture_coords;
-    out.color = instance.color;
+    out.color = instance.color * color;
     return out;
 }
 

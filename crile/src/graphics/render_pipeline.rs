@@ -9,6 +9,7 @@ use crate::{RefId, WGPUContext};
 pub struct RenderPipelineConfig {
     pub shader: RefId<Shader>,
     pub vertex_buffer_layouts: &'static [wgpu::VertexBufferLayout<'static>],
+    pub blend_mode: wgpu::BlendState,
 }
 
 /// Caches gpu resources to prevent unnesscery creation
@@ -45,7 +46,7 @@ impl RenderPipelineCache {
                             entry_point: "fs_main",
                             targets: &[Some(wgpu::ColorTargetState {
                                 format: wgpu.surface_config.format,
-                                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                                blend: Some(config.blend_mode),
                                 write_mask: wgpu::ColorWrites::ALL,
                             })],
                         }),

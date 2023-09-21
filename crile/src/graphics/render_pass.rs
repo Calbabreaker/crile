@@ -1,8 +1,8 @@
 use std::num::NonZeroU64;
 
 use crate::{
-    BindGroupEntries, Color, GfxCaches, GfxData, GraphicsContext, Mesh, MeshVertex, RefId,
-    RenderPipelineConfig, Shader, ShaderKind, Texture, WGPUContext,
+    BindGroupEntries, Color, GfxCaches, GfxData, GraphicsContext, Mesh, MeshVertex, Rect, RefId,
+    RenderPipelineConfig, Shader, ShaderKind, Texture, TextureRef, WGPUContext,
 };
 
 #[repr(C)]
@@ -18,29 +18,40 @@ pub struct Instance {
     pub color: Color,
 }
 
+/// Wrapper around a wgpu::RenderPass with a higher level api
+/// Automatically caches pipelines, bind groups and dynamic buffers
 pub struct RenderPass<'a> {
     gpu_render_pass: wgpu::RenderPass<'a>,
     shader: RefId<Shader>,
     dirty_pipline: bool,
+    blend_mode: wgpu::BlendState,
 
+    pub target: TextureRef<'a>,
     wgpu: &'a WGPUContext,
     caches: &'a mut GfxCaches,
     pub data: &'a GfxData,
 }
 
 impl<'a> RenderPass<'a> {
-    pub fn new(gfx: &'a mut GraphicsContext, clear_color: Option<Color>) -> Self {
+    /// Creates a new render pass from the current frame (this can only be created in the render function)
+    /// target is the texture to render to, set to None to use the surface texture
+    pub fn new(
+        gfx: &'a mut GraphicsContext,
+        clear_color: Option<Color>,
+        target: Option<TextureRef<'a>>,
+    ) -> Self {
         let frame = gfx
             .frame
             .as_mut()
             .expect("tried to create render pass but frame doesn't exist");
 
+        let target = target.unwrap_or(TextureRef::new(&frame.output.texture, &frame.output_view));
         let gpu_render_pass = frame
             .encoder
             .begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &frame.output_view,
+                    view: target.gpu_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: match clear_color {
@@ -57,8 +68,10 @@ impl<'a> RenderPass<'a> {
             gpu_render_pass,
             shader: gfx.data.single_draw_shader.clone(),
             dirty_pipline: true,
+            target,
+            blend_mode: wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
 
-            // We need to get references to WGPUContext, GfxData, GfxCaches seperataly or rust is
+            // We need to get references to WGPUContext, GfxData, GfxCaches seperately or rust is
             // going to complain about mutiple borrows
             wgpu: &gfx.wgpu,
             caches: &mut gfx.caches,
@@ -101,7 +114,7 @@ impl<'a> RenderPass<'a> {
     fn draw_mesh(&mut self, mesh: &'a Mesh, instance_count: u32) {
         self.update_pipeline();
         self.gpu_render_pass
-            .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         self.gpu_render_pass
             .set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
         self.gpu_render_pass
@@ -192,6 +205,7 @@ impl<'a> RenderPass<'a> {
                 RenderPipelineConfig {
                     shader: self.shader.clone(),
                     vertex_buffer_layouts: &[MeshVertex::LAYOUT],
+                    blend_mode: self.blend_mode,
                 },
                 &layouts,
             );
@@ -200,6 +214,22 @@ impl<'a> RenderPass<'a> {
                 .set_pipeline(self.caches.pipeline_holder.hold(render_pipeline));
             self.dirty_pipline = false;
         }
+    }
+
+    /// Set the rect area where pixels will be visible
+    pub fn set_scissor_rect(&mut self, mut rect: Rect) {
+        rect.constrain(self.target.size().as_vec2());
+        self.gpu_render_pass.set_scissor_rect(
+            rect.x as u32,
+            rect.y as u32,
+            rect.w as u32,
+            rect.h as u32,
+        );
+    }
+
+    pub fn reset_scissor_rect(&mut self) {
+        let size = self.target.size();
+        self.gpu_render_pass.set_scissor_rect(0, 0, size.x, size.y);
     }
 
     fn set_bind_group(&mut self, index: u32, bind_group: RefId<wgpu::BindGroup>, offsets: &[u32]) {

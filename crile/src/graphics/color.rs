@@ -1,3 +1,4 @@
+/// Color with rgba values from 0 to 1 in srgb color space
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Color {
@@ -29,20 +30,20 @@ impl From<Color> for wgpu::Color {
     }
 }
 
-impl Color {
-    pub const BLACK: Color = Color {
-        r: 0.,
-        g: 0.,
-        b: 0.,
-        a: 1.,
-    };
+#[cfg(feature = "egui")]
+impl From<egui::Color32> for Color {
+    fn from(value: egui::Color32) -> Self {
+        Self::from_rgba(value.r(), value.g(), value.b(), value.a())
+    }
+}
 
-    pub const WHITE: Color = Color {
-        r: 1.,
-        g: 1.,
-        b: 1.,
-        a: 1.,
-    };
+impl Color {
+    pub const BLACK: Color = Color::new(0., 0., 0., 1.);
+    pub const WHITE: Color = Color::new(1., 1., 1., 1.);
+
+    pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Self { r, g, b, a }
+    }
 
     pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self {
@@ -78,5 +79,9 @@ impl Color {
                 ((hex) & 0xff) as u8,
             )
         }
+    }
+
+    pub fn to_array(&self) -> [f32; 4] {
+        [self.r, self.g, self.b, self.a]
     }
 }

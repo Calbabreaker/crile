@@ -5,11 +5,11 @@ pub struct TestApp {
     camera: crile::Camera,
     textures: Vec<crile::Texture>,
     instances: Vec<crile::Instance>,
+    egui: crile::egui::EguiContext,
 }
 
 impl crile::Application for TestApp {
     fn init(&mut self, engine: &mut crile::Engine) {
-        engine.gfx.set_vsync(false);
         self.camera.resize(engine.window.size().as_vec2());
         self.camera.ortho_size = 10.0;
         self.textures.push(crile::Texture::from_image(
@@ -30,16 +30,29 @@ impl crile::Application for TestApp {
                 }
             })
             .collect();
+        self.egui.init(engine);
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
         // if engine.input.key_just_pressed(crile::KeyCode::Space) {
         println!("Framerate: {}", engine.time.framerate());
         // }
+        //
+        self.egui.update(engine, |ctx| {
+            egui::Window::new("hello").show(&ctx, |ui| {
+                ui.label("Hello world!");
+                if ui.button("Click me").clicked() {
+                    ui.spinner();
+                }
+            });
+        });
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
-        let mut render_pass = crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK));
+        let mut render_pass =
+            crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK), None);
+
+        self.egui.draw(&mut render_pass);
 
         render_pass.set_texture(&self.textures[0]);
 

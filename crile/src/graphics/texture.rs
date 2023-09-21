@@ -61,6 +61,28 @@ impl Texture {
             sampler_config: SamplerConfig::linear(),
         }
     }
+
+    pub fn as_ref(&self) -> TextureRef {
+        TextureRef::new(&self.gpu_texture, &self.gpu_view)
+    }
+}
+
+pub struct TextureRef<'a> {
+    pub gpu_texture: &'a wgpu::Texture,
+    pub gpu_view: &'a wgpu::TextureView,
+}
+
+impl<'a> TextureRef<'a> {
+    pub fn new(gpu_texture: &'a wgpu::Texture, gpu_view: &'a wgpu::TextureView) -> Self {
+        Self {
+            gpu_texture,
+            gpu_view,
+        }
+    }
+
+    pub fn size(&self) -> glam::UVec2 {
+        glam::uvec2(self.gpu_texture.width(), self.gpu_texture.height())
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
