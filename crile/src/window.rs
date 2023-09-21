@@ -6,7 +6,7 @@ impl Window {
     pub fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
         Self {
             window: winit::window::WindowBuilder::new()
-                .with_title("Opencuboids")
+                .with_title("Crile")
                 .build(event_loop)
                 .unwrap(),
         }

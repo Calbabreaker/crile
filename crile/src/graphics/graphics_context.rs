@@ -1,5 +1,5 @@
 use crate::{
-    window::Window, BindGroupCache, DynamicBufferAllocator, EngineError, Mesh, RefHolder, RefId,
+    window::Window, BindGroupCache, DynamicBufferAllocator, Mesh, RefHolder, RefId,
     RenderPipelineCache, SamplerCache, Shader, ShaderKind, Texture,
 };
 
@@ -87,12 +87,8 @@ impl GraphicsContext {
         }
     }
 
-    pub fn begin_frame(&mut self) -> Result<(), EngineError> {
-        if self.frame.is_some() {
-            return Err(EngineError::RenderError(
-                "called begin frame before end frame".to_string(),
-            ));
-        }
+    pub fn begin_frame(&mut self) {
+        assert!(self.frame.is_none(), "called begin frame before end frame");
 
         let wgpu = &self.wgpu;
         let output = match wgpu.surface.get_current_texture() {
@@ -100,10 +96,9 @@ impl GraphicsContext {
                 // Surface lost or something so reconfigure and try to reobtain
                 wgpu.surface.configure(&wgpu.device, &wgpu.surface_config);
 
-                wgpu.surface.get_current_texture().map_err(|err| {
-                    // If can't get again then something bad happened
-                    EngineError::RenderError(format!("failed to get surface texture {err}"))
-                })?
+                wgpu.surface
+                    .get_current_texture()
+                    .expect("failed to get surface texture")
             }
             Ok(output) => output,
         };
@@ -126,19 +121,16 @@ impl GraphicsContext {
             self.caches.pipeline_holder.free();
             self.caches.bind_group_holder.free();
         }
-
-        Ok(())
     }
 
-    pub fn end_frame(&mut self) -> Result<(), EngineError> {
-        let frame = self.frame.take().ok_or(EngineError::RenderError(
-            "called end frame before begin frame".to_string(),
-        ))?;
+    pub fn end_frame(&mut self) {
+        let frame = self
+            .frame
+            .take()
+            .expect("called end frame before begin frame");
 
         self.wgpu.queue.submit([frame.encoder.finish()]);
         frame.output.present();
-
-        Ok(())
     }
 }
 

@@ -1,8 +1,8 @@
 use std::num::NonZeroU64;
 
 use crate::{
-    BindGroupEntries, Color, EngineError, GfxCaches, GfxData, GraphicsContext, Mesh, MeshVertex,
-    RefId, RenderPipelineConfig, Shader, ShaderKind, Texture, WGPUContext,
+    BindGroupEntries, Color, GfxCaches, GfxData, GraphicsContext, Mesh, MeshVertex, RefId,
+    RenderPipelineConfig, Shader, ShaderKind, Texture, WGPUContext,
 };
 
 #[repr(C)]
@@ -29,13 +29,11 @@ pub struct RenderPass<'a> {
 }
 
 impl<'a> RenderPass<'a> {
-    pub fn new(
-        gfx: &'a mut GraphicsContext,
-        clear_color: Option<Color>,
-    ) -> Result<Self, EngineError> {
-        let frame = gfx.frame.as_mut().ok_or(EngineError::RenderError(
-            "tried to create render pass but frame doesn't exist".to_string(),
-        ))?;
+    pub fn new(gfx: &'a mut GraphicsContext, clear_color: Option<Color>) -> Self {
+        let frame = gfx
+            .frame
+            .as_mut()
+            .expect("tried to create render pass but frame doesn't exist");
 
         let gpu_render_pass = frame
             .encoder
@@ -55,7 +53,7 @@ impl<'a> RenderPass<'a> {
                 depth_stencil_attachment: None,
             });
 
-        Ok(Self {
+        Self {
             gpu_render_pass,
             shader: gfx.data.single_draw_shader.clone(),
             dirty_pipline: true,
@@ -65,7 +63,7 @@ impl<'a> RenderPass<'a> {
             wgpu: &gfx.wgpu,
             caches: &mut gfx.caches,
             data: &gfx.data,
-        })
+        }
     }
 
     pub fn draw_mesh_instanced(&mut self, mesh: &'a Mesh, instances: &[Instance]) {

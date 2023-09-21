@@ -38,8 +38,8 @@ impl crile::Application for TestApp {
         // }
     }
 
-    fn render(&mut self, engine: &mut crile::Engine) -> Result<(), crile::EngineError> {
-        let mut render_pass = crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK))?;
+    fn render(&mut self, engine: &mut crile::Engine) {
+        let mut render_pass = crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK));
 
         render_pass.set_texture(&self.textures[0]);
 
@@ -57,8 +57,6 @@ impl crile::Application for TestApp {
         //     });
         //     render_pass.draw_mesh_single(&render_pass.data.square_mesh);
         // }
-
-        Ok(())
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
@@ -75,5 +73,5 @@ fn main() {
         .filter_module("crile", log::LevelFilter::Trace)
         .filter_level(log::LevelFilter::Error)
         .init();
-    crile::run(TestApp::default()).unwrap_or_else(|error| log::error!("{error}"));
+    crile::run(TestApp::default())
 }
