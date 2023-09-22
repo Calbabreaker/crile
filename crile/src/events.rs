@@ -84,8 +84,8 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
             winit::event::WindowEvent::CursorEntered { .. } => {
                 Event::MouseHoverChanged { hovering: true }
             }
-            _ => None?,
+            _ => return None,
         },
-        _ => None?,
+        _ => return None,
     })
 }

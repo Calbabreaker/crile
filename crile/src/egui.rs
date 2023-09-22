@@ -19,7 +19,9 @@ pub struct EguiContext {
 }
 
 impl EguiContext {
-    pub fn init(&mut self, engine: &mut Engine) {
+    pub fn init(&mut self, engine: &Engine) {
+        self.raw_input.max_texture_side =
+            Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize);
         self.resize(engine.window.size());
     }
 
@@ -123,7 +125,7 @@ impl EguiContext {
         render_pass.reset_scissor_rect();
     }
 
-    pub fn event(&mut self, engine: &mut Engine, event: &Event) {
+    pub fn event(&mut self, engine: &Engine, event: &Event) {
         let mouse_position = to_egui_pos(engine.input.mouse_position());
         let modifiers = to_egui_modifiers(engine.input.key_modifiers());
 

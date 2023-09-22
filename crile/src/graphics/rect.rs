@@ -12,8 +12,10 @@ impl Rect {
     }
 
     pub fn constrain(&mut self, size: glam::Vec2) {
-        self.w = self.w.clamp(0., size.x);
-        self.h = self.h.clamp(0., size.y);
+        self.w = f32::min(self.w, size.x - self.x);
+        self.h = f32::min(self.h, size.y - self.y);
+        self.x = f32::min(self.x, size.x);
+        self.y = f32::min(self.y, size.y);
     }
 
     pub fn matrix(&self) -> glam::Mat4 {
