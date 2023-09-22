@@ -1,6 +1,7 @@
+use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 pub use winit::{
     event::{ElementState as ButtonState, MouseButton},
-    keyboard::{Key, KeyCode},
+    keyboard::{Key, KeyCode, ModifiersState as KeyModifiers},
 };
 
 // We create our own event enum instead of using winit so we can manage it ourselves.
@@ -27,6 +28,17 @@ pub enum Event {
         key: Key,
         /// Represents the physical key on the keyboard not accounting for keyboard layouts
         keycode: KeyCode,
+        text: String,
+    },
+    ModifiersChanged {
+        modifiers: KeyModifiers,
+    },
+    WindowFocusChanged {
+        focused: bool,
+    },
+    /// Sent wheneever the mouse leaves or exits the window
+    MouseHoverChanged {
+        hovering: bool,
     },
     WindowClose,
 }
@@ -38,21 +50,15 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
             winit::event::WindowEvent::Resized(size) => Event::WindowResize {
                 size: glam::UVec2::new(size.width, size.height),
             },
-            winit::event::WindowEvent::KeyboardInput {
-                event:
-                    winit::event::KeyEvent {
-                        state,
-                        logical_key,
-                        physical_key,
-                        repeat,
-                        ..
-                    },
-                ..
-            } => Event::KeyInput {
-                state: *state,
-                key: logical_key.clone(),
-                keycode: *physical_key,
-                repeat: *repeat,
+            winit::event::WindowEvent::ModifiersChanged(modifiers) => Event::ModifiersChanged {
+                modifiers: modifiers.state(),
+            },
+            winit::event::WindowEvent::KeyboardInput { event, .. } => Event::KeyInput {
+                state: event.state,
+                key: event.logical_key.clone(),
+                keycode: event.physical_key,
+                repeat: event.repeat,
+                text: event.text_with_all_modifiers().unwrap_or("").to_string(),
             },
             winit::event::WindowEvent::MouseInput { state, button, .. } => Event::MouseInput {
                 state: *state,
@@ -69,6 +75,15 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
                     delta: glam::Vec2::new(pos.x as f32, pos.y as f32),
                 },
             },
+            winit::event::WindowEvent::Focused(focused) => {
+                Event::WindowFocusChanged { focused: *focused }
+            }
+            winit::event::WindowEvent::CursorLeft { .. } => {
+                Event::MouseHoverChanged { hovering: false }
+            }
+            winit::event::WindowEvent::CursorEntered { .. } => {
+                Event::MouseHoverChanged { hovering: true }
+            }
             _ => None?,
         },
         _ => None?,

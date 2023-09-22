@@ -6,6 +6,8 @@ pub struct TestApp {
     textures: Vec<crile::Texture>,
     instances: Vec<crile::Instance>,
     egui: crile::egui::EguiContext,
+    visibile: bool,
+    text: String,
 }
 
 impl crile::Application for TestApp {
@@ -35,14 +37,17 @@ impl crile::Application for TestApp {
 
     fn update(&mut self, engine: &mut crile::Engine) {
         // if engine.input.key_just_pressed(crile::KeyCode::Space) {
-        println!("Framerate: {}", engine.time.framerate());
+        // println!("Framerate: {}", engine.time.framerate());
         // }
         //
+
         self.egui.update(engine, |ctx| {
             egui::Window::new("hello").show(&ctx, |ui| {
                 ui.label("Hello world!");
-                if ui.button("Click me").clicked() {
-                    ui.spinner();
+                ui.checkbox(&mut self.visibile, "Click me");
+
+                if self.visibile {
+                    ui.text_edit_singleline(&mut self.text);
                 }
             });
         });
@@ -51,8 +56,6 @@ impl crile::Application for TestApp {
     fn render(&mut self, engine: &mut crile::Engine) {
         let mut render_pass =
             crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK), None);
-
-        self.egui.draw(&mut render_pass);
 
         render_pass.set_texture(&self.textures[0]);
 
@@ -70,6 +73,8 @@ impl crile::Application for TestApp {
         //     });
         //     render_pass.draw_mesh_single(&render_pass.data.square_mesh);
         // }
+
+        self.egui.draw(&mut render_pass);
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
@@ -78,6 +83,8 @@ impl crile::Application for TestApp {
             crile::Event::WindowResize { size } => self.camera.resize(size.as_vec2()),
             _ => (),
         }
+
+        self.egui.event(engine, event);
     }
 }
 

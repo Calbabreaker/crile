@@ -168,7 +168,7 @@ impl<'a> RenderPass<'a> {
         }
     }
 
-    pub fn update_pipeline(&mut self) {
+    fn update_pipeline(&mut self) {
         if self.dirty_pipline {
             let uniform_layout = self.caches.bind_group.get_layout(
                 self.wgpu,
@@ -240,5 +240,14 @@ impl<'a> RenderPass<'a> {
             self.caches.bind_group_holder.hold(bind_group),
             offsets,
         );
+    }
+
+    pub fn target_rect(&self) -> Rect {
+        Rect {
+            x: 0.,
+            y: 0.,
+            w: self.target.size().x as f32,
+            h: self.target.size().y as f32,
+        }
     }
 }

@@ -1,7 +1,7 @@
 use core::hash::Hash;
 use std::collections::HashSet;
 
-use crate::{ButtonState, Event, KeyCode, MouseButton};
+use crate::{ButtonState, Event, KeyCode, KeyModifiers, MouseButton};
 
 struct InputState<T> {
     pressed: HashSet<T>,
@@ -41,6 +41,7 @@ pub struct Input {
     key_state: InputState<KeyCode>,
     mouse_state: InputState<MouseButton>,
     mouse_position: glam::Vec2,
+    key_modifiers: KeyModifiers,
 }
 
 impl Input {
@@ -88,6 +89,7 @@ impl Input {
                 ButtonState::Pressed => self.mouse_state.press(*button),
                 ButtonState::Released => self.mouse_state.release(*button),
             },
+            Event::ModifiersChanged { modifiers } => self.key_modifiers = *modifiers,
             Event::MouseMoved { position } => {
                 self.mouse_position = *position;
             }
@@ -99,5 +101,9 @@ impl Input {
     pub fn clear(&mut self) {
         self.mouse_state.clear();
         self.key_state.clear();
+    }
+
+    pub fn key_modifiers(&self) -> KeyModifiers {
+        self.key_modifiers
     }
 }

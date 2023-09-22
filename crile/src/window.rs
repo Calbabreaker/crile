@@ -1,5 +1,8 @@
+use copypasta::ClipboardProvider;
+
 pub struct Window {
     window: winit::window::Window,
+    clipboard: copypasta::ClipboardContext,
 }
 
 impl Window {
@@ -9,6 +12,7 @@ impl Window {
                 .with_title("Crile")
                 .build(event_loop)
                 .unwrap(),
+            clipboard: copypasta::ClipboardContext::new().unwrap(),
         }
     }
 
@@ -29,5 +33,13 @@ impl Window {
 
     pub(crate) fn handle(&self) -> &winit::window::Window {
         &self.window
+    }
+
+    pub fn set_clipboard(&mut self, contents: String) {
+        self.clipboard.set_contents(contents).unwrap();
+    }
+
+    pub fn get_clipboard(&mut self) -> String {
+        self.clipboard.get_contents().unwrap()
     }
 }

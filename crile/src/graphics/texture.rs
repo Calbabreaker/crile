@@ -35,12 +35,7 @@ impl Texture {
         });
 
         wgpu.queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: &gpu_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
+            gpu_texture.as_image_copy(),
             data,
             wgpu::ImageDataLayout {
                 offset: 0,
@@ -85,7 +80,7 @@ impl<'a> TextureRef<'a> {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct SamplerConfig {
     pub clamp_u: wgpu::AddressMode,
     pub clamp_v: wgpu::AddressMode,

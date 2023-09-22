@@ -30,13 +30,6 @@ impl From<Color> for wgpu::Color {
     }
 }
 
-#[cfg(feature = "egui")]
-impl From<egui::Color32> for Color {
-    fn from(value: egui::Color32) -> Self {
-        Self::from_rgba(value.r(), value.g(), value.b(), value.a())
-    }
-}
-
 impl Color {
     pub const BLACK: Color = Color::new(0., 0., 0., 1.);
     pub const WHITE: Color = Color::new(1., 1., 1., 1.);

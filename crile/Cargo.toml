@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 bytemuck = { version = "1", features = ["derive"] }
+copypasta = "0.8.2"
 egui = { version = "0.22", optional = true }
 glam = { version = "0.24", features = ["bytemuck"] }
 hashbrown = "0.14"
