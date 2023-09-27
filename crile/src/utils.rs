@@ -1,13 +1,15 @@
-use std::{rc::Rc, sync::atomic::AtomicU64};
+use std::{any::Any, rc::Rc, sync::atomic::AtomicU64};
 
 /// Wraps the object T in an reference counted smart pointer with a unique id
 /// Allows keeping unique objects and useful for hashing and comparing T
-pub struct RefId<T> {
+pub struct RefId<T: ?Sized> {
     pub object: Rc<T>,
     id: u64,
 }
 
-impl<T> RefId<T> {
+impl<T: Any> RefId<T> {}
+
+impl<T: 'static> RefId<T> {
     pub fn new(object: T) -> Self {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         Self {
@@ -18,6 +20,13 @@ impl<T> RefId<T> {
 
     pub fn id(&self) -> u64 {
         self.id
+    }
+
+    pub fn as_any(self) -> RefId<dyn Any> {
+        RefId {
+            object: self.object,
+            id: self.id,
+        }
     }
 }
 
@@ -30,7 +39,7 @@ impl<T> Clone for RefId<T> {
     }
 }
 
-impl<T> From<T> for RefId<T> {
+impl<T: 'static> From<T> for RefId<T> {
     fn from(value: T) -> Self {
         Self::new(value)
     }
@@ -64,32 +73,34 @@ impl<T> AsRef<T> for RefId<T> {
     }
 }
 
-pub struct RefHolder<T> {
-    refs: Vec<RefId<T>>,
+pub struct RefIdHolder {
+    refs: Vec<RefId<dyn Any>>,
 }
 
-impl<T> RefHolder<T> {
-    pub fn new() -> RefHolder<T> {
+impl RefIdHolder {
+    pub fn new() -> RefIdHolder {
         Self {
             refs: Vec::with_capacity(1024),
         }
     }
 
-    pub fn hold(&mut self, ref_id: RefId<T>) -> &'static T {
+    /// Holds the ref_id and returns a static reference to the inner value
+    /// This ensures the value will live at least until self.free() is called
+    pub fn hold<T>(&mut self, ref_id: RefId<T>) -> &'static T {
         let object = unsafe { std::mem::transmute(ref_id.as_ref()) };
-        self.refs.push(ref_id);
+        self.refs.push(ref_id.as_any());
         object
     }
 
     /// # Safety
-    /// There must not be any references to T still in use or else T might get dropped and cause
+    /// There must not be any references to any ref ids still in use or else it might get dropped and cause
     /// dangling pointers
     pub unsafe fn free(&mut self) {
         self.refs.clear()
     }
 }
 
-impl<T> Default for RefHolder<T> {
+impl Default for RefIdHolder {
     fn default() -> Self {
         Self::new()
     }

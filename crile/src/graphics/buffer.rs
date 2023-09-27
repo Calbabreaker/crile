@@ -19,8 +19,8 @@ pub struct BufferAllocation {
     pub buffer: RefId<wgpu::Buffer>,
 }
 
-// For allocating gpu buffer space to write into
-// This allows using one buffer for multiple uniform/storage data writes which is more efficient
+/// For allocating gpu buffer space to write into
+/// This allows using one buffer for multiple uniform/storage data writes which is more efficient
 pub struct DynamicBufferAllocator {
     buffer_spaces: Vec<DynamicBufferSpace>,
     descriptor: wgpu::BufferDescriptor<'static>,
@@ -43,6 +43,7 @@ impl DynamicBufferAllocator {
         }
     }
 
+    /// Finds a space inside one of the buffers where size fits
     pub fn allocate(&mut self, wgpu: &WGPUContext, size: u64) -> BufferAllocation {
         // TODO: use size.div_ceil once https://github.com/rust-lang/rust/issues/88581 is stablized
         // Aligns size to alignment since gpus require the buffer to have a certain alignment

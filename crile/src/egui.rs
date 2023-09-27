@@ -25,7 +25,11 @@ impl EguiContext {
         self.resize(engine.window.size());
     }
 
-    pub fn update(&mut self, engine: &mut Engine, run_fn: impl FnOnce(&egui::Context)) {
+    pub fn update(
+        &mut self,
+        engine: &mut Engine,
+        run_fn: impl FnOnce(&egui::Context, &mut Engine),
+    ) {
         self.paint_jobs.clear();
 
         if to_egui_modifiers(engine.input.key_modifiers()).command {
@@ -38,7 +42,9 @@ impl EguiContext {
             }
         }
 
-        let mut full_output = self.ctx.run(self.raw_input.clone(), run_fn);
+        let mut full_output = self
+            .ctx
+            .run(self.raw_input.clone(), |ctx| run_fn(ctx, engine));
         let copied_text = full_output.platform_output.copied_text;
         if !copied_text.is_empty() {
             engine.window.set_clipboard(copied_text);

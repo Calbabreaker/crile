@@ -41,7 +41,7 @@ impl crile::Application for TestApp {
         // }
         //
 
-        self.egui.update(engine, |ctx| {
+        self.egui.update(engine, |ctx, engine| {
             egui::Window::new("hello").show(&ctx, |ui| {
                 ui.label("Hello world!");
                 ui.checkbox(&mut self.visibile, "Click me");

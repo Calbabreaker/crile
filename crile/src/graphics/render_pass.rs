@@ -211,7 +211,7 @@ impl<'a> RenderPass<'a> {
             );
 
             self.gpu_render_pass
-                .set_pipeline(self.caches.pipeline_holder.hold(render_pipeline));
+                .set_pipeline(self.caches.ref_id_holder.hold(render_pipeline));
             self.dirty_pipline = false;
         }
     }
@@ -237,7 +237,7 @@ impl<'a> RenderPass<'a> {
             index,
             // We need to use the holder that will hold the RefId until the end of the frame since
             // render_pipeline requires that and using RefId on it's own might drop the inner value
-            self.caches.bind_group_holder.hold(bind_group),
+            self.caches.ref_id_holder.hold(bind_group),
             offsets,
         );
     }

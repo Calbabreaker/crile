@@ -1,5 +1,5 @@
 use crate::{
-    window::Window, BindGroupCache, DynamicBufferAllocator, Mesh, RefHolder, RefId,
+    window::Window, BindGroupCache, DynamicBufferAllocator, Mesh, RefId, RefIdHolder,
     RenderPipelineCache, SamplerCache, Shader, ShaderKind, Texture,
 };
 
@@ -51,8 +51,7 @@ impl GraphicsContext {
                 bind_group: BindGroupCache::default(),
                 render_pipeline: RenderPipelineCache::default(),
                 sampler: SamplerCache::default(),
-                pipeline_holder: RefHolder::new(),
-                bind_group_holder: RefHolder::new(),
+                ref_id_holder: RefIdHolder::new(),
                 uniform_buffer_allocator,
                 storage_buffer_allocator,
             },
@@ -118,8 +117,7 @@ impl GraphicsContext {
         // SAFETY: this gets called at the start of the frame so there should be no references to
         // bind groups or pipelines
         unsafe {
-            self.caches.pipeline_holder.free();
-            self.caches.bind_group_holder.free();
+            self.caches.ref_id_holder.free();
         }
     }
 
@@ -143,8 +141,7 @@ pub struct FrameContext {
 pub struct GfxCaches {
     pub render_pipeline: RenderPipelineCache,
     pub bind_group: BindGroupCache,
-    pub bind_group_holder: RefHolder<wgpu::BindGroup>,
-    pub pipeline_holder: RefHolder<wgpu::RenderPipeline>,
+    pub ref_id_holder: RefIdHolder,
     pub uniform_buffer_allocator: DynamicBufferAllocator,
     pub storage_buffer_allocator: DynamicBufferAllocator,
     pub sampler: SamplerCache,
