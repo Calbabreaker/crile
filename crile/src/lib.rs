@@ -1,3 +1,4 @@
+mod ecs;
 mod engine;
 mod events;
 mod graphics;

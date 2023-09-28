@@ -7,8 +7,6 @@ pub struct RefId<T: ?Sized> {
     id: u64,
 }
 
-impl<T: Any> RefId<T> {}
-
 impl<T: 'static> RefId<T> {
     pub fn new(object: T) -> Self {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -103,5 +101,22 @@ impl RefIdHolder {
 impl Default for RefIdHolder {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Fixed sized map where element is ordered by K and is indexed by binary searching
+pub struct OrderedMap<K, V> {
+    data: Box<[(K, V)]>,
+}
+
+impl<K: Ord + Copy, V> OrderedMap<K, V> {
+    pub fn new(mut data: Box<[(K, V)]>) -> Self {
+        data.sort_unstable_by_key(|(id, _)| *id);
+        Self { data }
+    }
+
+    pub fn get(&self, id: &K) -> Option<&V> {
+        let index = self.data.binary_search_by_key(id, |(id, _)| *id).ok()?;
+        Some(&self.data[index].1)
     }
 }

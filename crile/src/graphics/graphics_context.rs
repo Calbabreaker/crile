@@ -51,7 +51,7 @@ impl GraphicsContext {
                 bind_group: BindGroupCache::default(),
                 render_pipeline: RenderPipelineCache::default(),
                 sampler: SamplerCache::default(),
-                ref_id_holder: RefIdHolder::new(),
+                ref_id_holder: RefIdHolder::default(),
                 uniform_buffer_allocator,
                 storage_buffer_allocator,
             },

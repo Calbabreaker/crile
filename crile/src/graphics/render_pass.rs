@@ -169,51 +169,54 @@ impl<'a> RenderPass<'a> {
     }
 
     fn update_pipeline(&mut self) {
-        if self.dirty_pipline {
-            let uniform_layout = self.caches.bind_group.get_layout(
+        // Only update the pipeline when something changed
+        if !self.dirty_pipline {
+            return;
+        }
+
+        let uniform_layout = self.caches.bind_group.get_layout(
+            self.wgpu,
+            &BindGroupEntries::new().buffer_layout(
+                wgpu::ShaderStages::VERTEX,
+                wgpu::BufferBindingType::Uniform,
+                true,
+            ),
+        );
+
+        let texture_layout = self.caches.bind_group.get_layout(
+            self.wgpu,
+            &BindGroupEntries::new()
+                .texture_layout(wgpu::ShaderStages::FRAGMENT)
+                .sampler_layout(wgpu::ShaderStages::FRAGMENT),
+        );
+
+        let mut layouts = vec![uniform_layout, texture_layout];
+
+        if self.shader.kind == ShaderKind::Instanced {
+            let instances_layout = self.caches.bind_group.get_layout(
                 self.wgpu,
                 &BindGroupEntries::new().buffer_layout(
                     wgpu::ShaderStages::VERTEX,
-                    wgpu::BufferBindingType::Uniform,
+                    wgpu::BufferBindingType::Storage { read_only: true },
                     true,
                 ),
             );
-
-            let texture_layout = self.caches.bind_group.get_layout(
-                self.wgpu,
-                &BindGroupEntries::new()
-                    .texture_layout(wgpu::ShaderStages::FRAGMENT)
-                    .sampler_layout(wgpu::ShaderStages::FRAGMENT),
-            );
-
-            let mut layouts = vec![uniform_layout, texture_layout];
-
-            if self.shader.kind == ShaderKind::Instanced {
-                let instances_layout = self.caches.bind_group.get_layout(
-                    self.wgpu,
-                    &BindGroupEntries::new().buffer_layout(
-                        wgpu::ShaderStages::VERTEX,
-                        wgpu::BufferBindingType::Storage { read_only: true },
-                        true,
-                    ),
-                );
-                layouts.push(instances_layout);
-            }
-
-            let render_pipeline = self.caches.render_pipeline.get(
-                self.wgpu,
-                RenderPipelineConfig {
-                    shader: self.shader.clone(),
-                    vertex_buffer_layouts: &[MeshVertex::LAYOUT],
-                    blend_mode: self.blend_mode,
-                },
-                &layouts,
-            );
-
-            self.gpu_render_pass
-                .set_pipeline(self.caches.ref_id_holder.hold(render_pipeline));
-            self.dirty_pipline = false;
+            layouts.push(instances_layout);
         }
+
+        let render_pipeline = self.caches.render_pipeline.get(
+            self.wgpu,
+            RenderPipelineConfig {
+                shader: self.shader.clone(),
+                vertex_buffer_layouts: &[MeshVertex::LAYOUT],
+                blend_mode: self.blend_mode,
+            },
+            &layouts,
+        );
+
+        self.gpu_render_pass
+            .set_pipeline(self.caches.ref_id_holder.hold(render_pipeline));
+        self.dirty_pipline = false;
     }
 
     /// Set the rect area where pixels will be visible
