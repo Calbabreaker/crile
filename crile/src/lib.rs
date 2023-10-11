@@ -10,6 +10,7 @@ mod window;
 #[cfg(feature = "egui")]
 pub mod egui;
 
+pub use ecs::*;
 pub use engine::*;
 pub use events::*;
 pub use graphics::*;

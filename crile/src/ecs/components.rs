@@ -1,14 +1,21 @@
-use std::sync::atomic::{AtomicI32, AtomicU32};
-
 pub struct TransformComponent {
-    translation: glam::Vec3,
-    rotation: glam::Vec3,
-    scale: glam::Vec3,
+    pub translation: glam::Vec3,
+    pub rotation: glam::Vec3,
+    pub scale: glam::Vec3,
+}
+
+impl Default for TransformComponent {
+    fn default() -> Self {
+        Self {
+            translation: glam::Vec3::ZERO,
+            rotation: glam::Vec3::ZERO,
+            scale: glam::Vec3::ONE,
+        }
+    }
 }
 
 impl TransformComponent {
     pub fn matrix(&self) -> glam::Mat4 {
-        f32::INFINITY;
         glam::Mat4::from_scale_rotation_translation(
             self.scale,
             glam::Quat::from_scaled_axis(self.rotation),

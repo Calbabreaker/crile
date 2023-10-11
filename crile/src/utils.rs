@@ -105,11 +105,11 @@ impl Default for RefIdHolder {
 }
 
 /// Fixed sized map where element is ordered by K and is indexed by binary searching
-pub struct OrderedMap<K, V> {
+pub struct FixedOrderedMap<K, V> {
     data: Box<[(K, V)]>,
 }
 
-impl<K: Ord + Copy, V> OrderedMap<K, V> {
+impl<K: Ord + Copy, V> FixedOrderedMap<K, V> {
     pub fn new(mut data: Box<[(K, V)]>) -> Self {
         data.sort_unstable_by_key(|(id, _)| *id);
         Self { data }

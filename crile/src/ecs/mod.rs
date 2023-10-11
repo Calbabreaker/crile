@@ -1,5 +1,7 @@
 mod archetype;
 pub mod components;
-mod entity;
 mod scene;
 mod world;
+
+pub use archetype::*;
+pub use world::*;

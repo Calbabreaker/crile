@@ -8,6 +8,7 @@ pub struct TestApp {
     egui: crile::egui::EguiContext,
     visibile: bool,
     text: String,
+    world: crile::World,
 }
 
 impl crile::Application for TestApp {
@@ -33,6 +34,9 @@ impl crile::Application for TestApp {
             })
             .collect();
         self.egui.init(engine);
+
+        self.world
+            .spawn((crile::components::TransformComponent::default(),));
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
@@ -42,7 +46,7 @@ impl crile::Application for TestApp {
         //
 
         self.egui.update(engine, |ctx, engine| {
-            egui::Window::new("hello").show(&ctx, |ui| {
+            egui::Window::new("hello").show(ctx, |ui| {
                 ui.label("Hello world!");
                 ui.checkbox(&mut self.visibile, "Click me");
 
