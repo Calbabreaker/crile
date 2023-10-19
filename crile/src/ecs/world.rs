@@ -1,19 +1,20 @@
 use std::any::TypeId;
 
-use crate::{QueryIter, QueryIterMut};
-
-use super::archetype::{Archetype, ComponentTuple};
+use crate::{Archetype, ComponentTuple, QueryIter, QueryIterMut};
 
 pub type EntityID = usize;
 
 /// This ECS works by storing a bunch of archetypes where each archetype stores all the components
-/// of entties that have the same components.
+/// of entities that have the same components.
+/// Then when querying, it will go to each archetype and will only get components in that archetype
+/// if that archetype contains the components in the query.
 /// This means that it is more optimized for querying components rather than adding/removing components.
 #[derive(Default)]
 pub struct World {
     pub(crate) archetypes: Vec<Archetype>,
     /// Maps to the archetype index inside self.archetypes
     type_ids_index_map: hashbrown::HashMap<Box<[TypeId]>, usize>,
+    /// Maps to the archetype index inside self.archetypes
     bundle_id_index_map: hashbrown::HashMap<TypeId, usize>,
 
     entity_count: EntityID,

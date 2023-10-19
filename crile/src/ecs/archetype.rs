@@ -198,6 +198,9 @@ pub trait ComponentTuple {
     fn take_all(self, put_func: impl Fn(*mut u8, TypeInfo));
 
     type ArrayPtrTuple;
+
+    /// Gets a tuple of component arrays from the archetype that matches this component tuple
+    /// We use a static sized tuple to prevent unnecessary heap allocation
     fn get_array_ptr_tuple(archetype: &Archetype) -> Option<Self::ArrayPtrTuple>;
 
     /// Gets the component bundle (self) as a reference to each component from component array pointers

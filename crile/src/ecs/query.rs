@@ -9,7 +9,7 @@ pub struct QueryIter<'w, T: ComponentTuple> {
 }
 
 impl<'w, T: ComponentTuple> QueryIter<'w, T> {
-    pub fn new(world: &'w World) -> Self {
+    pub(crate) fn new(world: &'w World) -> Self {
         Self {
             next_archetype_index: 0,
             current_iter: ArchetypeIter::empty(),
@@ -18,7 +18,7 @@ impl<'w, T: ComponentTuple> QueryIter<'w, T> {
         }
     }
 
-    pub fn next_archetype(&mut self) -> Option<()> {
+    fn next_archetype(&mut self) -> Option<()> {
         let archetype = self.world.archetypes.get(self.next_archetype_index)?;
         self.current_iter = ArchetypeIter::new(archetype);
         self.next_archetype_index += 1;
@@ -52,7 +52,7 @@ pub struct QueryIterMut<'w, T: ComponentTuple> {
 
 impl<'w, T: ComponentTuple> QueryIterMut<'w, T> {
     #[allow(clippy::needless_pass_by_ref_mut)]
-    pub fn new(world: &'w mut World) -> Self {
+    pub(crate) fn new(world: &'w mut World) -> Self {
         Self {
             query: QueryIter::new(world),
         }
