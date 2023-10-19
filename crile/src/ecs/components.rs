@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct TransformComponent {
     pub translation: glam::Vec3,
     pub rotation: glam::Vec3,

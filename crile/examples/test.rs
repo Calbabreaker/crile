@@ -35,14 +35,14 @@ impl crile::Application for TestApp {
             .collect();
         self.egui.init(engine);
 
-        self.world
-            .spawn((crile::components::TransformComponent::default(),));
+        self.world.spawn((crile::TransformComponent::default(),));
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
         // if engine.input.key_just_pressed(crile::KeyCode::Space) {
         // println!("Framerate: {}", engine.time.framerate());
         // }
+        //
         //
 
         self.egui.update(engine, |ctx, engine| {
@@ -52,6 +52,10 @@ impl crile::Application for TestApp {
 
                 if self.visibile {
                     ui.text_edit_singleline(&mut self.text);
+                }
+
+                for (transform,) in self.world.query_mut::<(crile::TransformComponent,)>() {
+                    ui.label(format!("{transform:?}"));
                 }
             });
         });

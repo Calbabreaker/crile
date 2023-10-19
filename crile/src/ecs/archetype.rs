@@ -37,9 +37,9 @@ impl Archetype {
         }
     }
 
-    pub fn put_bundle<T: ComponentBundle>(&mut self, entity_index: usize, components: T) {
+    pub fn put_bundle<T: ComponentTuple>(&mut self, entity_index: usize, components: T) {
         assert!(entity_index < self.count);
-        components.take(|ptr, info| {
+        components.take_all(|ptr, info| {
             if let Some(index) = self.index_map.get(&info.id) {
                 unsafe {
                     let array = self.component_arrays.get_unchecked(*index);
@@ -50,7 +50,7 @@ impl Archetype {
                     );
                 }
             } else {
-                panic!("components does not match the archetype components");
+                panic!("component {info:?} was not in the archetype");
             }
         });
     }
@@ -62,7 +62,7 @@ impl Archetype {
         }
 
         let index = self.count;
-        self.entities[self.count] = entity;
+        self.entities[index] = entity;
         self.count += 1;
         index
     }
@@ -85,9 +85,39 @@ impl Archetype {
             }
         }
     }
+
+    fn get_array_ptr<T: 'static>(&self) -> Option<*mut T> {
+        let array_index = self.index_map.get(&TypeId::of::<T>())?;
+        Some(self.component_arrays[*array_index].ptr.cast())
+    }
+
+    pub fn get_count(&self) -> usize {
+        self.count
+    }
+}
+
+impl Drop for Archetype {
+    fn drop(&mut self) {
+        if self.entities.len() == 0 {
+            return;
+        }
+
+        for array in self.component_arrays.iter() {
+            unsafe {
+                std::alloc::dealloc(
+                    array.ptr,
+                    std::alloc::Layout::from_size_align_unchecked(
+                        array.type_info.layout.size() * self.entities.len(),
+                        array.type_info.layout.align(),
+                    ),
+                );
+            }
+        }
+    }
 }
 
 struct ComponentArray {
+    /// Pointer to the allocated array
     /// We need to store the array as a raw ptr to allow for multiple types (can't use generics)
     /// This also means we need to manage the memory manually
     ptr: *mut u8,
@@ -97,35 +127,23 @@ struct ComponentArray {
 impl ComponentArray {
     unsafe fn grow(&mut self, old_cap: usize, new_cap: usize, count: usize) {
         // We need to allocate new space manually since we don't have access the generic component type here
-        let data = std::alloc::alloc(
-            std::alloc::Layout::from_size_align(
-                self.type_info.layout.size() * new_cap,
-                self.type_info.layout.align(),
-            )
-            .unwrap(),
-        );
+        let data = std::alloc::alloc(std::alloc::Layout::from_size_align_unchecked(
+            self.type_info.layout.size() * new_cap,
+            self.type_info.layout.align(),
+        ));
 
         std::ptr::copy_nonoverlapping(self.ptr, data.cast(), count);
         if old_cap > 0 {
             std::alloc::dealloc(
                 self.ptr.cast(),
-                std::alloc::Layout::from_size_align(
+                std::alloc::Layout::from_size_align_unchecked(
                     self.type_info.layout.size() * old_cap,
                     self.type_info.layout.align(),
-                )
-                .unwrap(),
+                ),
             );
         }
 
         self.ptr = data.cast();
-    }
-}
-
-impl Drop for ComponentArray {
-    fn drop(&mut self) {
-        unsafe {
-            std::alloc::dealloc(self.ptr, self.type_info.layout);
-        }
     }
 }
 
@@ -164,21 +182,43 @@ impl Ord for TypeInfo {
     }
 }
 
-pub trait ComponentBundle {
+/// Represents a tuple of components of any type
+/// It is automatically implemented for every tuple
+pub trait ComponentTuple {
+    /// The bundle but every component as a ref
+    type RefBundle<'a>;
+    /// The bundle but every component as a mut ref
+    type MutBundle<'a>;
+
     fn type_infos() -> &'static [TypeInfo];
     fn type_ids() -> &'static [TypeId];
     fn bundle_id() -> TypeId;
 
-    /// Moves every component in the bundle to whatever put_func does and consuming self
-    fn take(self, put_func: impl Fn(*mut u8, TypeInfo));
+    /// Moves every component from the bundle to whatever put_func does and consumes self
+    fn take_all(self, put_func: impl Fn(*mut u8, TypeInfo));
 
-    type PtrTuple;
+    type ArrayPtrTuple;
+    fn get_array_ptr_tuple(archetype: &Archetype) -> Option<Self::ArrayPtrTuple>;
 
-    fn get_component_array_ptrs(archetype: &Archetype) -> Self::PtrTuple;
-    unsafe fn ptrs_to_bundle(component_array_ptrs: Self::PtrTuple, index: usize) -> Self;
+    /// Gets the component bundle (self) as a reference to each component from component array pointers
+    /// obtained from [Self::get_array_ptr_bundle]
+    ///
+    /// # Safety
+    /// - Index must not be greater than the array size
+    /// - Since it returns mutable references to each component, it assumes borrow rules have been it met
+    unsafe fn array_ptr_tuple_get<'a>(
+        ptr_bundle: &Self::ArrayPtrTuple,
+        index: usize,
+    ) -> Self::MutBundle<'a>;
+
+    fn as_ref(mut_bundle: Self::MutBundle<'_>) -> Self::RefBundle<'_>;
 }
 
-impl<T1: 'static> ComponentBundle for (T1,) {
+// TODO: make a macro that impls for (T1, T2, T3, etc.)
+impl<T1: 'static> ComponentTuple for (T1,) {
+    type RefBundle<'a> = (&'a T1,);
+    type MutBundle<'a> = (&'a mut T1,);
+
     fn type_infos() -> &'static [TypeInfo] {
         static TYPE_INFOS: OnceLock<[TypeInfo; 1]> = OnceLock::new();
         TYPE_INFOS.get_or_init(|| {
@@ -201,17 +241,24 @@ impl<T1: 'static> ComponentBundle for (T1,) {
         TypeId::of::<(T1,)>()
     }
 
-    fn take(mut self, put_func: impl Fn(*mut u8, TypeInfo)) {
+    fn take_all(mut self, put_func: impl Fn(*mut u8, TypeInfo)) {
         put_func(&mut self.0 as *mut T1 as *mut u8, TypeInfo::of::<T1>());
     }
 
-    type PtrTuple = (*mut u8,);
+    type ArrayPtrTuple = (*mut T1,);
 
-    fn get_component_array_ptrs(archetype: &Archetype) -> Self::PtrTuple {
-        (archetype.component_arrays[*archetype.index_map.get(&TypeId::of::<T1>()).unwrap()].ptr,)
+    fn get_array_ptr_tuple(archetype: &Archetype) -> Option<Self::ArrayPtrTuple> {
+        Some((archetype.get_array_ptr::<T1>()?,))
     }
 
-    unsafe fn ptrs_to_bundle(component_array_ptrs: Self::PtrTuple, index: usize) -> Self {
-        (*component_array_ptrs.0.cast::<T1>(),)
+    unsafe fn array_ptr_tuple_get<'a>(
+        ptr_bundle: &Self::ArrayPtrTuple,
+        index: usize,
+    ) -> Self::MutBundle<'a> {
+        (&mut *ptr_bundle.0.add(index),)
+    }
+
+    fn as_ref(mut_bundle: Self::MutBundle<'_>) -> Self::RefBundle<'_> {
+        (mut_bundle.0,)
     }
 }
