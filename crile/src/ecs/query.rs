@@ -25,9 +25,9 @@ impl<'w, T: ComponentTuple> QueryIter<'w, T> {
         Some(())
     }
 
-    unsafe fn next_mut(&mut self) -> Option<T::MutBundle<'w>> {
+    unsafe fn next_mut(&mut self) -> Option<T::MutTuple<'w>> {
         match self.current_iter.next() {
-            Some(bundle) => Some(bundle),
+            Some(tuple) => Some(tuple),
             None => {
                 self.next_archetype()?;
                 self.next_mut()
@@ -37,14 +37,14 @@ impl<'w, T: ComponentTuple> QueryIter<'w, T> {
 }
 
 impl<'w, T: ComponentTuple> Iterator for QueryIter<'w, T> {
-    type Item = T::RefBundle<'w>;
+    type Item = T::RefTuple<'w>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        unsafe { Some(T::as_ref(self.next_mut()?)) }
+        unsafe { Some(T::mut_to_ref(self.next_mut()?)) }
     }
 }
 
-/// This is the same as QueryIter (it uses it internally) but it requires mutablly borrowing world
+/// This is the same as QueryIter (it uses it internally) but requires mutably borrowing World
 /// in order to ensure borrow rules
 pub struct QueryIterMut<'w, T: ComponentTuple> {
     query: QueryIter<'w, T>,
@@ -60,7 +60,7 @@ impl<'w, T: ComponentTuple> QueryIterMut<'w, T> {
 }
 
 impl<'w, T: ComponentTuple> Iterator for QueryIterMut<'w, T> {
-    type Item = T::MutBundle<'w>;
+    type Item = T::MutTuple<'w>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.query.next_mut() }
@@ -76,10 +76,10 @@ struct ArchetypeIter<T: ComponentTuple> {
 impl<T: ComponentTuple> ArchetypeIter<T> {
     fn new(archetype: &Archetype) -> Self {
         match T::get_array_ptr_tuple(archetype) {
-            Some(array_ptr_bundle) => Self {
+            Some(array_ptr_uple) => Self {
                 index: 0,
                 count: archetype.get_count(),
-                array_ptr_tuple: Some(array_ptr_bundle),
+                array_ptr_tuple: Some(array_ptr_uple),
             },
             None => Self::empty(),
         }
@@ -93,14 +93,14 @@ impl<T: ComponentTuple> ArchetypeIter<T> {
         }
     }
 
-    unsafe fn next<'a>(&mut self) -> Option<T::MutBundle<'a>> {
+    unsafe fn next<'a>(&mut self) -> Option<T::MutTuple<'a>> {
         if self.index < self.count {
-            let bundle = T::array_ptr_tuple_get(
+            let component_tuple = T::array_ptr_tuple_get(
                 self.array_ptr_tuple.as_ref().unwrap_unchecked(),
                 self.index,
             );
             self.index += 1;
-            Some(bundle)
+            Some(component_tuple)
         } else {
             None
         }

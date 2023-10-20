@@ -37,17 +37,14 @@ impl Archetype {
         }
     }
 
-    pub fn put_bundle<T: ComponentTuple>(&mut self, entity_index: usize, components: T) {
-        assert!(entity_index < self.count);
+    pub(crate) fn put_components<T: ComponentTuple>(&mut self, index: usize, components: T) {
+        assert!(index < self.count);
+
         components.take_all(|ptr, info| {
             if let Some(index) = self.index_map.get(&info.id) {
                 unsafe {
                     let array = self.component_arrays.get_unchecked(*index);
-                    std::ptr::copy_nonoverlapping(
-                        ptr,
-                        array.ptr.add(entity_index),
-                        info.layout.size(),
-                    );
+                    std::ptr::copy_nonoverlapping(ptr, array.ptr.add(*index), info.layout.size());
                 }
             } else {
                 panic!("component {info:?} was not in the archetype");
@@ -55,7 +52,7 @@ impl Archetype {
         });
     }
 
-    pub fn new_entity(&mut self, entity: EntityID) -> usize {
+    pub(crate) fn new_entity(&mut self, entity: EntityID) -> usize {
         if self.count >= self.entities.len() {
             // Grow by double or at least 32
             self.grow(self.entities.len().max(32))
@@ -65,6 +62,28 @@ impl Archetype {
         self.entities[index] = entity;
         self.count += 1;
         index
+    }
+
+    pub(crate) fn remove(&mut self, index: usize) -> EntityID {
+        assert!(index < self.count);
+
+        // Moves the last item to index and decrement length by 1
+        let last_index = self.count - 1;
+        if index != last_index {
+            for array in self.component_arrays.iter() {
+                unsafe {
+                    let size = array.type_info.layout.size();
+                    let to_remove = array.ptr.add(index * size);
+                    let last = array.ptr.add(last_index * size);
+                    std::ptr::copy_nonoverlapping(last, to_remove, size);
+                }
+            }
+
+            self.entities[index] = self.entities[last_index];
+        }
+
+        self.count -= 1;
+        self.entities[index]
     }
 
     fn grow(&mut self, amount: usize) {
@@ -185,16 +204,11 @@ impl Ord for TypeInfo {
 /// Represents a tuple of components of any type
 /// It is automatically implemented for every tuple
 pub trait ComponentTuple {
-    /// The bundle but every component as a ref
-    type RefBundle<'a>;
-    /// The bundle but every component as a mut ref
-    type MutBundle<'a>;
-
     fn type_infos() -> &'static [TypeInfo];
     fn type_ids() -> &'static [TypeId];
-    fn bundle_id() -> TypeId;
+    fn id() -> TypeId;
 
-    /// Moves every component from the bundle to whatever put_func does and consumes self
+    /// Moves every component from the tuple to whatever put_func does and consumes self
     fn take_all(self, put_func: impl Fn(*mut u8, TypeInfo));
 
     type ArrayPtrTuple;
@@ -203,25 +217,28 @@ pub trait ComponentTuple {
     /// We use a static sized tuple to prevent unnecessary heap allocation
     fn get_array_ptr_tuple(archetype: &Archetype) -> Option<Self::ArrayPtrTuple>;
 
-    /// Gets the component bundle (self) as a reference to each component from component array pointers
-    /// obtained from [Self::get_array_ptr_bundle]
+    /// Gets the component tuple (self) as a reference to each component from component array pointers
+    /// obtained from [Self::get_array_ptr_tuple]
     ///
     /// # Safety
     /// - Index must not be greater than the array size
     /// - Since it returns mutable references to each component, it assumes borrow rules have been it met
     unsafe fn array_ptr_tuple_get<'a>(
-        ptr_bundle: &Self::ArrayPtrTuple,
+        ptr_tuple: &Self::ArrayPtrTuple,
         index: usize,
-    ) -> Self::MutBundle<'a>;
+    ) -> Self::MutTuple<'a>;
 
-    fn as_ref(mut_bundle: Self::MutBundle<'_>) -> Self::RefBundle<'_>;
+    /// The tuple but every component as a ref
+    type RefTuple<'a>;
+    /// The tuple but every component as a mut ref
+    type MutTuple<'a>;
+
+    // Converts a tuple of mutable component reference to non mutable ones
+    fn mut_to_ref(mut_tuple: Self::MutTuple<'_>) -> Self::RefTuple<'_>;
 }
 
 // TODO: make a macro that impls for (T1, T2, T3, etc.)
 impl<T1: 'static> ComponentTuple for (T1,) {
-    type RefBundle<'a> = (&'a T1,);
-    type MutBundle<'a> = (&'a mut T1,);
-
     fn type_infos() -> &'static [TypeInfo] {
         static TYPE_INFOS: OnceLock<[TypeInfo; 1]> = OnceLock::new();
         TYPE_INFOS.get_or_init(|| {
@@ -240,7 +257,7 @@ impl<T1: 'static> ComponentTuple for (T1,) {
         })
     }
 
-    fn bundle_id() -> TypeId {
+    fn id() -> TypeId {
         TypeId::of::<(T1,)>()
     }
 
@@ -255,13 +272,16 @@ impl<T1: 'static> ComponentTuple for (T1,) {
     }
 
     unsafe fn array_ptr_tuple_get<'a>(
-        ptr_bundle: &Self::ArrayPtrTuple,
+        ptr_tuple: &Self::ArrayPtrTuple,
         index: usize,
-    ) -> Self::MutBundle<'a> {
-        (&mut *ptr_bundle.0.add(index),)
+    ) -> Self::MutTuple<'a> {
+        (&mut *ptr_tuple.0.add(index),)
     }
 
-    fn as_ref(mut_bundle: Self::MutBundle<'_>) -> Self::RefBundle<'_> {
-        (mut_bundle.0,)
+    type RefTuple<'a> = (&'a T1,);
+    type MutTuple<'a> = (&'a mut T1,);
+
+    fn mut_to_ref(mut_tuple: Self::MutTuple<'_>) -> Self::RefTuple<'_> {
+        (mut_tuple.0,)
     }
 }

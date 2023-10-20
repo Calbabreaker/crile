@@ -35,7 +35,12 @@ impl crile::Application for TestApp {
             .collect();
         self.egui.init(engine);
 
+        let entitya = self.world.spawn((crile::TransformComponent::default(),));
         self.world.spawn((crile::TransformComponent::default(),));
+        self.world.despawn(entitya);
+        let entity = self.world.spawn((crile::TransformComponent::default(),));
+        assert!(entitya == entity);
+        dbg!(entity);
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
@@ -54,7 +59,7 @@ impl crile::Application for TestApp {
                     ui.text_edit_singleline(&mut self.text);
                 }
 
-                for (transform,) in self.world.query_mut::<(crile::TransformComponent,)>() {
+                for (transform,) in self.world.query::<(crile::TransformComponent,)>() {
                     ui.label(format!("{transform:?}"));
                 }
             });
