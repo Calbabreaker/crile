@@ -12,7 +12,7 @@ pub struct Archetype {
 }
 
 impl Archetype {
-    pub fn new(type_infos: &[TypeInfo]) -> Self {
+    pub(crate) fn new(type_infos: &[TypeInfo]) -> Self {
         let index_map = FixedOrderedMap::new(
             type_infos
                 .iter()
@@ -40,14 +40,16 @@ impl Archetype {
     pub(crate) fn put_components<T: ComponentTuple>(&mut self, index: usize, components: T) {
         assert!(index < self.count);
 
-        components.take_all(|ptr, info| {
-            if let Some(index) = self.index_map.get(&info.id) {
-                unsafe {
-                    let array = self.component_arrays.get_unchecked(*index);
-                    std::ptr::copy_nonoverlapping(ptr, array.ptr.add(*index), info.layout.size());
-                }
-            } else {
-                panic!("component {info:?} was not in the archetype");
+        components.take_all(|ptr, id| {
+            let component_array_index = self
+                .index_map
+                .get(&id)
+                .expect("component was not in the archetype");
+
+            unsafe {
+                let array = self.component_arrays.get_unchecked(*component_array_index);
+                let size = array.type_info.layout.size();
+                std::ptr::copy_nonoverlapping(ptr, array.ptr.add(index * size), size);
             }
         });
     }
@@ -106,8 +108,8 @@ impl Archetype {
     }
 
     fn get_array_ptr<T: 'static>(&self) -> Option<*mut T> {
-        let array_index = self.index_map.get(&TypeId::of::<T>())?;
-        Some(self.component_arrays[*array_index].ptr.cast())
+        let index = self.index_map.get(&TypeId::of::<T>())?;
+        Some(unsafe { self.component_arrays.get_unchecked(*index).ptr.cast() })
     }
 
     pub fn get_count(&self) -> usize {
@@ -209,7 +211,7 @@ pub trait ComponentTuple {
     fn id() -> TypeId;
 
     /// Moves every component from the tuple to whatever put_func does and consumes self
-    fn take_all(self, put_func: impl Fn(*mut u8, TypeInfo));
+    fn take_all(self, put_func: impl Fn(*mut u8, TypeId));
 
     type ArrayPtrTuple;
 
@@ -261,8 +263,8 @@ impl<T1: 'static> ComponentTuple for (T1,) {
         TypeId::of::<(T1,)>()
     }
 
-    fn take_all(mut self, put_func: impl Fn(*mut u8, TypeInfo)) {
-        put_func(&mut self.0 as *mut T1 as *mut u8, TypeInfo::of::<T1>());
+    fn take_all(mut self, put_func: impl Fn(*mut u8, TypeId)) {
+        put_func(&mut self.0 as *mut T1 as *mut u8, TypeId::of::<T1>());
     }
 
     type ArrayPtrTuple = (*mut T1,);
