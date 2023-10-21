@@ -1,0 +1,9 @@
+[package]
+name = "crile-editor"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+egui = { version = "0.22" }
+glam = { version = "0.24", features = ["bytemuck"] }
+crile = { path = "../crile" }

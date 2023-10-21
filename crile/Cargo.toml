@@ -12,7 +12,6 @@ hashbrown = "0.14"
 image = { version = "0.24", default-features = false, features = ["png", "jpeg"] }
 log = "0.4"
 pollster = "0.3"
-thiserror = "1"
 wgpu = "0.17"
 winit = "0.29.1-beta"
 env_logger = "0.10"

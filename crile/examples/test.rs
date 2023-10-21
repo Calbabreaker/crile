@@ -89,7 +89,7 @@ impl crile::Application for TestApp {
         //     render_pass.draw_mesh_single(&render_pass.data.square_mesh);
         // }
 
-        self.egui.draw(&mut render_pass);
+        self.egui.render(&mut render_pass);
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {

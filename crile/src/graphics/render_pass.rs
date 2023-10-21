@@ -1,8 +1,8 @@
 use std::num::NonZeroU64;
 
 use crate::{
-    BindGroupEntries, Color, GfxCaches, GfxData, GraphicsContext, Mesh, MeshVertex, Rect, RefId,
-    RenderPipelineConfig, Shader, ShaderKind, Texture, TextureRef, WGPUContext,
+    BindGroupEntries, Color, GraphicsCaches, GraphicsContext, GraphicsData, Mesh, MeshVertex, Rect,
+    RefId, RenderPipelineConfig, Shader, ShaderKind, Texture, TextureRef, WGPUContext,
 };
 
 #[repr(C)]
@@ -28,8 +28,8 @@ pub struct RenderPass<'a> {
 
     pub target: TextureRef<'a>,
     wgpu: &'a WGPUContext,
-    caches: &'a mut GfxCaches,
-    pub data: &'a GfxData,
+    caches: &'a mut GraphicsCaches,
+    pub data: &'a GraphicsData,
 }
 
 impl<'a> RenderPass<'a> {

@@ -43,9 +43,8 @@ impl Engine {
     }
 
     fn event(&mut self, app: &mut impl Application, event: &Event) {
-        match event {
-            Event::WindowResize { size } => self.gfx.resize(*size),
-            _ => (),
+        if let Event::WindowResize { size } = event {
+            self.gfx.resize(*size)
         };
 
         self.input.process_event(event);

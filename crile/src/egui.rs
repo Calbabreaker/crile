@@ -116,7 +116,7 @@ impl EguiContext {
         self.raw_input.events.clear();
     }
 
-    pub fn draw<'a>(&'a mut self, render_pass: &mut RenderPass<'a>) {
+    pub fn render<'a>(&'a mut self, render_pass: &mut RenderPass<'a>) {
         render_pass.set_shader(render_pass.data.single_draw_shader.clone());
         render_pass.set_uniform(DrawUniform {
             transform: render_pass.target_rect().matrix(),

@@ -1,3 +1,4 @@
 [workspace]
-members = ["crile"]
+members = ["crile", "crile-editor"]
+default-members = ["crile-editor"]
 resolver = "2"

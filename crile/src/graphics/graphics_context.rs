@@ -6,8 +6,8 @@ use crate::{
 pub struct GraphicsContext {
     pub wgpu: WGPUContext,
     pub frame: Option<FrameContext>,
-    pub data: GfxData,
-    pub caches: GfxCaches,
+    pub data: GraphicsData,
+    pub caches: GraphicsCaches,
 }
 
 impl GraphicsContext {
@@ -41,13 +41,13 @@ impl GraphicsContext {
         );
 
         Self {
-            data: GfxData {
+            data: GraphicsData {
                 square_mesh: Mesh::new_square(&wgpu),
                 white_texture: Texture::new(&wgpu, 1, 1, &[255, 255, 255, 255]),
                 instanced_shader: RefId::new(instanced_shader),
                 single_draw_shader: RefId::new(single_draw_shader),
             },
-            caches: GfxCaches {
+            caches: GraphicsCaches {
                 bind_group: BindGroupCache::default(),
                 render_pipeline: RenderPipelineCache::default(),
                 sampler: SamplerCache::default(),
@@ -138,7 +138,7 @@ pub struct FrameContext {
     pub output: wgpu::SurfaceTexture,
 }
 
-pub struct GfxCaches {
+pub struct GraphicsCaches {
     pub render_pipeline: RenderPipelineCache,
     pub bind_group: BindGroupCache,
     pub ref_id_holder: RefIdHolder,
@@ -147,7 +147,7 @@ pub struct GfxCaches {
     pub sampler: SamplerCache,
 }
 
-pub struct GfxData {
+pub struct GraphicsData {
     pub white_texture: Texture,
     pub square_mesh: Mesh,
     pub single_draw_shader: RefId<Shader>,

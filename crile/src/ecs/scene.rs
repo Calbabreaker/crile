@@ -1,6 +1,6 @@
 use crate::{
-    CameraComponent, Color, DrawUniform, GraphicsContext, RenderInstance, RenderPass,
-    SpriteRendererComponent, TransformComponent, World,
+    CameraComponent, DrawUniform, RenderInstance, RenderPass, SpriteRendererComponent,
+    TransformComponent, World,
 };
 
 #[derive(Default)]
@@ -10,7 +10,7 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn render(&mut self, gfx: &mut GraphicsContext) {
+    pub fn render(&mut self, render_pass: &mut RenderPass) {
         if let Some((camera_transform, camera)) = self
             .world
             .query::<(TransformComponent, CameraComponent)>()
@@ -30,7 +30,6 @@ impl Scene {
 
             let view_matrix = camera_transform.get_matrix().inverse();
 
-            let mut render_pass = RenderPass::new(gfx, Some(Color::BLACK), None);
             render_pass.set_texture(&render_pass.data.white_texture);
             render_pass.set_uniform(DrawUniform {
                 transform: view_matrix * camera.camera.get_projection(),
