@@ -35,12 +35,14 @@ impl crile::Application for TestApp {
             .collect();
         self.egui.init(engine);
 
-        let entitya = self.world.spawn(());
+        let ida = self.world.spawn(());
         self.world.spawn((crile::TransformComponent::default(),));
-        self.world.despawn(entitya);
-        let entity = self.world.spawn((crile::TransformComponent::default(),));
-        assert!(entitya == entity);
-        dbg!(entity);
+        self.world.despawn(ida);
+        let id = self.world.spawn((crile::TransformComponent::default(),));
+        let a = self.world.get_entity(id);
+        dbg!(a.get::<crile::TransformComponent>());
+        assert!(id == ida);
+        dbg!(id);
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {

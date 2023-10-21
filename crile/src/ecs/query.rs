@@ -1,15 +1,15 @@
 use crate::Archetype;
 use crate::{ComponentTuple, World};
 
-pub struct QueryIter<'w, T: ComponentTuple> {
-    world: &'w World,
+pub struct QueryIter<'a, T: ComponentTuple> {
+    world: &'a World,
     next_archetype_index: usize,
     current_iter: ArchetypeIter<T>,
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<'w, T: ComponentTuple> QueryIter<'w, T> {
-    pub(crate) fn new(world: &'w World) -> Self {
+impl<'a, T: ComponentTuple> QueryIter<'a, T> {
+    pub(crate) fn new(world: &'a World) -> Self {
         Self {
             next_archetype_index: 0,
             current_iter: ArchetypeIter::empty(),
@@ -19,13 +19,17 @@ impl<'w, T: ComponentTuple> QueryIter<'w, T> {
     }
 
     fn next_archetype(&mut self) -> Option<()> {
-        let archetype = self.world.archetypes.get(self.next_archetype_index)?;
+        let archetype = self
+            .world
+            .archetype_set
+            .archetypes
+            .get(self.next_archetype_index)?;
         self.current_iter = ArchetypeIter::new(archetype);
         self.next_archetype_index += 1;
         Some(())
     }
 
-    unsafe fn next_mut(&mut self) -> Option<T::MutTuple<'w>> {
+    unsafe fn next_mut(&mut self) -> Option<T::MutTuple<'a>> {
         match self.current_iter.next() {
             Some(tuple) => Some(tuple),
             None => {
@@ -36,8 +40,8 @@ impl<'w, T: ComponentTuple> QueryIter<'w, T> {
     }
 }
 
-impl<'w, T: ComponentTuple> Iterator for QueryIter<'w, T> {
-    type Item = T::RefTuple<'w>;
+impl<'a, T: ComponentTuple> Iterator for QueryIter<'a, T> {
+    type Item = T::RefTuple<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { Some(T::mut_to_ref(self.next_mut()?)) }
@@ -46,21 +50,21 @@ impl<'w, T: ComponentTuple> Iterator for QueryIter<'w, T> {
 
 /// This is the same as QueryIter (it uses it internally) but requires mutably borrowing World
 /// in order to ensure borrow rules
-pub struct QueryIterMut<'w, T: ComponentTuple> {
-    query: QueryIter<'w, T>,
+pub struct QueryIterMut<'a, T: ComponentTuple> {
+    query: QueryIter<'a, T>,
 }
 
-impl<'w, T: ComponentTuple> QueryIterMut<'w, T> {
+impl<'a, T: ComponentTuple> QueryIterMut<'a, T> {
     #[allow(clippy::needless_pass_by_ref_mut)]
-    pub(crate) fn new(world: &'w mut World) -> Self {
+    pub(crate) fn new(world: &'a mut World) -> Self {
         Self {
             query: QueryIter::new(world),
         }
     }
 }
 
-impl<'w, T: ComponentTuple> Iterator for QueryIterMut<'w, T> {
-    type Item = T::MutTuple<'w>;
+impl<'a, T: ComponentTuple> Iterator for QueryIterMut<'a, T> {
+    type Item = T::MutTuple<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.query.next_mut() }

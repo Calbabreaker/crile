@@ -120,3 +120,11 @@ impl<K: Ord + Copy, V> FixedOrderedMap<K, V> {
         Some(&self.data[index].1)
     }
 }
+
+pub fn index_mut_twice<T>(array: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
+    assert!(a != b);
+    assert!(a < array.len());
+    assert!(b < array.len());
+    let ptr = array.as_mut_ptr();
+    unsafe { (&mut *ptr.add(a), &mut *ptr.add(b)) }
+}
