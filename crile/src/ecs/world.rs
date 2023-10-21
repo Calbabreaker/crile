@@ -37,7 +37,7 @@ impl World {
         let archetype_index = *self.tuple_id_index_map.entry(T::id()).or_insert_with(|| {
             // Then try with the (sorted) type ids
             self.archetype_set
-                .index_from_ids(T::type_ids(), T::type_infos())
+                .index_from_ids(&T::type_ids(), &T::type_infos())
         });
 
         let archetype = &mut self.archetype_set.archetypes[archetype_index];

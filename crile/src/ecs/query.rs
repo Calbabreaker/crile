@@ -74,7 +74,7 @@ impl<'a, T: ComponentTuple> Iterator for QueryIterMut<'a, T> {
 struct ArchetypeIter<T: ComponentTuple> {
     index: usize,
     count: usize,
-    array_ptr_tuple: Option<T::BytePtrArray>,
+    array_ptr_tuple: Option<T::FixedArray<*mut u8>>,
 }
 
 impl<T: ComponentTuple> ArchetypeIter<T> {

@@ -58,6 +58,11 @@ impl Engine {
 }
 
 pub fn run(app: impl Application + 'static) {
+    env_logger::builder()
+        .filter_module("crile", log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Error)
+        .init();
+
     if let Err(err) = try_run(app) {
         log::error!("{err}")
     }

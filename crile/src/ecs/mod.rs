@@ -9,4 +9,5 @@ pub use archetype::*;
 pub use component::*;
 pub use components::*;
 pub use query::*;
+pub use scene::*;
 pub use world::*;

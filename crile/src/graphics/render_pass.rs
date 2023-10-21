@@ -13,7 +13,7 @@ pub struct DrawUniform {
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Instance {
+pub struct RenderInstance {
     pub transform: glam::Mat4,
     pub color: Color,
 }
@@ -79,7 +79,7 @@ impl<'a> RenderPass<'a> {
         }
     }
 
-    pub fn draw_mesh_instanced(&mut self, mesh: &'a Mesh, instances: &[Instance]) {
+    pub fn draw_mesh_instanced(&mut self, mesh: &'a Mesh, instances: &[RenderInstance]) {
         let instances_size = std::mem::size_of_val(instances) as u64;
         let instances_alloc = self
             .caches

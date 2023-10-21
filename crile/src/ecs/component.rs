@@ -1,5 +1,4 @@
-use std::any::TypeId;
-use std::sync::OnceLock;
+use std::{any::TypeId, marker::PhantomData, sync::OnceLock};
 
 use crate::Archetype;
 
@@ -41,18 +40,19 @@ impl Ord for TypeInfo {
 /// Represents a tuple of components of any type
 /// It is automatically implemented for every tuple type (maximum 8 elements in a tuple)
 pub trait ComponentTuple {
-    fn type_infos() -> &'static [TypeInfo];
-    fn type_ids() -> &'static [TypeId];
-    fn id() -> TypeId;
+    /// Fixed sized array of type T with the length being the number of components inside this tuple
+    type FixedArray<T>;
 
-    type BytePtrArray;
+    fn type_infos() -> Box<[TypeInfo]>;
+    fn type_ids() -> Box<[TypeId]>;
+    fn id() -> TypeId;
 
     /// Moves every component from the tuple to whatever put_func does and consumes self
     fn take_all(self, put_func: impl FnMut(*const u8, TypeId));
 
     /// Gets a tuple of component arrays from the archetype that matches this component tuple
     /// We use a static sized tuple to prevent unnecessary heap allocation
-    fn get_array_ptrs(archetype: &Archetype) -> Option<Self::BytePtrArray>;
+    fn get_array_ptrs(archetype: &Archetype) -> Option<Self::FixedArray<*mut u8>>;
 
     /// The tuple but every component as a ref
     type RefTuple<'a>;
@@ -66,7 +66,7 @@ pub trait ComponentTuple {
     /// - Index must not be greater than the array size
     /// - Since it returns mutable references to each component, it assumes borrow rules have been it met
     unsafe fn array_ptr_array_get<'a>(
-        array_ptrs: &Self::BytePtrArray,
+        array_ptrs: &Self::FixedArray<*mut u8>,
         index: usize,
     ) -> Self::MutTuple<'a>;
 
@@ -91,22 +91,18 @@ macro_rules! count_idents {
 macro_rules! tuple_impl {
     ($($type: ident),*) => {
         impl<$($type: 'static),*> ComponentTuple for ($($type,)*) {
-            fn type_infos() -> &'static [TypeInfo] {
-                static TYPE_INFOS: OnceLock<[TypeInfo; count_idents!($($type),*)]> = OnceLock::new();
-                TYPE_INFOS.get_or_init(|| {
-                    let mut infos = [$(TypeInfo::of::<$type>()),*];
-                    infos.sort_unstable();
-                    infos
-                })
+            type FixedArray<T> = [T; count_idents!($($type),*)];
+
+            fn type_infos() -> Box<[TypeInfo]> {
+                let mut infos = [$(TypeInfo::of::<$type>()),*];
+                infos.sort_unstable();
+                Box::new(infos)
             }
 
-            fn type_ids() -> &'static [TypeId] {
-                static TYPE_IDS: OnceLock<[TypeId; count_idents!($($type),*)]> = OnceLock::new();
-                TYPE_IDS.get_or_init(|| {
-                    let mut ids = [$(TypeId::of::<$type>()),*];
-                    ids.sort_unstable();
-                    ids
-                })
+            fn type_ids() -> Box<[TypeId]> {
+                let mut ids = [$(TypeId::of::<$type>()),*];
+                ids.sort_unstable();
+                Box::new(ids)
             }
 
             fn id() -> TypeId {
@@ -121,10 +117,8 @@ macro_rules! tuple_impl {
                 )*
             }
 
-            type BytePtrArray = [*mut u8; count_idents!($($type),*)];
-
             #[allow(unused_variables)]
-            fn get_array_ptrs(archetype: &Archetype) -> Option<Self::BytePtrArray> {
+            fn get_array_ptrs(archetype: &Archetype) -> Option<Self::FixedArray<*mut u8>> {
                 Some([
                     $(
                         archetype.get_array(&TypeId::of::<$type>())?.ptr
@@ -137,7 +131,7 @@ macro_rules! tuple_impl {
 
             #[allow(non_snake_case, unused_variables, clippy::unused_unit)]
             unsafe fn array_ptr_array_get<'a>(
-                ptr_array: &Self::BytePtrArray,
+                ptr_array: &Self::FixedArray<*mut u8>,
                 index: usize,
             ) -> Self::MutTuple<'a> {
                 let [$($type,)*] = ptr_array;

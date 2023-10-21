@@ -4,7 +4,7 @@
 pub struct TestApp {
     camera: crile::Camera,
     textures: Vec<crile::Texture>,
-    instances: Vec<crile::Instance>,
+    instances: Vec<crile::RenderInstance>,
     egui: crile::egui::EguiContext,
     visibile: bool,
     text: String,
@@ -27,7 +27,7 @@ impl crile::Application for TestApp {
         self.instances = (0..rows * cols)
             .map(|i| {
                 let position = glam::Vec3::new((i % cols) as f32, (i / rows) as f32, 0.0);
-                crile::Instance {
+                crile::RenderInstance {
                     transform: glam::Mat4::from_translation(position),
                     color: crile::Color::WHITE,
                 }
@@ -104,9 +104,5 @@ impl crile::Application for TestApp {
 }
 
 fn main() {
-    env_logger::builder()
-        .filter_module("crile", log::LevelFilter::Trace)
-        .filter_level(log::LevelFilter::Error)
-        .init();
     crile::run(TestApp::default())
 }

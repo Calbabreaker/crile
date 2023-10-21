@@ -15,8 +15,6 @@ pollster = "0.3"
 thiserror = "1"
 wgpu = "0.17"
 winit = "0.29.1-beta"
-
-[dev-dependencies]
 env_logger = "0.10"
 
 [features]
