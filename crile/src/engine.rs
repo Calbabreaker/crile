@@ -56,7 +56,7 @@ impl Engine {
     }
 }
 
-pub fn run(app: impl Application + 'static) {
+pub fn run(app: impl Application) {
     env_logger::builder()
         .filter_module("crile", log::LevelFilter::Trace)
         .filter_level(log::LevelFilter::Error)
@@ -67,7 +67,7 @@ pub fn run(app: impl Application + 'static) {
     }
 }
 
-fn try_run(mut app: impl Application + 'static) -> Result<(), winit::error::EventLoopError> {
+fn try_run(mut app: impl Application) -> Result<(), winit::error::EventLoopError> {
     let event_loop = winit::event_loop::EventLoop::new()?;
     let mut engine = Engine::new(&event_loop);
     app.init(&mut engine);
