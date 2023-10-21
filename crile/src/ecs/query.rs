@@ -70,12 +70,12 @@ impl<'w, T: ComponentTuple> Iterator for QueryIterMut<'w, T> {
 struct ArchetypeIter<T: ComponentTuple> {
     index: usize,
     count: usize,
-    array_ptr_tuple: Option<T::ArrayPtrTuple>,
+    array_ptr_tuple: Option<T::BytePtrArray>,
 }
 
 impl<T: ComponentTuple> ArchetypeIter<T> {
     fn new(archetype: &Archetype) -> Self {
-        match T::get_array_ptr_tuple(archetype) {
+        match T::get_array_ptrs(archetype) {
             Some(array_ptr_uple) => Self {
                 index: 0,
                 count: archetype.get_count(),
@@ -95,7 +95,7 @@ impl<T: ComponentTuple> ArchetypeIter<T> {
 
     unsafe fn next<'a>(&mut self) -> Option<T::MutTuple<'a>> {
         if self.index < self.count {
-            let component_tuple = T::array_ptr_tuple_get(
+            let component_tuple = T::array_ptr_array_get(
                 self.array_ptr_tuple.as_ref().unwrap_unchecked(),
                 self.index,
             );

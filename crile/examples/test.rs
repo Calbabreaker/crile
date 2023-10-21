@@ -35,7 +35,7 @@ impl crile::Application for TestApp {
             .collect();
         self.egui.init(engine);
 
-        let entitya = self.world.spawn((crile::TransformComponent::default(),));
+        let entitya = self.world.spawn(());
         self.world.spawn((crile::TransformComponent::default(),));
         self.world.despawn(entitya);
         let entity = self.world.spawn((crile::TransformComponent::default(),));

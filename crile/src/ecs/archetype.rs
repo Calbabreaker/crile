@@ -115,9 +115,9 @@ impl Archetype {
         }
     }
 
-    fn get_array_ptr<T: 'static>(&self) -> Option<*mut T> {
-        let index = self.index_map.get(&TypeId::of::<T>())?;
-        Some(unsafe { self.component_arrays.get_unchecked(*index).ptr.cast() })
+    fn get_array_ptr(&self, id: &TypeId) -> Option<*mut u8> {
+        let index = self.index_map.get(id)?;
+        Some(unsafe { self.component_arrays.get_unchecked(*index).ptr })
     }
 
     pub fn get_count(&self) -> usize {
@@ -212,104 +212,134 @@ impl Ord for TypeInfo {
 }
 
 /// Represents a tuple of components of any type
-/// It is automatically implemented for every tuple
+/// It is automatically implemented for every tuple type (maximum 8 elements in a tuple)
 pub trait ComponentTuple {
     fn type_infos() -> &'static [TypeInfo];
     fn type_ids() -> &'static [TypeId];
     fn id() -> TypeId;
 
+    type BytePtrArray;
+
     /// Moves every component from the tuple to whatever put_func does and consumes self
     fn take_all(self, put_func: impl Fn(*mut u8, TypeId));
 
-    type ArrayPtrTuple;
-
     /// Gets a tuple of component arrays from the archetype that matches this component tuple
     /// We use a static sized tuple to prevent unnecessary heap allocation
-    fn get_array_ptr_tuple(archetype: &Archetype) -> Option<Self::ArrayPtrTuple>;
-
-    /// Gets the component tuple (self) as a reference to each component from component array pointers
-    /// obtained from [Self::get_array_ptr_tuple]
-    ///
-    /// # Safety
-    /// - Index must not be greater than the array size
-    /// - Since it returns mutable references to each component, it assumes borrow rules have been it met
-    unsafe fn array_ptr_tuple_get<'a>(
-        ptr_tuple: &Self::ArrayPtrTuple,
-        index: usize,
-    ) -> Self::MutTuple<'a>;
+    fn get_array_ptrs(archetype: &Archetype) -> Option<Self::BytePtrArray>;
 
     /// The tuple but every component as a ref
     type RefTuple<'a>;
     /// The tuple but every component as a mut ref
     type MutTuple<'a>;
 
+    /// Gets the component tuple (self) as a reference to each component from component array pointers
+    /// obtained from [Self::get_array_ptrs]
+    ///
+    /// # Safety
+    /// - Index must not be greater than the array size
+    /// - Since it returns mutable references to each component, it assumes borrow rules have been it met
+    unsafe fn array_ptr_array_get<'a>(
+        array_ptrs: &Self::BytePtrArray,
+        index: usize,
+    ) -> Self::MutTuple<'a>;
+
     // Converts a tuple of mutable component reference to non mutable ones
     fn mut_to_ref(mut_tuple: Self::MutTuple<'_>) -> Self::RefTuple<'_>;
 }
 
-// TODO: make a macro that impls for (T1, T2, T3, etc.)
-impl<T1: 'static> ComponentTuple for (T1,) {
-    fn type_infos() -> &'static [TypeInfo] {
-        static TYPE_INFOS: OnceLock<[TypeInfo; 1]> = OnceLock::new();
-        TYPE_INFOS.get_or_init(|| {
-            let mut infos = [TypeInfo::of::<T1>()];
-            infos.sort_unstable();
-            infos
-        })
-    }
-
-    fn type_ids() -> &'static [TypeId] {
-        static TYPE_IDS: OnceLock<[TypeId; 1]> = OnceLock::new();
-        TYPE_IDS.get_or_init(|| {
-            let mut infos = [TypeId::of::<T1>()];
-            infos.sort_unstable();
-            infos
-        })
-    }
-
-    fn id() -> TypeId {
-        TypeId::of::<(T1,)>()
-    }
-
-    fn take_all(mut self, put_func: impl Fn(*mut u8, TypeId)) {
-        put_func(&mut self.0 as *mut T1 as *mut u8, TypeId::of::<T1>());
-    }
-
-    type ArrayPtrTuple = (*mut T1,);
-
-    fn get_array_ptr_tuple(archetype: &Archetype) -> Option<Self::ArrayPtrTuple> {
-        Some((archetype.get_array_ptr::<T1>()?,))
-    }
-
-    unsafe fn array_ptr_tuple_get<'a>(
-        ptr_tuple: &Self::ArrayPtrTuple,
-        index: usize,
-    ) -> Self::MutTuple<'a> {
-        (&mut *ptr_tuple.0.add(index),)
-    }
-
-    type RefTuple<'a> = (&'a T1,);
-    type MutTuple<'a> = (&'a mut T1,);
-
-    fn mut_to_ref(mut_tuple: Self::MutTuple<'_>) -> Self::RefTuple<'_> {
-        (mut_tuple.0,)
-    }
+/// Counts the number of identifiers as input
+/// Useful for counting macro repetition
+/// https://danielkeep.github.io/tlborm/book/blk-counting.html
+macro_rules! count_idents {
+    ($($idents:ident),*) => {
+        {
+            #[allow(dead_code, non_camel_case_types)]
+            enum Idents { $($idents,)* __CountIdentsLast }
+            Idents::__CountIdentsLast as usize
+        }
+    };
 }
 
-// macro_rules! tuple_impl {
-//     ($($type: ident),*) => {
-//         impl<$($type: 'static),*> ComponentTuple for ($($type),*) {
-//             fn type_infos() -> &'static [TypeInfo] {
-//                 static TYPE_INFOS: OnceLock<[TypeInfo; count!($($type)*)]> = OnceLock::new();
-//                 TYPE_INFOS.get_or_init(|| {
-//                     let mut infos = [TypeInfo::of::<T1>()];
-//                     infos.sort_unstable();
-//                     infos
-//                 })
-//             }
-//         }
-//     };
-// }
+/// Macro to automatically impl ComponentTuple for the specified tuple type
+macro_rules! tuple_impl {
+    ($($type: ident),*) => {
+        impl<$($type: 'static),*> ComponentTuple for ($($type,)*) {
+            fn type_infos() -> &'static [TypeInfo] {
+                static TYPE_INFOS: OnceLock<[TypeInfo; count_idents!($($type),*)]> = OnceLock::new();
+                TYPE_INFOS.get_or_init(|| {
+                    let mut infos = [$(TypeInfo::of::<$type>()),*];
+                    infos.sort_unstable();
+                    infos
+                })
+            }
 
-// tuple_impl!(T1, T2);
-// tuple_impl!(T1, T2, T3);
+            fn type_ids() -> &'static [TypeId] {
+                static TYPE_IDS: OnceLock<[TypeId; count_idents!($($type),*)]> = OnceLock::new();
+                TYPE_IDS.get_or_init(|| {
+                    let mut ids = [$(TypeId::of::<$type>()),*];
+                    ids.sort_unstable();
+                    ids
+                })
+            }
+
+            fn id() -> TypeId {
+                TypeId::of::<($($type,)*)>()
+            }
+
+            #[allow(non_snake_case, unused_variables)]
+            fn take_all(self, put_func: impl Fn(*mut u8, TypeId)) {
+                let ($(mut $type,)*) = self;
+                $(
+                    put_func(&mut $type as *mut $type as *mut u8, TypeId::of::<$type>());
+                )*
+            }
+
+            type BytePtrArray = [*mut u8; count_idents!($($type),*)];
+
+            #[allow(unused_variables)]
+            fn get_array_ptrs(archetype: &Archetype) -> Option<Self::BytePtrArray> {
+                Some([
+                    $(
+                        archetype.get_array_ptr(&TypeId::of::<$type>())?
+                    ),*
+                ])
+            }
+
+            type RefTuple<'a> = ($(&'a $type,)*);
+            type MutTuple<'a> = ($(&'a mut $type,)*);
+
+            #[allow(non_snake_case, unused_variables, clippy::unused_unit)]
+            unsafe fn array_ptr_array_get<'a>(
+                ptr_array: &Self::BytePtrArray,
+                index: usize,
+            ) -> Self::MutTuple<'a> {
+                let [$($type,)*] = ptr_array;
+                (
+                    $(
+                        &mut *$type.cast::<$type>().add(index),
+                    )*
+                )
+            }
+
+            #[allow(non_snake_case, clippy::unused_unit)]
+            fn mut_to_ref(mut_tuple: Self::MutTuple<'_>) -> Self::RefTuple<'_> {
+                let ($($type,)*) = mut_tuple;
+                ( $($type,)* )
+            }
+        }
+    };
+}
+
+macro_rules! recursive_impl {
+    ($head: tt) => {
+        tuple_impl!();
+        tuple_impl!($head);
+    };
+    ($head: tt, $($tail: tt),*) => {
+        tuple_impl!($head, $($tail),*);
+        recursive_impl!($($tail),*);
+    };
+}
+
+// Expands to tuple_impl!(T1), tuple_impl!(T1, T2), tuple_impl!(T1, T2, T3), etc.
+recursive_impl!(T1, T2, T3, T4, T5, T6, T7, T8);
