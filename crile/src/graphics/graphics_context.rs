@@ -16,13 +16,13 @@ impl GraphicsContext {
 
         let single_draw_shader = Shader::new(
             &wgpu,
-            wgpu::include_wgsl!("./single_draw.wgsl"),
+            wgpu::include_wgsl!("./shaders/single_draw.wgsl"),
             ShaderKind::DrawSingle,
         );
 
         let instanced_shader = Shader::new(
             &wgpu,
-            wgpu::include_wgsl!("./instanced.wgsl"),
+            wgpu::include_wgsl!("./shaders/instanced.wgsl"),
             ShaderKind::Instanced,
         );
 
@@ -71,10 +71,10 @@ impl GraphicsContext {
     /// On some platforms disabling vsync is not possible
     pub fn set_vsync(&mut self, enable: bool) {
         let wgpu = &mut self.wgpu;
-        match enable {
-            true => wgpu.surface_config.present_mode = wgpu::PresentMode::AutoVsync,
-            false => wgpu.surface_config.present_mode = wgpu::PresentMode::AutoNoVsync,
-        }
+        wgpu.surface_config.present_mode = match enable {
+            true => wgpu::PresentMode::AutoVsync,
+            false => wgpu::PresentMode::AutoNoVsync,
+        };
         wgpu.surface.configure(&wgpu.device, &wgpu.surface_config);
     }
 

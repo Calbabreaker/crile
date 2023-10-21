@@ -1,4 +1,3 @@
-
 // Instanced (one draw call per mesh) shader
 
 struct VertexOutput {

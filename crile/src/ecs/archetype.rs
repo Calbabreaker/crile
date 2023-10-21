@@ -13,6 +13,14 @@ pub struct Archetype {
 
 impl Archetype {
     pub(crate) fn new(type_infos: &[TypeInfo]) -> Self {
+        for w in type_infos.windows(2) {
+            match w[0].cmp(&w[1]) {
+                std::cmp::Ordering::Less => (),
+                std::cmp::Ordering::Equal => panic!("created a entity with duplicate components"),
+                std::cmp::Ordering::Greater => panic!("type infos not sorted"),
+            }
+        }
+
         let index_map = FixedOrderedMap::new(
             type_infos
                 .iter()
@@ -287,3 +295,21 @@ impl<T1: 'static> ComponentTuple for (T1,) {
         (mut_tuple.0,)
     }
 }
+
+// macro_rules! tuple_impl {
+//     ($($type: ident),*) => {
+//         impl<$($type: 'static),*> ComponentTuple for ($($type),*) {
+//             fn type_infos() -> &'static [TypeInfo] {
+//                 static TYPE_INFOS: OnceLock<[TypeInfo; count!($($type)*)]> = OnceLock::new();
+//                 TYPE_INFOS.get_or_init(|| {
+//                     let mut infos = [TypeInfo::of::<T1>()];
+//                     infos.sort_unstable();
+//                     infos
+//                 })
+//             }
+//         }
+//     };
+// }
+
+// tuple_impl!(T1, T2);
+// tuple_impl!(T1, T2, T3);
