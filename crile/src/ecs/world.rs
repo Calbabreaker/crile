@@ -105,37 +105,27 @@ impl ArchetypeSet {
             self.archetypes.len() - 1
         })
     }
-
-    fn get_source_target(
-        &mut self,
-        type_infos: impl Iterator<Item = TypeInfo>,
-        entity_index: usize,
-    ) -> (&mut Archetype, &mut Archetype) {
-        let type_infos = type_infos.collect::<Box<_>>();
-        let type_ids = type_infos.iter().map(|info| info.id).collect::<Box<_>>();
-        let target_arch_index = self.index_from_ids(&type_ids, &type_infos);
-
-        index_mut_twice(&mut self.archetypes, entity_index, target_arch_index)
-    }
 }
 
 pub struct EntityRef<'a> {
     archetype: &'a Archetype,
-    index: usize,
+    location: EntityLocation,
     id: EntityId,
     world: &'a mut World,
 }
 
 impl<'a> EntityRef<'a> {
     fn new(world: &'a mut World, location: EntityLocation, id: EntityId) -> Self {
+        // Safety:
+        // This archetype reference is never accessed after world is modified so it is safe to use
         let archetype = unsafe {
-            &(*(world as *mut World)).archetype_set.archetypes[location.archetype_index]
+            &(*(world as *const World)).archetype_set.archetypes[location.archetype_index]
             //
         };
 
         Self {
             archetype,
-            index: location.entity_index,
+            location,
             id,
             world,
         }
@@ -143,67 +133,89 @@ impl<'a> EntityRef<'a> {
 
     // TODO: add borrow checking probably unsafe right now
     pub fn get<T: 'static>(&self) -> Option<&mut T> {
-        self.archetype.borrow_component(self.index)
+        self.archetype.borrow_component(self.location.entity_index)
     }
 
-    pub fn add<T: 'static>(&'a mut self, component: T) {
+    pub fn add<T: 'static>(&mut self, component: T) {
         // Get the new archetype that the entity belongs in with component added
-        let type_infos = self
-            .archetype
-            .get_type_infos()
-            .chain(std::iter::once(TypeInfo::of::<T>()));
-        let (source_arch, target_arch) = self
-            .world
-            .archetype_set
-            .get_source_target(type_infos, self.index);
+        let mut type_infos = self.archetype.get_type_infos().collect::<Vec<_>>();
+        let pos = type_infos.binary_search(&TypeInfo::of::<T>()).unwrap_err();
+        type_infos.insert(pos, TypeInfo::of::<T>());
 
-        // Move all the components into the new archetype
-        let target_index = target_arch.new_entity(self.id);
-        for array in source_arch.get_all_arrays() {
-            unsafe {
-                target_arch.put_component(target_index, array.ptr, array.type_info.id);
-            }
-        }
-
-        // Add the requested component into the new archetype
-        unsafe {
-            target_arch.put_component(
-                target_index,
-                &component as *const T as *const u8,
-                TypeId::of::<T>(),
-            );
-        }
-
-        let moved_id = source_arch.remove_entity(self.index);
-        self.world.entity_locations[moved_id].entity_index = self.index;
-        self.archetype = target_arch;
-        self.index = target_index;
-    }
-
-    pub fn remove<T: 'static>(&'a mut self) {
-        // Get the new archetype that the entity belongs in with component removed
-        let type_infos = self
-            .archetype
-            .get_type_infos()
-            .filter(|info| info.id != TypeId::of::<T>());
-        let (source_arch, target_arch) = self
-            .world
-            .archetype_set
-            .get_source_target(type_infos, self.index);
-
-        // Move all the components into the new archetype except for the removed component
-        let target_index = target_arch.new_entity(self.id);
-        for array in source_arch.get_all_arrays() {
-            if array.type_info.id != TypeId::of::<T>() {
+        self.modify_components(&type_infos, |source_arch, target_arch, target_index| {
+            // Move all the components into the new archetype
+            for array in source_arch.get_all_arrays() {
                 unsafe {
                     target_arch.put_component(target_index, array.ptr, array.type_info.id);
                 }
             }
+
+            // Add the requested component into the new archetype
+            unsafe {
+                target_arch.put_component(
+                    target_index,
+                    &component as *const T as *const u8,
+                    TypeId::of::<T>(),
+                );
+            }
+        });
+    }
+
+    pub fn remove<T: 'static>(&mut self) {
+        // Get the new archetype that the entity belongs in with component removed
+        let type_infos = self
+            .archetype
+            .get_type_infos()
+            .filter(|info| info.id != TypeId::of::<T>())
+            .collect::<Box<_>>();
+
+        self.modify_components(&type_infos, |source_arch, target_arch, target_index| {
+            // Move all the components into the new archetype except for the removed component
+            for array in source_arch.get_all_arrays() {
+                if array.type_info.id != TypeId::of::<T>() {
+                    unsafe {
+                        target_arch.put_component(target_index, array.ptr, array.type_info.id);
+                    }
+                }
+            }
+        });
+    }
+
+    fn modify_components(
+        &mut self,
+        new_type_infos: &[TypeInfo],
+        modify_func: impl Fn(&mut Archetype, &mut Archetype, usize),
+    ) {
+        let type_ids = new_type_infos
+            .iter()
+            .map(|info| info.id)
+            .collect::<Box<_>>();
+        let target_arch_index = self
+            .world
+            .archetype_set
+            .index_from_ids(&type_ids, new_type_infos);
+
+        if self.location.archetype_index == target_arch_index {
+            return;
         }
 
-        let moved_id = source_arch.remove_entity(self.index);
-        self.world.entity_locations[moved_id].entity_index = self.index;
-        self.archetype = target_arch;
-        self.index = target_index;
+        let (source_arch, target_arch) = index_mut_twice(
+            &mut self.world.archetype_set.archetypes,
+            self.location.archetype_index,
+            target_arch_index,
+        );
+
+        let target_index = target_arch.new_entity(self.id);
+        modify_func(source_arch, target_arch, target_index);
+
+        // Remove the old entity
+        let moved_id = source_arch.remove_entity(self.location.entity_index);
+        self.world.entity_locations[moved_id].entity_index = self.location.entity_index;
+
+        // Set the new archetype and location
+        self.archetype = unsafe { &*(target_arch as *const Archetype) };
+        self.location.entity_index = target_index;
+        self.location.archetype_index = target_arch_index;
+        self.world.entity_locations[self.id] = self.location;
     }
 }

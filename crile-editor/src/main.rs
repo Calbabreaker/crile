@@ -45,6 +45,8 @@ impl crile::Application for SceneApp {
             crile::Event::WindowResize { size } => self.scene.resize(size.as_vec2()),
             _ => (),
         }
+
+        self.egui.event(engine, event);
     }
 }
 

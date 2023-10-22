@@ -39,8 +39,11 @@ impl crile::Application for TestApp {
         self.world.spawn((crile::TransformComponent::default(),));
         self.world.despawn(ida);
         let id = self.world.spawn((crile::TransformComponent::default(),));
-        let a = self.world.get_entity(id);
+        let mut a = self.world.get_entity(id);
         dbg!(a.get::<crile::TransformComponent>());
+        a.add(crile::SpriteRendererComponent::default());
+        a.remove::<crile::SpriteRendererComponent>();
+        a.add(crile::SpriteRendererComponent::default());
         assert!(id == ida);
         dbg!(id);
     }
@@ -61,8 +64,11 @@ impl crile::Application for TestApp {
                     ui.text_edit_singleline(&mut self.text);
                 }
 
-                for (transform,) in self.world.query::<(crile::TransformComponent,)>() {
-                    ui.label(format!("{transform:?}"));
+                for (transform, sprite) in self
+                    .world
+                    .query::<(crile::TransformComponent, crile::SpriteRendererComponent)>()
+                {
+                    ui.label(format!("{transform:?} {sprite:?}"));
                 }
             });
         });
@@ -71,7 +77,6 @@ impl crile::Application for TestApp {
     fn render(&mut self, engine: &mut crile::Engine) {
         let mut render_pass =
             crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK), None);
-
         render_pass.set_texture(&self.textures[0]);
 
         // Instanced version

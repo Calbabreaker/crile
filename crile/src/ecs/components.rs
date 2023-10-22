@@ -27,12 +27,12 @@ impl TransformComponent {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SpriteRendererComponent {
     pub color: Color,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CameraComponent {
     pub camera: Camera,
 }
