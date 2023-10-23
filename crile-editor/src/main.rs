@@ -1,17 +1,28 @@
+use crate::scene_hierachy_panel::SceneHierachyPanel;
+
+mod scene_hierachy_panel;
+
 #[derive(Default)]
 pub struct SceneApp {
-    egui: crile::egui::EguiContext,
+    egui: crile::EguiContext,
     scene: crile::Scene,
+    scene_hierachy_panel: SceneHierachyPanel,
 }
 
 impl crile::Application for SceneApp {
     fn init(&mut self, engine: &mut crile::Engine) {
         self.scene.world.spawn((
+            crile::IdentifierComponent {
+                name: "Camera".to_string(),
+            },
             crile::TransformComponent::default(),
             crile::CameraComponent::default(),
         ));
 
         self.scene.world.spawn((
+            crile::IdentifierComponent {
+                name: "Sprite".to_string(),
+            },
             crile::TransformComponent::default(),
             crile::SpriteRendererComponent {
                 color: crile::Color::from_rgb(255, 0, 0),
@@ -22,13 +33,19 @@ impl crile::Application for SceneApp {
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
-        self.egui.update(engine, |ctx, _| {
-            egui::Window::new("Inspector").show(ctx, |ui| {
-                ui.label("Test");
-                for (transform,) in self.scene.world.query::<(crile::TransformComponent,)>() {
-                    ui.label(format!("{transform:?}"));
-                }
+        self.egui.update(engine, |ctx, engine| {
+            egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+                // The top panel is often a good place for a menu bar:
+                egui::menu::bar(ui, |ui| {
+                    ui.menu_button("File", |ui| {
+                        if ui.button("Quit").clicked() {
+                            engine.request_close();
+                        }
+                    });
+                });
             });
+
+            self.scene_hierachy_panel.show_scene(ctx, &mut self.scene);
         });
     }
 

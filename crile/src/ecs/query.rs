@@ -1,11 +1,9 @@
-use crate::Archetype;
-use crate::{ComponentTuple, World};
+use super::{Archetype, ComponentTuple, World};
 
 pub struct QueryIter<'a, T: ComponentTuple> {
     world: &'a World,
     next_archetype_index: usize,
     current_iter: ArchetypeIter<T>,
-    _phantom: std::marker::PhantomData<T>,
 }
 
 impl<'a, T: ComponentTuple> QueryIter<'a, T> {
@@ -14,7 +12,6 @@ impl<'a, T: ComponentTuple> QueryIter<'a, T> {
             next_archetype_index: 0,
             current_iter: ArchetypeIter::empty(),
             world,
-            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -80,10 +77,10 @@ struct ArchetypeIter<T: ComponentTuple> {
 impl<T: ComponentTuple> ArchetypeIter<T> {
     fn new(archetype: &Archetype) -> Self {
         match T::get_array_ptrs(archetype) {
-            Some(array_ptr_uple) => Self {
+            Some(array_ptr_tuple) => Self {
                 index: 0,
-                count: archetype.get_count(),
-                array_ptr_tuple: Some(array_ptr_uple),
+                count: archetype.count(),
+                array_ptr_tuple: Some(array_ptr_tuple),
             },
             None => Self::empty(),
         }

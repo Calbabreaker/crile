@@ -1,6 +1,7 @@
 use std::num::NonZeroU64;
 
-use crate::{RefId, WGPUContext};
+use super::WGPUContext;
+use crate::RefId;
 
 /// Key to differentiate between bind groups in cache
 /// Not every property is used, only the ones that change

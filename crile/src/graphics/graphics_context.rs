@@ -1,7 +1,8 @@
-use crate::{
-    window::Window, BindGroupCache, DynamicBufferAllocator, Mesh, RefId, RefIdHolder,
-    RenderPipelineCache, SamplerCache, Shader, ShaderKind, Texture,
+use super::{
+    BindGroupCache, DynamicBufferAllocator, Mesh, RenderPipelineCache, SamplerCache, Shader,
+    ShaderKind, Texture,
 };
+use crate::{RefId, RefIdHolder, Window};
 
 pub struct GraphicsContext {
     pub wgpu: WGPUContext,

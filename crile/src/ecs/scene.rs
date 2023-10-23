@@ -1,7 +1,5 @@
-use crate::{
-    CameraComponent, DrawUniform, RenderInstance, RenderPass, SpriteRendererComponent,
-    TransformComponent, World,
-};
+use super::{CameraComponent, SpriteRendererComponent, TransformComponent, World};
+use crate::{DrawUniform, RenderInstance, RenderPass};
 
 #[derive(Default)]
 pub struct Scene {

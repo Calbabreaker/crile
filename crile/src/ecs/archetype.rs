@@ -1,9 +1,10 @@
 use std::any::TypeId;
 
-use crate::{EntityId, FixedOrderedMap, TypeInfo};
+use super::{EntityId, TypeInfo};
+use crate::FixedOrderedMap;
 
 pub struct Archetype {
-    component_arrays: Box<[ComponentArray]>,
+    pub(crate) component_arrays: Box<[ComponentArray]>,
     /// Maps a component type id to its index inside self.component
     index_map: FixedOrderedMap<TypeId, usize>,
     entities: Box<[EntityId]>,
@@ -130,15 +131,11 @@ impl Archetype {
         Some(unsafe { self.component_arrays.get_unchecked(*index) })
     }
 
-    pub(crate) fn get_all_arrays(&self) -> &[ComponentArray] {
-        &self.component_arrays
-    }
-
-    pub(crate) fn get_type_infos(&self) -> impl Iterator<Item = TypeInfo> + '_ {
+    pub(crate) fn type_info_iter(&self) -> impl Iterator<Item = TypeInfo> + '_ {
         self.component_arrays.iter().map(|array| array.type_info)
     }
 
-    pub fn get_count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.count
     }
 }

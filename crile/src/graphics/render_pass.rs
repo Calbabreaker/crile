@@ -1,9 +1,10 @@
 use std::num::NonZeroU64;
 
-use crate::{
+use super::{
     BindGroupEntries, Color, GraphicsCaches, GraphicsContext, GraphicsData, Mesh, MeshVertex, Rect,
-    RefId, RenderPipelineConfig, Shader, ShaderKind, Texture, TextureRef, WGPUContext,
+    RenderPipelineConfig, Shader, ShaderKind, Texture, TextureRef, WGPUContext,
 };
+use crate::RefId;
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]

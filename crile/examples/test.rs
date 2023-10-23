@@ -5,7 +5,7 @@ pub struct TestApp {
     camera: crile::Camera,
     textures: Vec<crile::Texture>,
     instances: Vec<crile::RenderInstance>,
-    egui: crile::egui::EguiContext,
+    egui: crile::EguiContext,
     visibile: bool,
     text: String,
     world: crile::World,
@@ -41,9 +41,9 @@ impl crile::Application for TestApp {
         let id = self.world.spawn((crile::TransformComponent::default(),));
         let mut a = self.world.get_entity(id);
         dbg!(a.get::<crile::TransformComponent>());
-        a.add(crile::SpriteRendererComponent::default());
-        a.remove::<crile::SpriteRendererComponent>();
-        a.add(crile::SpriteRendererComponent::default());
+        a.add(crile::CameraComponent::default());
+        a.remove::<crile::CameraComponent>();
+        a.add(crile::CameraComponent::default());
         assert!(id == ida);
         dbg!(id);
     }

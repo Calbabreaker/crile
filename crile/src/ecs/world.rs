@@ -1,6 +1,7 @@
 use std::any::TypeId;
 
-use crate::{index_mut_twice, Archetype, ComponentTuple, QueryIter, QueryIterMut, TypeInfo};
+use super::{Archetype, ComponentTuple, QueryIter, QueryIterMut, TypeInfo};
+use crate::index_mut_twice;
 
 pub type EntityId = usize;
 
@@ -56,7 +57,7 @@ impl World {
     }
 
     pub fn despawn(&mut self, id: EntityId) {
-        let location = self.entity_locations[id];
+        let location = &self.entity_locations[id];
         let archetype = &mut self.archetype_set.archetypes[location.archetype_index];
         let moved_id = archetype.remove_entity(location.entity_index);
         self.entity_locations[moved_id].entity_index = location.entity_index;
@@ -71,6 +72,10 @@ impl World {
 
     pub fn query_mut<T: ComponentTuple>(&mut self) -> QueryIterMut<T> {
         QueryIterMut::new(self)
+    }
+
+    pub fn iter(&mut self) -> WorldIter {
+        WorldIter::new(self)
     }
 
     pub fn get_entity(&mut self, id: EntityId) -> EntityRef {
@@ -138,13 +143,13 @@ impl<'a> EntityRef<'a> {
 
     pub fn add<T: 'static>(&mut self, component: T) {
         // Get the new archetype that the entity belongs in with component added
-        let mut type_infos = self.archetype.get_type_infos().collect::<Vec<_>>();
+        let mut type_infos = self.archetype.type_info_iter().collect::<Vec<_>>();
         let pos = type_infos.binary_search(&TypeInfo::of::<T>()).unwrap_err();
         type_infos.insert(pos, TypeInfo::of::<T>());
 
         self.modify_components(&type_infos, |source_arch, target_arch, target_index| {
             // Move all the components into the new archetype
-            for array in source_arch.get_all_arrays() {
+            for array in source_arch.component_arrays.iter() {
                 unsafe {
                     target_arch.put_component(target_index, array.ptr, array.type_info.id);
                 }
@@ -165,13 +170,13 @@ impl<'a> EntityRef<'a> {
         // Get the new archetype that the entity belongs in with component removed
         let type_infos = self
             .archetype
-            .get_type_infos()
+            .type_info_iter()
             .filter(|info| info.id != TypeId::of::<T>())
             .collect::<Box<_>>();
 
         self.modify_components(&type_infos, |source_arch, target_arch, target_index| {
             // Move all the components into the new archetype except for the removed component
-            for array in source_arch.get_all_arrays() {
+            for array in source_arch.component_arrays.iter() {
                 if array.type_info.id != TypeId::of::<T>() {
                     unsafe {
                         target_arch.put_component(target_index, array.ptr, array.type_info.id);
@@ -217,5 +222,31 @@ impl<'a> EntityRef<'a> {
         self.location.entity_index = target_index;
         self.location.archetype_index = target_arch_index;
         self.world.entity_locations[self.id] = self.location;
+    }
+}
+
+pub struct WorldIter<'a> {
+    world: &'a mut World,
+    id: usize,
+}
+
+impl<'a> WorldIter<'a> {
+    fn new(world: &'a mut World) -> Self {
+        Self { world, id: 0 }
+    }
+}
+
+impl<'a> Iterator for WorldIter<'a> {
+    type Item = EntityRef<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let world = unsafe { &mut *(self.world as *mut World) };
+        let location = self.world.entity_locations.get(self.id)?;
+        self.id += 1;
+        if location.valid {
+            Some(EntityRef::new(world, *location, self.id))
+        } else {
+            self.next()
+        }
     }
 }

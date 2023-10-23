@@ -1,8 +1,9 @@
-use crate::{RefId, WGPUContext};
+use super::WGPUContext;
+use crate::RefId;
 
 /// Wrapper around the wgpu texture objects
 /// cheap to clone
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Texture {
     pub gpu_texture: RefId<wgpu::Texture>,
     pub gpu_view: RefId<wgpu::TextureView>,

@@ -1,4 +1,5 @@
-use crate::{RefId, WGPUContext};
+use super::WGPUContext;
+use crate::RefId;
 
 struct DynamicBufferSpace {
     buffer: RefId<wgpu::Buffer>,

@@ -1,4 +1,4 @@
-use crate::{input::Input, time::Time, window::Window, Event, GraphicsContext};
+use crate::{graphics::GraphicsContext, Event, Input, Time, Window};
 
 pub trait Application {
     fn init(&mut self, engine: &mut Engine);

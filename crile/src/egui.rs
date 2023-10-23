@@ -1,6 +1,6 @@
 use crate::{
-    DrawUniform, Engine, Event, KeyCode, KeyModifiers, Mesh, MeshVertex, MouseButton, Rect,
-    RenderPass, Texture,
+    graphics::{DrawUniform, Mesh, MeshVertex, Rect, RenderPass, Texture},
+    Engine, Event, KeyCode, KeyModifiers, MouseButton,
 };
 
 #[derive(Debug)]

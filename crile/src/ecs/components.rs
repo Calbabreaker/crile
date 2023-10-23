@@ -1,6 +1,11 @@
 use crate::{Camera, Color};
 
 #[derive(Debug)]
+pub struct IdentifierComponent {
+    pub name: String,
+}
+
+#[derive(Debug)]
 pub struct TransformComponent {
     pub translation: glam::Vec3,
     pub rotation: glam::Vec3,
@@ -27,7 +32,7 @@ impl TransformComponent {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct SpriteRendererComponent {
     pub color: Color,
 }

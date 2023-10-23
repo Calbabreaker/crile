@@ -1,7 +1,8 @@
 use std::any::TypeId;
 
-use crate::Archetype;
+use super::Archetype;
 
+// TODO: Add drop
 #[derive(Clone, Copy, Debug)]
 pub struct TypeInfo {
     pub id: TypeId,
@@ -63,7 +64,7 @@ pub trait ComponentTuple {
     /// obtained from [Self::get_array_ptrs]
     ///
     /// # Safety
-    /// - Index must not be greater than the array size
+    /// - Index must not be greater than the component array size
     /// - Since it returns mutable references to each component, it assumes borrow rules have been it met
     unsafe fn array_ptr_array_get<'a>(
         array_ptrs: &Self::FixedArray<*mut u8>,

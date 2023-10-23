@@ -69,7 +69,7 @@ impl Color {
                 ((hex >> 24) & 0xff) as u8,
                 ((hex >> 16) & 0xff) as u8,
                 ((hex >> 8) & 0xff) as u8,
-                ((hex) & 0xff) as u8,
+                (hex & 0xff) as u8,
             )
         }
     }

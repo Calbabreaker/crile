@@ -3,7 +3,8 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{RefId, WGPUContext};
+use super::WGPUContext;
+use crate::RefId;
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct RenderPipelineConfig {

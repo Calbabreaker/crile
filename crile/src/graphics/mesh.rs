@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::WGPUContext;
+use super::WGPUContext;
 
 #[repr(C)]
 #[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
