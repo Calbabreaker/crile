@@ -105,23 +105,6 @@ impl Default for RefIdHolder {
     }
 }
 
-/// Fixed sized map where element is ordered by K and is indexed by binary searching
-pub struct FixedOrderedMap<K, V> {
-    data: Box<[(K, V)]>,
-}
-
-impl<K: Ord + Copy, V> FixedOrderedMap<K, V> {
-    pub fn new(mut data: Box<[(K, V)]>) -> Self {
-        data.sort_unstable_by_key(|(id, _)| *id);
-        Self { data }
-    }
-
-    pub fn get(&self, id: &K) -> Option<&V> {
-        let index = self.data.binary_search_by_key(id, |(id, _)| *id).ok()?;
-        Some(&self.data[index].1)
-    }
-}
-
 pub fn index_mut_twice<T>(array: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
     assert!(a != b);
     assert!(a < array.len());
@@ -129,3 +112,28 @@ pub fn index_mut_twice<T>(array: &mut [T], a: usize, b: usize) -> (&mut T, &mut 
     let ptr = array.as_mut_ptr();
     unsafe { (&mut *ptr.add(a), &mut *ptr.add(b)) }
 }
+
+/// A hasher that directly forwards the value and does not hash
+#[derive(Default)]
+pub struct NoHashHasher {
+    hash: u64,
+}
+
+impl std::hash::Hasher for NoHashHasher {
+    fn write(&mut self, _: &[u8]) {
+        panic!("tried to use NoHashHasher with an unsupported type");
+    }
+
+    fn write_u64(&mut self, i: u64) {
+        self.hash = i;
+    }
+
+    fn finish(&self) -> u64 {
+        self.hash
+    }
+}
+
+/// Hash map that does not hash the key
+/// Useful for types that already hashed like TypeId
+pub type NoHashHashMap<K, V> =
+    hashbrown::HashMap<K, V, std::hash::BuildHasherDefault<NoHashHasher>>;

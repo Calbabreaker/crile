@@ -1,12 +1,11 @@
 use core::hash::Hash;
-use std::collections::HashSet;
 
 use crate::{ButtonState, Event, KeyCode, KeyModifiers, MouseButton};
 
 struct InputState<T> {
-    pressed: HashSet<T>,
-    just_pressed: HashSet<T>,
-    just_released: HashSet<T>,
+    pressed: hashbrown::HashSet<T>,
+    just_pressed: hashbrown::HashSet<T>,
+    just_released: hashbrown::HashSet<T>,
 }
 
 impl<T: Eq + Hash> Default for InputState<T> {

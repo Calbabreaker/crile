@@ -2,16 +2,18 @@ use std::any::TypeId;
 
 use super::Archetype;
 
-// TODO: Add drop
+/// Stores information about a component type to be used inside component arrays
 #[derive(Clone, Copy, Debug)]
 pub struct TypeInfo {
     pub id: TypeId,
     pub layout: std::alloc::Layout,
+    pub drop: unsafe fn(*mut u8),
 }
 
 impl TypeInfo {
     pub fn of<T: 'static>() -> Self {
         Self {
+            drop: |ptr| unsafe { ptr.cast::<T>().drop_in_place() },
             id: TypeId::of::<T>(),
             layout: std::alloc::Layout::new::<T>(),
         }
@@ -115,6 +117,7 @@ macro_rules! tuple_impl {
                 let ($($type,)*) = self;
                 $(
                     put_func(&$type as *const $type as *const u8, TypeId::of::<$type>());
+                    std::mem::forget($type);
                 )*
             }
 

@@ -1,7 +1,7 @@
 use std::any::TypeId;
 
 use super::{Archetype, ComponentTuple, QueryIter, QueryIterMut, TypeInfo};
-use crate::index_mut_twice;
+use crate::{index_mut_twice, NoHashHashMap};
 
 pub type EntityId = usize;
 
@@ -23,7 +23,7 @@ struct EntityLocation {
 pub struct World {
     pub(crate) archetype_set: ArchetypeSet,
     /// Maps to the archetype index inside the archetype set from a component tuple id which is faster to compute
-    tuple_id_index_map: hashbrown::HashMap<TypeId, usize>,
+    tuple_id_index_map: NoHashHashMap<TypeId, usize>,
 
     free_entity_ids: Vec<EntityId>,
     entity_count: EntityId,
@@ -59,7 +59,7 @@ impl World {
     pub fn despawn(&mut self, id: EntityId) {
         let location = &self.entity_locations[id];
         let archetype = &mut self.archetype_set.archetypes[location.archetype_index];
-        let moved_id = archetype.remove_entity(location.entity_index);
+        let moved_id = archetype.remove_entity(location.entity_index, true);
         self.entity_locations[moved_id].entity_index = location.entity_index;
 
         self.free_entity_ids.push(id);
@@ -78,7 +78,7 @@ impl World {
         WorldIter::new(self)
     }
 
-    pub fn get_entity(&mut self, id: EntityId) -> EntityRef {
+    pub fn entity(&mut self, id: EntityId) -> EntityRef {
         let location = self.entity_locations[id];
         EntityRef::new(self, location, id)
     }
@@ -214,7 +214,7 @@ impl<'a> EntityRef<'a> {
         modify_func(source_arch, target_arch, target_index);
 
         // Remove the old entity
-        let moved_id = source_arch.remove_entity(self.location.entity_index);
+        let moved_id = source_arch.remove_entity(self.location.entity_index, false);
         self.world.entity_locations[moved_id].entity_index = self.location.entity_index;
 
         // Set the new archetype and location
@@ -222,6 +222,10 @@ impl<'a> EntityRef<'a> {
         self.location.entity_index = target_index;
         self.location.archetype_index = target_arch_index;
         self.world.entity_locations[self.id] = self.location;
+    }
+
+    pub fn id(&self) -> EntityId {
+        self.id
     }
 }
 
@@ -234,19 +238,14 @@ impl<'a> WorldIter<'a> {
     fn new(world: &'a mut World) -> Self {
         Self { world, id: 0 }
     }
-}
 
-impl<'a> Iterator for WorldIter<'a> {
-    type Item = EntityRef<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let world = unsafe { &mut *(self.world as *mut World) };
+    pub fn next_entity(&mut self) -> Option<EntityRef> {
         let location = self.world.entity_locations.get(self.id)?;
         self.id += 1;
         if location.valid {
-            Some(EntityRef::new(world, *location, self.id))
+            Some(EntityRef::new(self.world, *location, self.id))
         } else {
-            self.next()
+            self.next_entity()
         }
     }
 }

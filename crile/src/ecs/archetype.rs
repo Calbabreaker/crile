@@ -1,12 +1,13 @@
 use std::any::TypeId;
 
+use crate::NoHashHashMap;
+
 use super::{EntityId, TypeInfo};
-use crate::FixedOrderedMap;
 
 pub struct Archetype {
     pub(crate) component_arrays: Box<[ComponentArray]>,
     /// Maps a component type id to its index inside self.component
-    index_map: FixedOrderedMap<TypeId, usize>,
+    index_map: NoHashHashMap<TypeId, usize>,
     entities: Box<[EntityId]>,
     count: usize,
 }
@@ -21,13 +22,11 @@ impl Archetype {
             }
         }
 
-        let index_map = FixedOrderedMap::new(
-            type_infos
-                .iter()
-                .enumerate()
-                .map(|(i, info)| (info.id, i))
-                .collect(),
-        );
+        let index_map = type_infos
+            .iter()
+            .enumerate()
+            .map(|(i, info)| (info.id, i))
+            .collect();
 
         let component_arrays = type_infos
             .iter()
@@ -85,7 +84,7 @@ impl Archetype {
         index
     }
 
-    pub(crate) fn remove_entity(&mut self, index: usize) -> EntityId {
+    pub(crate) fn remove_entity(&mut self, index: usize, should_drop: bool) -> EntityId {
         assert!(index < self.count);
 
         // Moves the last item to index and decrement length by 1
@@ -96,6 +95,10 @@ impl Archetype {
                     let size = array.type_info.layout.size();
                     let to_remove = array.ptr.add(index * size);
                     let last = array.ptr.add(last_index * size);
+                    if should_drop {
+                        (array.type_info.drop)(to_remove);
+                    }
+
                     std::ptr::copy_nonoverlapping(last, to_remove, size);
                 }
             }
@@ -148,10 +151,13 @@ impl Drop for Archetype {
 
         for array in self.component_arrays.iter() {
             unsafe {
+                let offset = array.type_info.layout.size() * self.entities.len();
+                (array.type_info.drop)(array.ptr.add(offset));
+
                 std::alloc::dealloc(
                     array.ptr,
                     std::alloc::Layout::from_size_align_unchecked(
-                        array.type_info.layout.size() * self.entities.len(),
+                        offset,
                         array.type_info.layout.align(),
                     ),
                 );
