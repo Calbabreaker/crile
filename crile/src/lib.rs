@@ -8,7 +8,7 @@ mod utils;
 mod window;
 
 #[cfg(feature = "egui")]
-pub mod egui;
+mod egui;
 #[cfg(feature = "egui")]
 pub use egui::*;
 

@@ -89,22 +89,13 @@ impl Archetype {
 
         // Moves the last item to index and decrement length by 1
         let last_index = self.count - 1;
-        if index != last_index {
-            for array in self.component_arrays.iter() {
-                unsafe {
-                    let size = array.type_info.layout.size();
-                    let to_remove = array.ptr.add(index * size);
-                    let last = array.ptr.add(last_index * size);
-                    if should_drop {
-                        (array.type_info.drop)(to_remove);
-                    }
-
-                    std::ptr::copy_nonoverlapping(last, to_remove, size);
-                }
+        for array in self.component_arrays.iter_mut() {
+            unsafe {
+                array.swap_remove(index, last_index, should_drop);
             }
-
-            self.entities[index] = self.entities[last_index];
         }
+
+        self.entities[index] = self.entities[last_index];
 
         self.count -= 1;
         self.entities[index]
@@ -149,18 +140,9 @@ impl Drop for Archetype {
             return;
         }
 
-        for array in self.component_arrays.iter() {
+        for array in self.component_arrays.iter_mut() {
             unsafe {
-                let offset = array.type_info.layout.size() * self.entities.len();
-                (array.type_info.drop)(array.ptr.add(offset));
-
-                std::alloc::dealloc(
-                    array.ptr,
-                    std::alloc::Layout::from_size_align_unchecked(
-                        offset,
-                        array.type_info.layout.align(),
-                    ),
-                );
+                array.clean(self.entities.len());
             }
         }
     }
@@ -194,5 +176,28 @@ impl ComponentArray {
         }
 
         self.ptr = data.cast();
+    }
+
+    unsafe fn swap_remove(&mut self, index: usize, last_index: usize, should_drop: bool) {
+        let size = self.type_info.layout.size();
+        let to_remove = self.ptr.add(index * size);
+        if should_drop {
+            (self.type_info.drop)(to_remove);
+        }
+
+        if index != last_index {
+            let last = self.ptr.add(last_index * size);
+            std::ptr::copy_nonoverlapping(last, to_remove, size);
+        }
+    }
+
+    unsafe fn clean(&mut self, length: usize) {
+        let offset = self.type_info.layout.size() * length;
+        (self.type_info.drop)(self.ptr.add(offset));
+
+        std::alloc::dealloc(
+            self.ptr,
+            std::alloc::Layout::from_size_align_unchecked(offset, self.type_info.layout.align()),
+        );
     }
 }

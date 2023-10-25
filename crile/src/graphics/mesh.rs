@@ -76,4 +76,32 @@ impl Mesh {
                 contents: bytemuck::cast_slice(data),
             })
     }
+
+    pub fn as_ref(&self) -> MeshRef {
+        MeshRef::new(
+            self.vertex_buffer.slice(..),
+            self.index_buffer.slice(..),
+            self.index_count,
+        )
+    }
+}
+
+pub struct MeshRef<'a> {
+    pub vertex_buffer: wgpu::BufferSlice<'a>,
+    pub index_buffer: wgpu::BufferSlice<'a>,
+    pub index_count: u32,
+}
+
+impl<'a> MeshRef<'a> {
+    pub fn new(
+        vertex_buffer: wgpu::BufferSlice<'a>,
+        index_buffer: wgpu::BufferSlice<'a>,
+        index_count: u32,
+    ) -> Self {
+        Self {
+            vertex_buffer,
+            index_buffer,
+            index_count,
+        }
+    }
 }

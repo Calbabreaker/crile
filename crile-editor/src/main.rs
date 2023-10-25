@@ -2,7 +2,6 @@ use crate::scene_hierachy_panel::SceneHierachyPanel;
 
 mod scene_hierachy_panel;
 
-#[derive(Default)]
 pub struct SceneApp {
     egui: crile::EguiContext,
     scene: crile::Scene,
@@ -10,8 +9,9 @@ pub struct SceneApp {
 }
 
 impl crile::Application for SceneApp {
-    fn init(&mut self, engine: &mut crile::Engine) {
-        self.scene.world.spawn((
+    fn new(engine: &mut crile::Engine) -> Self {
+        let mut scene = crile::Scene::default();
+        scene.world.spawn((
             crile::IdentifierComponent {
                 name: "Camera".to_string(),
             },
@@ -19,7 +19,7 @@ impl crile::Application for SceneApp {
             crile::CameraComponent::default(),
         ));
 
-        self.scene.world.spawn((
+        scene.world.spawn((
             crile::IdentifierComponent {
                 name: "Sprite".to_string(),
             },
@@ -29,7 +29,12 @@ impl crile::Application for SceneApp {
             },
         ));
 
-        self.scene.resize(engine.window.size().as_vec2());
+        scene.resize(engine.window.size().as_vec2());
+        Self {
+            egui: crile::EguiContext::new(engine),
+            scene,
+            scene_hierachy_panel: SceneHierachyPanel::default(),
+        }
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
@@ -68,5 +73,5 @@ impl crile::Application for SceneApp {
 }
 
 fn main() {
-    crile::run(SceneApp::default())
+    crile::run::<SceneApp>().unwrap();
 }

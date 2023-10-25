@@ -6,23 +6,24 @@ pub struct SceneApp {
 }
 
 impl crile::Application for SceneApp {
-    fn init(&mut self, engine: &mut crile::Engine) {
-        self.scene
-            .world
-            .spawn((crile::TransformComponent::default(),));
-        self.scene.world.spawn((
+    fn new(engine: &mut crile::Engine) -> Self {
+        let mut scene = crile::Scene::default();
+        scene.world.spawn((crile::TransformComponent::default(),));
+        scene.world.spawn((
             crile::TransformComponent::default(),
             crile::CameraComponent::default(),
         ));
 
-        self.scene.world.spawn((
+        scene.world.spawn((
             crile::TransformComponent::default(),
             crile::SpriteRendererComponent {
                 color: crile::Color::from_rgb(255, 0, 0),
             },
         ));
 
-        self.scene.resize(engine.window.size().as_vec2());
+        scene.resize(engine.window.size().as_vec2());
+
+        Self { scene }
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {}
@@ -43,5 +44,5 @@ impl crile::Application for SceneApp {
 }
 
 fn main() {
-    crile::run(SceneApp::default())
+    crile::run::<SceneApp>().unwrap()
 }

@@ -1,16 +1,17 @@
 use crate::{
-    graphics::{DrawUniform, Mesh, MeshVertex, Rect, RenderPass, Texture},
-    Engine, Event, KeyCode, KeyModifiers, MouseButton,
+    BufferAllocation, DrawUniform, Engine, Event, KeyCode, KeyModifiers, MeshRef, MeshVertex,
+    MouseButton, Rect, RenderPass, Texture,
 };
 
 #[derive(Debug)]
 struct PaintJob {
     texture_id: egui::TextureId,
-    mesh: Mesh,
+    index_alloc: BufferAllocation,
+    vertex_alloc: BufferAllocation,
+    index_count: u32,
     rect: Rect,
 }
 
-#[derive(Default)]
 pub struct EguiContext {
     ctx: egui::Context,
     raw_input: egui::RawInput,
@@ -19,10 +20,17 @@ pub struct EguiContext {
 }
 
 impl EguiContext {
-    pub fn init(&mut self, engine: &Engine) {
-        self.raw_input.max_texture_side =
-            Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize);
-        self.resize(engine.window.size());
+    pub fn new(engine: &Engine) -> Self {
+        Self {
+            ctx: egui::Context::default(),
+            raw_input: egui::RawInput {
+                max_texture_side: Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize),
+                screen_rect: rect_from_size(engine.window.size()),
+                ..Default::default()
+            },
+            paint_jobs: Vec::new(),
+            textures: hashbrown::HashMap::new(),
+        }
     }
 
     pub fn update(
@@ -100,7 +108,17 @@ impl EguiContext {
 
                     self.paint_jobs.push(PaintJob {
                         texture_id: mesh.texture_id,
-                        mesh: Mesh::new(wgpu, &vertices, &mesh.indices),
+                        vertex_alloc: engine
+                            .gfx
+                            .caches
+                            .vertex_buffer_allocator
+                            .alloc_write(wgpu, &vertices),
+                        index_alloc: engine
+                            .gfx
+                            .caches
+                            .index_buffer_allocator
+                            .alloc_write(wgpu, &mesh.indices),
+                        index_count: mesh.indices.len() as u32,
                         rect: Rect {
                             x: clip_rect.min.x,
                             y: clip_rect.min.y,
@@ -122,10 +140,14 @@ impl EguiContext {
             transform: render_pass.target_rect().matrix(),
         });
 
-        for paint_job in &self.paint_jobs {
-            render_pass.set_scissor_rect(paint_job.rect);
-            render_pass.set_texture(&self.textures[&paint_job.texture_id]);
-            render_pass.draw_mesh_single(&paint_job.mesh);
+        for job in &self.paint_jobs {
+            render_pass.set_scissor_rect(job.rect);
+            render_pass.set_texture(&self.textures[&job.texture_id]);
+            render_pass.draw_mesh_single(MeshRef::new(
+                job.vertex_alloc.as_slice(),
+                job.index_alloc.as_slice(),
+                job.index_count,
+            ));
         }
 
         render_pass.reset_scissor_rect();
@@ -136,7 +158,7 @@ impl EguiContext {
         let modifiers = to_egui_modifiers(engine.input.key_modifiers());
 
         match event {
-            Event::WindowResize { size } => self.resize(*size),
+            Event::WindowResize { size } => self.raw_input.screen_rect = rect_from_size(*size),
             Event::MouseMoved { .. } => self.push_event(egui::Event::PointerMoved(mouse_position)),
             Event::MouseInput { state, button } => self.push_event(egui::Event::PointerButton {
                 pos: mouse_position,
@@ -187,13 +209,13 @@ impl EguiContext {
     fn push_event(&mut self, event: egui::Event) {
         self.raw_input.events.push(event);
     }
+}
 
-    fn resize(&mut self, size: glam::UVec2) {
-        self.raw_input.screen_rect = Some(egui::Rect::from_min_size(
-            egui::Pos2::ZERO,
-            egui::vec2(size.x as f32, size.y as f32),
-        ));
-    }
+fn rect_from_size(size: glam::UVec2) -> Option<egui::Rect> {
+    Some(egui::Rect::from_min_size(
+        egui::Pos2::ZERO,
+        egui::vec2(size.x as f32, size.y as f32),
+    ))
 }
 
 fn to_egui_pos(vec: glam::Vec2) -> egui::Pos2 {

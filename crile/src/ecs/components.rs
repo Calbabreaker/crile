@@ -1,6 +1,6 @@
 use crate::{Camera, Color};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct IdentifierComponent {
     pub name: String,
 }

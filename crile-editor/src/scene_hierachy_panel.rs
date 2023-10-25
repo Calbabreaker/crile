@@ -6,8 +6,13 @@ impl SceneHierachyPanel {
         egui::SidePanel::left("Scene Hierachy").show(ctx, |ui| {
             let mut iter = scene.world.iter();
             while let Some(entity) = iter.next_entity() {
-                if let Some(id) = entity.get::<crile::IdentifierComponent>() {
-                    ui.label(&id.name);
+                if let Some(ident) = entity.get::<crile::IdentifierComponent>() {
+                    let response = egui::CollapsingHeader::new(&ident.name)
+                        .id_source(entity.id())
+                        .selectable(true)
+                        // .selected(selected)
+                        // .open(open)
+                        .show(ui, |ui| {});
                 }
             }
         });

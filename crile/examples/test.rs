@@ -1,6 +1,5 @@
 #![allow(unused)]
 
-#[derive(Default)]
 pub struct TestApp {
     camera: crile::Camera,
     textures: Vec<crile::Texture>,
@@ -12,19 +11,14 @@ pub struct TestApp {
 }
 
 impl crile::Application for TestApp {
-    fn init(&mut self, engine: &mut crile::Engine) {
-        self.camera.resize(engine.window.size().as_vec2());
-        self.camera.ortho_size = 10.0;
-        self.textures.push(crile::Texture::from_image(
-            &engine.gfx.wgpu,
-            image::open("assets/test.png").unwrap(),
-        ));
-        self.textures[0].sampler_config = crile::SamplerConfig::nearest();
-        self.textures.push(engine.gfx.data.white_texture.clone());
+    fn new(engine: &mut crile::Engine) -> Self {
+        let mut texture =
+            crile::Texture::from_image(&engine.gfx.wgpu, image::open("assets/test.png").unwrap());
+        texture.sampler_config = crile::SamplerConfig::nearest();
 
         let rows = 100;
         let cols = 100;
-        self.instances = (0..rows * cols)
+        let instances = (0..rows * cols)
             .map(|i| {
                 let position = glam::Vec3::new((i % cols) as f32, (i / rows) as f32, 0.0);
                 crile::RenderInstance {
@@ -33,28 +27,28 @@ impl crile::Application for TestApp {
                 }
             })
             .collect();
-        self.egui.init(engine);
 
-        let ida = self.world.spawn(());
-        self.world.spawn((crile::TransformComponent::default(),));
-        self.world.despawn(ida);
-        let id = self.world.spawn((crile::TransformComponent::default(),));
-        let mut a = self.world.get_entity(id);
+        let mut world = crile::World::default();
+        let id = world.spawn((crile::TransformComponent::default(),));
+        let mut a = world.entity(id);
         dbg!(a.get::<crile::TransformComponent>());
         a.add(crile::CameraComponent::default());
         a.remove::<crile::CameraComponent>();
         a.add(crile::CameraComponent::default());
-        assert!(id == ida);
         dbg!(id);
+
+        Self {
+            camera: crile::Camera::new(engine.window.size().as_vec2()),
+            textures: vec![texture],
+            instances,
+            egui: crile::EguiContext::new(engine),
+            visibile: false,
+            text: "hello".to_owned(),
+            world: crile::World::default(),
+        }
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
-        // if engine.input.key_just_pressed(crile::KeyCode::Space) {
-        // println!("Framerate: {}", engine.time.framerate());
-        // }
-        //
-        //
-
         self.egui.update(engine, |ctx, engine| {
             egui::Window::new("hello").show(ctx, |ui| {
                 ui.label("Hello world!");
@@ -84,7 +78,7 @@ impl crile::Application for TestApp {
         render_pass.set_uniform(crile::DrawUniform {
             transform: self.camera.get_projection(),
         });
-        render_pass.draw_mesh_instanced(&render_pass.data.square_mesh, &self.instances);
+        render_pass.draw_mesh_instanced(render_pass.data.square_mesh.as_ref(), &self.instances);
 
         // Single draw version
         // for instance in &self.instances {
@@ -109,5 +103,5 @@ impl crile::Application for TestApp {
 }
 
 fn main() {
-    crile::run(TestApp::default())
+    crile::run::<TestApp>().unwrap();
 }

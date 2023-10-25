@@ -15,9 +15,17 @@ impl DynamicBufferSpace {
     }
 }
 
+#[derive(Debug)]
 pub struct BufferAllocation {
     pub offset: u64,
     pub buffer: RefId<wgpu::Buffer>,
+    pub size: u64,
+}
+
+impl BufferAllocation {
+    pub fn as_slice(&self) -> wgpu::BufferSlice {
+        self.buffer.slice(self.offset..self.offset + self.size)
+    }
 }
 
 /// For allocating gpu buffer space to write into
@@ -29,41 +37,64 @@ pub struct DynamicBufferAllocator {
 }
 
 impl DynamicBufferAllocator {
-    pub fn new(wgpu: &WGPUContext, alignment: u64, usage: wgpu::BufferUsages, size: u64) -> Self {
+    pub fn new(wgpu: &WGPUContext, usage: wgpu::BufferUsages) -> Self {
+        let alignment = match usage {
+            wgpu::BufferUsages::UNIFORM => wgpu.limits.min_uniform_buffer_offset_alignment as u64,
+            wgpu::BufferUsages::STORAGE => wgpu.limits.min_storage_buffer_offset_alignment as u64,
+            _ => wgpu::COPY_BUFFER_ALIGNMENT,
+        };
+
+        let size = match usage {
+            wgpu::BufferUsages::UNIFORM => wgpu.limits.max_uniform_buffer_binding_size as u64,
+            wgpu::BufferUsages::STORAGE => wgpu.limits.max_storage_buffer_binding_size as u64,
+            _ => wgpu.limits.max_buffer_size,
+        };
+
         let descriptor = wgpu::BufferDescriptor {
             label: None,
             size,
-            usage,
+            usage: usage | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         };
 
         Self {
-            buffer_spaces: vec![DynamicBufferSpace::new(wgpu, &descriptor)],
+            buffer_spaces: Vec::new(),
             alignment,
             descriptor,
         }
     }
 
-    /// Finds a space inside one of the buffers where size fits
-    pub fn allocate(&mut self, wgpu: &WGPUContext, size: u64) -> BufferAllocation {
+    /// Finds a space inside one of the buffers where size fits and writes to that space with data
+    pub fn alloc_write<T: bytemuck::Pod>(
+        &mut self,
+        wgpu: &WGPUContext,
+        data: &[T],
+    ) -> BufferAllocation {
+        let size = std::mem::size_of_val(data) as u64;
+
         // TODO: use size.div_ceil once https://github.com/rust-lang/rust/issues/88581 is stablized
         // Aligns size to alignment since gpus require the buffer to have a certain alignment
-        let size = (size / self.alignment + 1) * self.alignment;
+        let size_aligned = (size / self.alignment + 1) * self.alignment;
         assert!(
-            size <= self.descriptor.size,
+            size_aligned <= self.descriptor.size,
             "requested size ({0}) is greater than buffer size ({1})",
-            size,
+            size_aligned,
             self.descriptor.size
         );
 
         // Find space where size fits
         for space in &mut self.buffer_spaces {
-            if size <= self.descriptor.size - space.cursor {
+            if size_aligned <= self.descriptor.size - space.cursor {
                 let offset = space.cursor;
-                space.cursor += size;
+                space.cursor += size_aligned;
+
+                wgpu.queue
+                    .write_buffer(&space.buffer, offset, bytemuck::cast_slice(data));
+
                 return BufferAllocation {
                     offset,
                     buffer: RefId::clone(&space.buffer),
+                    size,
                 };
             }
         }
@@ -71,7 +102,7 @@ impl DynamicBufferAllocator {
         // Didn't find any so grow and try again
         self.buffer_spaces
             .push(DynamicBufferSpace::new(wgpu, &self.descriptor));
-        self.allocate(wgpu, size)
+        self.alloc_write(wgpu, data)
     }
 
     pub fn free(&mut self) {

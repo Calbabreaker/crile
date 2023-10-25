@@ -1,10 +1,10 @@
 use std::num::NonZeroU64;
 
 use super::{
-    BindGroupEntries, Color, GraphicsCaches, GraphicsContext, GraphicsData, Mesh, MeshVertex, Rect,
+    BindGroupEntries, Color, GraphicsCaches, GraphicsContext, GraphicsData, MeshVertex, Rect,
     RenderPipelineConfig, Shader, ShaderKind, Texture, TextureRef, WGPUContext,
 };
-use crate::RefId;
+use crate::{MeshRef, RefId};
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -80,18 +80,11 @@ impl<'a> RenderPass<'a> {
         }
     }
 
-    pub fn draw_mesh_instanced(&mut self, mesh: &'a Mesh, instances: &[RenderInstance]) {
-        let instances_size = std::mem::size_of_val(instances) as u64;
+    pub fn draw_mesh_instanced(&mut self, mesh: MeshRef<'a>, instances: &[RenderInstance]) {
         let instances_alloc = self
             .caches
             .storage_buffer_allocator
-            .allocate(self.wgpu, instances_size);
-
-        self.wgpu.queue.write_buffer(
-            &instances_alloc.buffer,
-            instances_alloc.offset,
-            bytemuck::cast_slice(instances),
-        );
+            .alloc_write(self.wgpu, instances);
 
         let instances_bind_group = self.caches.bind_group.get(
             self.wgpu,
@@ -99,7 +92,7 @@ impl<'a> RenderPass<'a> {
                 wgpu::ShaderStages::VERTEX,
                 &instances_alloc.buffer,
                 wgpu::BufferBindingType::Storage { read_only: true },
-                NonZeroU64::new(instances_size),
+                NonZeroU64::new(instances_alloc.size),
                 true,
             ),
         );
@@ -108,16 +101,16 @@ impl<'a> RenderPass<'a> {
         self.draw_mesh(mesh, instances.len() as u32);
     }
 
-    pub fn draw_mesh_single(&mut self, mesh: &'a Mesh) {
+    pub fn draw_mesh_single(&mut self, mesh: MeshRef<'a>) {
         self.draw_mesh(mesh, 1);
     }
 
-    fn draw_mesh(&mut self, mesh: &'a Mesh, instance_count: u32) {
+    fn draw_mesh(&mut self, mesh: MeshRef<'a>, instance_count: u32) {
         self.update_pipeline();
         self.gpu_render_pass
-            .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            .set_index_buffer(mesh.index_buffer, wgpu::IndexFormat::Uint32);
         self.gpu_render_pass
-            .set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            .set_vertex_buffer(0, mesh.vertex_buffer);
         self.gpu_render_pass
             .draw_indexed(0..mesh.index_count, 0, 0..instance_count);
     }
@@ -135,17 +128,10 @@ impl<'a> RenderPass<'a> {
     }
 
     pub fn set_uniform<U: bytemuck::Pod>(&mut self, uniform: U) {
-        let uniform_size = std::mem::size_of_val(&uniform) as u64;
         let uniform_alloc = self
             .caches
             .uniform_buffer_allocator
-            .allocate(self.wgpu, uniform_size);
-
-        self.wgpu.queue.write_buffer(
-            &uniform_alloc.buffer,
-            uniform_alloc.offset,
-            bytemuck::cast_slice(&[uniform]),
-        );
+            .alloc_write(self.wgpu, &[uniform]);
 
         let uniform_bind_group = self.caches.bind_group.get(
             self.wgpu,
@@ -153,7 +139,7 @@ impl<'a> RenderPass<'a> {
                 wgpu::ShaderStages::VERTEX,
                 &uniform_alloc.buffer,
                 wgpu::BufferBindingType::Uniform,
-                NonZeroU64::new(uniform_size),
+                NonZeroU64::new(uniform_alloc.size),
                 true,
             ),
         );

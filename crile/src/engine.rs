@@ -1,7 +1,8 @@
 use crate::{graphics::GraphicsContext, Event, Input, Time, Window};
 
+/// For applications to implement in order to run
 pub trait Application {
-    fn init(&mut self, engine: &mut Engine);
+    fn new(engine: &mut Engine) -> Self;
     fn update(&mut self, engine: &mut Engine);
     fn render(&mut self, engine: &mut Engine);
     fn event(&mut self, engine: &mut Engine, event: &Event);
@@ -56,21 +57,15 @@ impl Engine {
     }
 }
 
-pub fn run(app: impl Application) {
+pub fn run<A: Application>() -> Result<(), winit::error::EventLoopError> {
     env_logger::builder()
         .filter_module("crile", log::LevelFilter::Trace)
         .filter_level(log::LevelFilter::Error)
         .init();
 
-    if let Err(err) = try_run(app) {
-        log::error!("{err}")
-    }
-}
-
-fn try_run(mut app: impl Application) -> Result<(), winit::error::EventLoopError> {
     let event_loop = winit::event_loop::EventLoop::new()?;
     let mut engine = Engine::new(&event_loop);
-    app.init(&mut engine);
+    let mut app = A::new(&mut engine);
 
     event_loop.run(move |event, _, control_flow| {
         match event {

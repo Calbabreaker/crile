@@ -27,19 +27,13 @@ impl GraphicsContext {
             ShaderKind::Instanced,
         );
 
-        let uniform_buffer_allocator = DynamicBufferAllocator::new(
-            &wgpu,
-            wgpu.limits.min_uniform_buffer_offset_alignment as u64,
-            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            wgpu.limits.max_uniform_buffer_binding_size as u64,
-        );
-
-        let storage_buffer_allocator = DynamicBufferAllocator::new(
-            &wgpu,
-            wgpu.limits.min_storage_buffer_offset_alignment as u64,
-            wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            wgpu.limits.max_storage_buffer_binding_size as u64,
-        );
+        let uniform_buffer_allocator =
+            DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::UNIFORM);
+        let storage_buffer_allocator =
+            DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::STORAGE);
+        let vertex_buffer_allocator =
+            DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::VERTEX);
+        let index_buffer_allocator = DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::INDEX);
 
         Self {
             data: GraphicsData {
@@ -55,6 +49,8 @@ impl GraphicsContext {
                 ref_id_holder: RefIdHolder::default(),
                 uniform_buffer_allocator,
                 storage_buffer_allocator,
+                vertex_buffer_allocator,
+                index_buffer_allocator,
             },
             wgpu,
             frame: None,
@@ -115,6 +111,8 @@ impl GraphicsContext {
 
         self.caches.uniform_buffer_allocator.free();
         self.caches.storage_buffer_allocator.free();
+        self.caches.vertex_buffer_allocator.free();
+        self.caches.index_buffer_allocator.free();
         // SAFETY: this gets called at the start of the frame so there should be no references to
         // bind groups or pipelines
         unsafe {
@@ -145,6 +143,8 @@ pub struct GraphicsCaches {
     pub ref_id_holder: RefIdHolder,
     pub uniform_buffer_allocator: DynamicBufferAllocator,
     pub storage_buffer_allocator: DynamicBufferAllocator,
+    pub index_buffer_allocator: DynamicBufferAllocator,
+    pub vertex_buffer_allocator: DynamicBufferAllocator,
     pub sampler: SamplerCache,
 }
 

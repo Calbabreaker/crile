@@ -33,7 +33,10 @@ impl Scene {
                 transform: view_matrix * camera.camera.get_projection(),
             });
             render_pass.set_shader(render_pass.data.instanced_shader.clone());
-            render_pass.draw_mesh_instanced(&render_pass.data.square_mesh, &self.render_instances);
+            render_pass.draw_mesh_instanced(
+                render_pass.data.square_mesh.as_ref(),
+                &self.render_instances,
+            );
         }
     }
 
