@@ -27,6 +27,7 @@ impl GraphicsContext {
             ShaderKind::Instanced,
         );
 
+        let white_texture = Texture::from_pixels(&wgpu, 1, 1, &[255, 255, 255, 255]);
         let uniform_buffer_allocator =
             DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::UNIFORM);
         let storage_buffer_allocator =
@@ -38,7 +39,7 @@ impl GraphicsContext {
         Self {
             data: GraphicsData {
                 square_mesh: Mesh::new_square(&wgpu),
-                white_texture: Texture::new(&wgpu, 1, 1, &[255, 255, 255, 255]),
+                white_texture: RefId::new(white_texture),
                 instanced_shader: RefId::new(instanced_shader),
                 single_draw_shader: RefId::new(single_draw_shader),
             },
@@ -149,7 +150,7 @@ pub struct GraphicsCaches {
 }
 
 pub struct GraphicsData {
-    pub white_texture: Texture,
+    pub white_texture: RefId<Texture>,
     pub square_mesh: Mesh,
     pub single_draw_shader: RefId<Shader>,
     pub instanced_shader: RefId<Shader>,

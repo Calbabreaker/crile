@@ -1,7 +1,7 @@
 use crate::{Camera, Color};
 
 #[derive(Debug, Default)]
-pub struct IdentifierComponent {
+pub struct MetaDataComponent {
     pub name: String,
 }
 

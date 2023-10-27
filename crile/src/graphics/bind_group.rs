@@ -1,7 +1,7 @@
 use std::num::NonZeroU64;
 
 use super::WGPUContext;
-use crate::RefId;
+use crate::{RefId, Texture};
 
 /// Key to differentiate between bind groups in cache
 /// Not every property is used, only the ones that change
@@ -48,15 +48,12 @@ impl<'a> BindGroupEntries<'a> {
         self.buffer_layout(visibility, ty, has_dynamic_offset)
     }
 
-    pub fn texture(
-        mut self,
-        visibility: wgpu::ShaderStages,
-        view: &'a RefId<wgpu::TextureView>,
-    ) -> Self {
-        self.keys.push(BindGroupEntryKey::Texture { id: view.id() });
+    pub fn texture(mut self, visibility: wgpu::ShaderStages, texture: &'a RefId<Texture>) -> Self {
+        self.keys
+            .push(BindGroupEntryKey::Texture { id: texture.id() });
         self.groups.push(wgpu::BindGroupEntry {
             binding: self.groups.len() as u32,
-            resource: wgpu::BindingResource::TextureView(view),
+            resource: wgpu::BindingResource::TextureView(&texture.gpu_view),
         });
         self.texture_layout(visibility)
     }

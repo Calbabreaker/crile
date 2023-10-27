@@ -1,6 +1,6 @@
 use crate::{
-    BufferAllocation, DrawUniform, Engine, Event, KeyCode, KeyModifiers, MeshRef, MeshVertex,
-    MouseButton, Rect, RenderPass, Texture,
+    BufferAllocation, DrawUniform, Engine, Event, KeyCode, KeyModifiers, MeshVertex, MeshView,
+    MouseButton, Rect, RefId, RenderPass, Texture,
 };
 
 #[derive(Debug)]
@@ -13,16 +13,16 @@ struct PaintJob {
 }
 
 pub struct EguiContext {
-    ctx: egui::Context,
+    ctx: Option<egui::Context>,
     raw_input: egui::RawInput,
     paint_jobs: Vec<PaintJob>,
-    textures: hashbrown::HashMap<egui::TextureId, Texture>,
+    textures: hashbrown::HashMap<egui::TextureId, RefId<Texture>>,
 }
 
 impl EguiContext {
     pub fn new(engine: &Engine) -> Self {
         Self {
-            ctx: egui::Context::default(),
+            ctx: Some(egui::Context::default()),
             raw_input: egui::RawInput {
                 max_texture_side: Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize),
                 screen_rect: rect_from_size(engine.window.size()),
@@ -33,11 +33,7 @@ impl EguiContext {
         }
     }
 
-    pub fn update(
-        &mut self,
-        engine: &mut Engine,
-        run_fn: impl FnOnce(&egui::Context, &mut Engine),
-    ) {
+    pub fn begin_frame(&mut self, engine: &mut Engine) -> egui::Context {
         self.paint_jobs.clear();
 
         if to_egui_modifiers(engine.input.key_modifiers()).command {
@@ -50,9 +46,16 @@ impl EguiContext {
             }
         }
 
-        let mut full_output = self
+        let ctx = self
             .ctx
-            .run(self.raw_input.clone(), |ctx| run_fn(ctx, engine));
+            .take()
+            .expect("tried to call egui begine frame twice");
+        ctx.begin_frame(self.raw_input.clone());
+        ctx
+    }
+
+    pub fn end_frame(&mut self, engine: &mut Engine, ctx: egui::Context) {
+        let mut full_output = ctx.end_frame();
         let copied_text = full_output.platform_output.copied_text;
         if !copied_text.is_empty() {
             engine.window.set_clipboard(copied_text);
@@ -62,25 +65,26 @@ impl EguiContext {
 
         // Store all the texture egui is using
         while let Some((id, delta)) = full_output.textures_delta.set.pop() {
-            let texture = match &delta.image {
+            let (pixels, width, height) = match &delta.image {
                 egui::ImageData::Color(image) => {
                     let pixels = image
                         .pixels
                         .iter()
                         .flat_map(|pixel| pixel.to_array())
                         .collect::<Vec<_>>();
-                    Texture::new(wgpu, image.width() as u32, image.height() as u32, &pixels)
+                    (pixels, image.width(), image.height())
                 }
                 egui::ImageData::Font(image) => {
                     let pixels = image
                         .srgba_pixels(None)
                         .flat_map(|pixel| pixel.to_array())
                         .collect::<Vec<_>>();
-                    Texture::new(wgpu, image.width() as u32, image.height() as u32, &pixels)
+                    (pixels, image.width(), image.height())
                 }
             };
 
-            self.textures.insert(id, texture);
+            let texture = Texture::from_pixels(wgpu, width as u32, height as u32, &pixels);
+            self.textures.insert(id, RefId::new(texture));
         }
 
         while let Some(id) = full_output.textures_delta.free.pop() {
@@ -88,7 +92,7 @@ impl EguiContext {
         }
 
         // Get all the paint jobs
-        let clipped_primitives = self.ctx.tessellate(full_output.shapes);
+        let clipped_primitives = ctx.tessellate(full_output.shapes);
         for egui::ClippedPrimitive {
             primitive,
             clip_rect,
@@ -132,6 +136,7 @@ impl EguiContext {
         }
 
         self.raw_input.events.clear();
+        self.ctx = Some(ctx)
     }
 
     pub fn render<'a>(&'a mut self, render_pass: &mut RenderPass<'a>) {
@@ -143,7 +148,7 @@ impl EguiContext {
         for job in &self.paint_jobs {
             render_pass.set_scissor_rect(job.rect);
             render_pass.set_texture(&self.textures[&job.texture_id]);
-            render_pass.draw_mesh_single(MeshRef::new(
+            render_pass.draw_mesh_single(MeshView::new(
                 job.vertex_alloc.as_slice(),
                 job.index_alloc.as_slice(),
                 job.index_count,
@@ -208,6 +213,17 @@ impl EguiContext {
 
     fn push_event(&mut self, event: egui::Event) {
         self.raw_input.events.push(event);
+    }
+
+    pub fn register_texture(&mut self, texture: &RefId<Texture>) -> egui::TextureId {
+        let id = egui::TextureId::User(texture.id());
+        self.textures.insert(id, texture.clone());
+        id
+    }
+
+    pub fn unregister_texture(&mut self, texture: &RefId<Texture>) {
+        let id = egui::TextureId::User(texture.id());
+        self.textures.remove(&id);
     }
 }
 

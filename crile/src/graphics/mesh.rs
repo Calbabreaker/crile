@@ -77,8 +77,8 @@ impl Mesh {
             })
     }
 
-    pub fn as_ref(&self) -> MeshRef {
-        MeshRef::new(
+    pub fn view(&self) -> MeshView {
+        MeshView::new(
             self.vertex_buffer.slice(..),
             self.index_buffer.slice(..),
             self.index_count,
@@ -86,13 +86,13 @@ impl Mesh {
     }
 }
 
-pub struct MeshRef<'a> {
+pub struct MeshView<'a> {
     pub vertex_buffer: wgpu::BufferSlice<'a>,
     pub index_buffer: wgpu::BufferSlice<'a>,
     pub index_count: u32,
 }
 
-impl<'a> MeshRef<'a> {
+impl<'a> MeshView<'a> {
     pub fn new(
         vertex_buffer: wgpu::BufferSlice<'a>,
         index_buffer: wgpu::BufferSlice<'a>,

@@ -240,10 +240,11 @@ impl<'a> WorldIter<'a> {
     }
 
     pub fn next_entity(&mut self) -> Option<EntityRef> {
-        let location = self.world.entity_locations.get(self.id)?;
+        let id = self.id;
+        let location = self.world.entity_locations.get(id)?;
         self.id += 1;
         if location.valid {
-            Some(EntityRef::new(self.world, *location, self.id))
+            Some(EntityRef::new(self.world, *location, id))
         } else {
             self.next_entity()
         }

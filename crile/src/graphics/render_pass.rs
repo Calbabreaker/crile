@@ -2,9 +2,9 @@ use std::num::NonZeroU64;
 
 use super::{
     BindGroupEntries, Color, GraphicsCaches, GraphicsContext, GraphicsData, MeshVertex, Rect,
-    RenderPipelineConfig, Shader, ShaderKind, Texture, TextureRef, WGPUContext,
+    RenderPipelineConfig, Shader, ShaderKind, Texture, TextureView, WGPUContext,
 };
-use crate::{MeshRef, RefId};
+use crate::{MeshView, RefId};
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -25,9 +25,8 @@ pub struct RenderPass<'a> {
     gpu_render_pass: wgpu::RenderPass<'a>,
     shader: RefId<Shader>,
     dirty_pipline: bool,
-    blend_mode: wgpu::BlendState,
 
-    pub target: TextureRef<'a>,
+    pub target: TextureView<'a>,
     wgpu: &'a WGPUContext,
     caches: &'a mut GraphicsCaches,
     pub data: &'a GraphicsData,
@@ -39,14 +38,14 @@ impl<'a> RenderPass<'a> {
     pub fn new(
         gfx: &'a mut GraphicsContext,
         clear_color: Option<Color>,
-        target: Option<TextureRef<'a>>,
+        target: Option<TextureView<'a>>,
     ) -> Self {
         let frame = gfx
             .frame
             .as_mut()
             .expect("tried to create render pass but frame doesn't exist");
 
-        let target = target.unwrap_or(TextureRef::new(&frame.output.texture, &frame.output_view));
+        let target = target.unwrap_or(TextureView::new(&frame.output.texture, &frame.output_view));
         let gpu_render_pass = frame
             .encoder
             .begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -70,9 +69,8 @@ impl<'a> RenderPass<'a> {
             shader: gfx.data.single_draw_shader.clone(),
             dirty_pipline: true,
             target,
-            blend_mode: wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
 
-            // We need to get references to WGPUContext, GfxData, GfxCaches seperately or rust is
+            // We need to get references to WGPUContext, GraphicsData, GraphicsCaches seperately or rust is
             // going to complain about mutiple borrows
             wgpu: &gfx.wgpu,
             caches: &mut gfx.caches,
@@ -80,7 +78,7 @@ impl<'a> RenderPass<'a> {
         }
     }
 
-    pub fn draw_mesh_instanced(&mut self, mesh: MeshRef<'a>, instances: &[RenderInstance]) {
+    pub fn draw_mesh_instanced(&mut self, mesh: MeshView<'a>, instances: &[RenderInstance]) {
         let instances_alloc = self
             .caches
             .storage_buffer_allocator
@@ -101,11 +99,11 @@ impl<'a> RenderPass<'a> {
         self.draw_mesh(mesh, instances.len() as u32);
     }
 
-    pub fn draw_mesh_single(&mut self, mesh: MeshRef<'a>) {
+    pub fn draw_mesh_single(&mut self, mesh: MeshView<'a>) {
         self.draw_mesh(mesh, 1);
     }
 
-    fn draw_mesh(&mut self, mesh: MeshRef<'a>, instance_count: u32) {
+    fn draw_mesh(&mut self, mesh: MeshView<'a>, instance_count: u32) {
         self.update_pipeline();
         self.gpu_render_pass
             .set_index_buffer(mesh.index_buffer, wgpu::IndexFormat::Uint32);
@@ -115,12 +113,12 @@ impl<'a> RenderPass<'a> {
             .draw_indexed(0..mesh.index_count, 0, 0..instance_count);
     }
 
-    pub fn set_texture(&mut self, texture: &Texture) {
+    pub fn set_texture(&mut self, texture: &RefId<Texture>) {
         let sampler = self.caches.sampler.get(self.wgpu, texture.sampler_config);
         let texture_bind_group = self.caches.bind_group.get(
             self.wgpu,
             &BindGroupEntries::new()
-                .texture(wgpu::ShaderStages::FRAGMENT, &texture.gpu_view)
+                .texture(wgpu::ShaderStages::FRAGMENT, texture)
                 .sampler(wgpu::ShaderStages::FRAGMENT, &sampler),
         );
 
@@ -196,7 +194,7 @@ impl<'a> RenderPass<'a> {
             RenderPipelineConfig {
                 shader: self.shader.clone(),
                 vertex_buffer_layouts: &[MeshVertex::LAYOUT],
-                blend_mode: self.blend_mode,
+                format: self.target.gpu_texture.format(),
             },
             &layouts,
         );
