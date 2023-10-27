@@ -1,26 +1,21 @@
-use crate::{
-    BufferAllocation, DrawUniform, Engine, Event, KeyCode, KeyModifiers, MeshVertex, MeshView,
-    MouseButton, Rect, RefId, RenderPass, Texture,
-};
-
 #[derive(Debug)]
 struct PaintJob {
     texture_id: egui::TextureId,
-    index_alloc: BufferAllocation,
-    vertex_alloc: BufferAllocation,
+    index_alloc: crile::BufferAllocation,
+    vertex_alloc: crile::BufferAllocation,
     index_count: u32,
-    rect: Rect,
+    rect: crile::Rect,
 }
 
 pub struct EguiContext {
     ctx: Option<egui::Context>,
     raw_input: egui::RawInput,
     paint_jobs: Vec<PaintJob>,
-    textures: hashbrown::HashMap<egui::TextureId, RefId<Texture>>,
+    textures: hashbrown::HashMap<egui::TextureId, crile::RefId<crile::Texture>>,
 }
 
 impl EguiContext {
-    pub fn new(engine: &Engine) -> Self {
+    pub fn new(engine: &crile::Engine) -> Self {
         Self {
             ctx: Some(egui::Context::default()),
             raw_input: egui::RawInput {
@@ -33,15 +28,15 @@ impl EguiContext {
         }
     }
 
-    pub fn begin_frame(&mut self, engine: &mut Engine) -> egui::Context {
+    pub fn begin_frame(&mut self, engine: &mut crile::Engine) -> egui::Context {
         self.paint_jobs.clear();
 
         if to_egui_modifiers(engine.input.key_modifiers()).command {
-            if engine.input.key_just_pressed(KeyCode::KeyC) {
+            if engine.input.key_just_pressed(crile::KeyCode::KeyC) {
                 self.push_event(egui::Event::Copy);
-            } else if engine.input.key_just_pressed(KeyCode::KeyX) {
+            } else if engine.input.key_just_pressed(crile::KeyCode::KeyX) {
                 self.push_event(egui::Event::Cut);
-            } else if engine.input.key_just_pressed(KeyCode::KeyV) {
+            } else if engine.input.key_just_pressed(crile::KeyCode::KeyV) {
                 self.push_event(egui::Event::Paste(engine.window.get_clipboard()));
             }
         }
@@ -54,7 +49,7 @@ impl EguiContext {
         ctx
     }
 
-    pub fn end_frame(&mut self, engine: &mut Engine, ctx: egui::Context) {
+    pub fn end_frame(&mut self, engine: &mut crile::Engine, ctx: egui::Context) {
         let mut full_output = ctx.end_frame();
         let copied_text = full_output.platform_output.copied_text;
         if !copied_text.is_empty() {
@@ -83,8 +78,8 @@ impl EguiContext {
                 }
             };
 
-            let texture = Texture::from_pixels(wgpu, width as u32, height as u32, &pixels);
-            self.textures.insert(id, RefId::new(texture));
+            let texture = crile::Texture::from_pixels(wgpu, width as u32, height as u32, &pixels);
+            self.textures.insert(id, texture.into());
         }
 
         while let Some(id) = full_output.textures_delta.free.pop() {
@@ -103,7 +98,7 @@ impl EguiContext {
                     let vertices = mesh
                         .vertices
                         .iter()
-                        .map(|v| MeshVertex {
+                        .map(|v| crile::MeshVertex {
                             position: [v.pos.x, v.pos.y],
                             texture_coords: [v.uv.x, v.uv.y],
                             color: egui::Rgba::from(v.color).to_array(),
@@ -123,7 +118,7 @@ impl EguiContext {
                             .index_buffer_allocator
                             .alloc_write(wgpu, &mesh.indices),
                         index_count: mesh.indices.len() as u32,
-                        rect: Rect {
+                        rect: crile::Rect {
                             x: clip_rect.min.x,
                             y: clip_rect.min.y,
                             w: (clip_rect.max.x - clip_rect.min.x),
@@ -139,16 +134,16 @@ impl EguiContext {
         self.ctx = Some(ctx)
     }
 
-    pub fn render<'a>(&'a mut self, render_pass: &mut RenderPass<'a>) {
+    pub fn render<'a>(&'a mut self, render_pass: &mut crile::RenderPass<'a>) {
         render_pass.set_shader(render_pass.data.single_draw_shader.clone());
-        render_pass.set_uniform(DrawUniform {
+        render_pass.set_uniform(crile::DrawUniform {
             transform: render_pass.target_rect().matrix(),
         });
 
         for job in &self.paint_jobs {
             render_pass.set_scissor_rect(job.rect);
             render_pass.set_texture(&self.textures[&job.texture_id]);
-            render_pass.draw_mesh_single(MeshView::new(
+            render_pass.draw_mesh_single(crile::MeshView::new(
                 job.vertex_alloc.as_slice(),
                 job.index_alloc.as_slice(),
                 job.index_count,
@@ -158,30 +153,36 @@ impl EguiContext {
         render_pass.reset_scissor_rect();
     }
 
-    pub fn event(&mut self, engine: &Engine, event: &Event) {
+    pub fn event(&mut self, engine: &crile::Engine, event: &crile::Event) {
         let mouse_position = to_egui_pos(engine.input.mouse_position());
         let modifiers = to_egui_modifiers(engine.input.key_modifiers());
 
         match event {
-            Event::WindowResize { size } => self.raw_input.screen_rect = rect_from_size(*size),
-            Event::MouseMoved { .. } => self.push_event(egui::Event::PointerMoved(mouse_position)),
-            Event::MouseInput { state, button } => self.push_event(egui::Event::PointerButton {
-                pos: mouse_position,
-                button: match button {
-                    MouseButton::Left => egui::PointerButton::Primary,
-                    MouseButton::Right => egui::PointerButton::Secondary,
-                    MouseButton::Middle => egui::PointerButton::Middle,
-                    MouseButton::Other(0) => egui::PointerButton::Extra1,
-                    MouseButton::Other(1) => egui::PointerButton::Extra2,
-                    _ => return,
-                },
-                modifiers,
-                pressed: state.is_pressed(),
-            }),
-            Event::MouseScrolled { delta } => {
+            crile::Event::WindowResize { size } => {
+                self.raw_input.screen_rect = rect_from_size(*size)
+            }
+            crile::Event::MouseMoved { .. } => {
+                self.push_event(egui::Event::PointerMoved(mouse_position))
+            }
+            crile::Event::MouseInput { state, button } => {
+                self.push_event(egui::Event::PointerButton {
+                    pos: mouse_position,
+                    button: match button {
+                        crile::MouseButton::Left => egui::PointerButton::Primary,
+                        crile::MouseButton::Right => egui::PointerButton::Secondary,
+                        crile::MouseButton::Middle => egui::PointerButton::Middle,
+                        crile::MouseButton::Other(0) => egui::PointerButton::Extra1,
+                        crile::MouseButton::Other(1) => egui::PointerButton::Extra2,
+                        _ => return,
+                    },
+                    modifiers,
+                    pressed: state.is_pressed(),
+                })
+            }
+            crile::Event::MouseScrolled { delta } => {
                 self.push_event(egui::Event::Scroll(egui::vec2(delta.x, delta.y)))
             }
-            Event::KeyInput {
+            crile::Event::KeyInput {
                 state,
                 repeat,
                 keycode,
@@ -201,10 +202,10 @@ impl EguiContext {
                     });
                 }
             }
-            Event::WindowFocusChanged { focused } => {
+            crile::Event::WindowFocusChanged { focused } => {
                 self.push_event(egui::Event::WindowFocused(*focused))
             }
-            Event::MouseHoverChanged { hovering: false } => {
+            crile::Event::MouseHoverChanged { hovering: false } => {
                 self.push_event(egui::Event::PointerGone)
             }
             _ => (),
@@ -215,13 +216,13 @@ impl EguiContext {
         self.raw_input.events.push(event);
     }
 
-    pub fn register_texture(&mut self, texture: &RefId<Texture>) -> egui::TextureId {
+    pub fn register_texture(&mut self, texture: &crile::RefId<crile::Texture>) -> egui::TextureId {
         let id = egui::TextureId::User(texture.id());
         self.textures.insert(id, texture.clone());
         id
     }
 
-    pub fn unregister_texture(&mut self, texture: &RefId<Texture>) {
+    pub fn unregister_texture(&mut self, texture: &crile::RefId<crile::Texture>) {
         let id = egui::TextureId::User(texture.id());
         self.textures.remove(&id);
     }
@@ -238,7 +239,7 @@ fn to_egui_pos(vec: glam::Vec2) -> egui::Pos2 {
     egui::pos2(vec.x, vec.y)
 }
 
-fn to_egui_modifiers(modifiers: KeyModifiers) -> egui::Modifiers {
+fn to_egui_modifiers(modifiers: crile::KeyModifiers) -> egui::Modifiers {
     egui::Modifiers {
         alt: modifiers.alt_key(),
         ctrl: modifiers.control_key(),
@@ -256,28 +257,29 @@ fn to_egui_modifiers(modifiers: KeyModifiers) -> egui::Modifiers {
     }
 }
 
-fn to_egui_key(keycode: KeyCode) -> Option<egui::Key> {
+fn to_egui_key(keycode: crile::KeyCode) -> Option<egui::Key> {
     Some(match keycode {
-        KeyCode::Escape => egui::Key::Escape,
-        KeyCode::Insert => egui::Key::Insert,
-        KeyCode::Home => egui::Key::Home,
-        KeyCode::Delete => egui::Key::Delete,
-        KeyCode::End => egui::Key::End,
-        KeyCode::PageDown => egui::Key::PageDown,
-        KeyCode::PageUp => egui::Key::PageUp,
-        KeyCode::ArrowLeft => egui::Key::ArrowLeft,
-        KeyCode::ArrowUp => egui::Key::ArrowUp,
-        KeyCode::ArrowRight => egui::Key::ArrowRight,
-        KeyCode::ArrowDown => egui::Key::ArrowDown,
-        KeyCode::Backspace => egui::Key::Backspace,
-        KeyCode::Enter => egui::Key::Enter,
-        KeyCode::Tab => egui::Key::Tab,
-        KeyCode::Space => egui::Key::Space,
-        KeyCode::KeyA => egui::Key::A,
-        KeyCode::KeyK => egui::Key::K,
-        KeyCode::KeyU => egui::Key::U,
-        KeyCode::KeyW => egui::Key::W,
-        KeyCode::KeyZ => egui::Key::Z,
+        crile::KeyCode::Escape => egui::Key::Escape,
+        crile::KeyCode::Insert => egui::Key::Insert,
+        crile::KeyCode::Home => egui::Key::Home,
+        crile::KeyCode::Delete => egui::Key::Delete,
+        crile::KeyCode::End => egui::Key::End,
+        crile::KeyCode::PageDown => egui::Key::PageDown,
+        crile::KeyCode::PageUp => egui::Key::PageUp,
+        crile::KeyCode::ArrowLeft => egui::Key::ArrowLeft,
+        crile::KeyCode::ArrowUp => egui::Key::ArrowUp,
+        crile::KeyCode::ArrowRight => egui::Key::ArrowRight,
+        crile::KeyCode::ArrowDown => egui::Key::ArrowDown,
+        crile::KeyCode::Backspace => egui::Key::Backspace,
+        crile::KeyCode::Enter => egui::Key::Enter,
+        crile::KeyCode::Tab => egui::Key::Tab,
+        crile::KeyCode::Space => egui::Key::Space,
+        crile::KeyCode::KeyA => egui::Key::A,
+        crile::KeyCode::KeyK => egui::Key::K,
+        crile::KeyCode::KeyU => egui::Key::U,
+        crile::KeyCode::KeyW => egui::Key::W,
+        crile::KeyCode::KeyZ => egui::Key::Z,
         _ => return None,
     })
 }
+

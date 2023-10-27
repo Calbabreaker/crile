@@ -1,6 +1,7 @@
 use super::WGPUContext;
 use crate::RefId;
 
+#[derive(Debug)]
 struct DynamicBufferSpace {
     buffer: RefId<wgpu::Buffer>,
     cursor: u64,
@@ -34,6 +35,7 @@ pub struct DynamicBufferAllocator {
     buffer_spaces: Vec<DynamicBufferSpace>,
     descriptor: wgpu::BufferDescriptor<'static>,
     alignment: u64,
+    max_size: u64,
 }
 
 impl DynamicBufferAllocator {
@@ -44,23 +46,24 @@ impl DynamicBufferAllocator {
             _ => wgpu::COPY_BUFFER_ALIGNMENT,
         };
 
-        let size = match usage {
+        let descriptor = wgpu::BufferDescriptor {
+            label: None,
+            size: 1024 * 8, // 8kb starting size
+            usage: usage | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        };
+
+        let max_size = match usage {
             wgpu::BufferUsages::UNIFORM => wgpu.limits.max_uniform_buffer_binding_size as u64,
             wgpu::BufferUsages::STORAGE => wgpu.limits.max_storage_buffer_binding_size as u64,
             _ => wgpu.limits.max_buffer_size,
-        };
-
-        let descriptor = wgpu::BufferDescriptor {
-            label: None,
-            size,
-            usage: usage | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
         };
 
         Self {
             buffer_spaces: Vec::new(),
             alignment,
             descriptor,
+            max_size,
         }
     }
 
@@ -100,9 +103,14 @@ impl DynamicBufferAllocator {
         }
 
         // Didn't find any so grow and try again
+        self.grow(wgpu);
+        self.alloc_write(wgpu, data)
+    }
+
+    pub fn grow(&mut self, wgpu: &WGPUContext) {
+        self.descriptor.size = u64::min(self.descriptor.size * 2, self.max_size);
         self.buffer_spaces
             .push(DynamicBufferSpace::new(wgpu, &self.descriptor));
-        self.alloc_write(wgpu, data)
     }
 
     pub fn free(&mut self) {

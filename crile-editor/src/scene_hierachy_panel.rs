@@ -18,6 +18,7 @@ impl SceneHierachyPanel {
                 let mut iter = scene.world.iter();
                 while let Some(entity) = iter.next_entity() {
                     if let Some(meta) = entity.get::<crile::MetaDataComponent>() {
+                        #[allow(deprecated)]
                         let response = egui::CollapsingHeader::new(&meta.name)
                             .id_source(entity.id())
                             .selectable(true)
@@ -28,8 +29,6 @@ impl SceneHierachyPanel {
                         if response.header_response.clicked() {
                             self.selected_entity_id = entity.id();
                         }
-
-                        dbg!(entity.id());
                     }
                 }
             });

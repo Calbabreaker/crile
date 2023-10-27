@@ -30,7 +30,7 @@ impl Scene {
 
             render_pass.set_texture(&render_pass.data.white_texture);
             render_pass.set_uniform(DrawUniform {
-                transform: view_matrix * camera.camera.get_projection(),
+                transform: view_matrix * camera.projection(),
             });
             render_pass.set_shader(render_pass.data.instanced_shader.clone());
             render_pass
@@ -38,9 +38,9 @@ impl Scene {
         }
     }
 
-    pub fn resize(&mut self, viewport_size: glam::Vec2) {
+    pub fn set_viewport(&mut self, viewport_size: glam::Vec2) {
         for (camera,) in self.world.query_mut::<(CameraComponent,)>() {
-            camera.camera.resize(viewport_size);
+            camera.set_viewport(viewport_size);
         }
     }
 }

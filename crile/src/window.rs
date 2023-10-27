@@ -1,7 +1,5 @@
 use copypasta::ClipboardProvider;
 
-use crate::Rect;
-
 pub struct Window {
     window: winit::window::Window,
     clipboard: copypasta::ClipboardContext,
@@ -31,11 +29,6 @@ impl Window {
     pub fn size(&self) -> glam::UVec2 {
         let size = self.window.inner_size();
         glam::UVec2::new(size.width.max(1), size.height.max(1))
-    }
-
-    pub fn rect(&self) -> Rect {
-        let size = self.size().as_vec2();
-        Rect::new(0., 0., size.x, size.y)
     }
 
     pub(crate) fn handle(&self) -> &winit::window::Window {

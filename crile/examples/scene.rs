@@ -21,7 +21,7 @@ impl crile::Application for SceneApp {
             },
         ));
 
-        scene.resize(engine.window.size().as_vec2());
+        scene.set_viewport(engine.window.size().as_vec2());
 
         Self { scene }
     }
@@ -37,7 +37,7 @@ impl crile::Application for SceneApp {
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
         match event {
             crile::Event::WindowClose => engine.request_close(),
-            crile::Event::WindowResize { size } => self.scene.resize(size.as_vec2()),
+            crile::Event::WindowResize { size } => self.scene.set_viewport(size.as_vec2()),
             _ => (),
         }
     }

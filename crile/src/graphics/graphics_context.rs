@@ -109,16 +109,6 @@ impl GraphicsContext {
                 .create_view(&wgpu::TextureViewDescriptor::default()),
             output,
         });
-
-        self.caches.uniform_buffer_allocator.free();
-        self.caches.storage_buffer_allocator.free();
-        self.caches.vertex_buffer_allocator.free();
-        self.caches.index_buffer_allocator.free();
-        // SAFETY: this gets called at the start of the frame so there should be no references to
-        // bind groups or pipelines
-        unsafe {
-            self.caches.ref_id_holder.free();
-        }
     }
 
     pub fn end_frame(&mut self) {
@@ -129,6 +119,16 @@ impl GraphicsContext {
 
         self.wgpu.queue.submit([frame.encoder.finish()]);
         frame.output.present();
+
+        self.caches.uniform_buffer_allocator.free();
+        self.caches.storage_buffer_allocator.free();
+        self.caches.vertex_buffer_allocator.free();
+        self.caches.index_buffer_allocator.free();
+        // SAFETY: this gets called at the ends of the frame so there should be no references to
+        // bind groups or pipelines
+        unsafe {
+            self.caches.ref_id_holder.free();
+        }
     }
 }
 

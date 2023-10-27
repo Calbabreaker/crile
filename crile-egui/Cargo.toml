@@ -1,10 +1,10 @@
 [package]
-name = "crile-editor"
+name = "crile-egui"
 version = "0.0.0"
 edition = "2021"
 
 [dependencies]
 egui = "0.22"
+hashbrown = "0.14"
 glam = "0.24"
 crile = { path = "../crile" }
-crile-egui = { path = "../crile-egui" }

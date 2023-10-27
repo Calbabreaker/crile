@@ -119,7 +119,6 @@ impl<'a> BindGroupEntries<'a> {
 
 /// Everytime we need to use a different buffer or texture, or the layout buffer or texture changes, we need to recreate the bind group
 /// This cache allows for that only when necessery
-/// TODO: figure out when to free items from the caches
 #[derive(Default)]
 pub struct BindGroupCache {
     // The layout sometimes doesn't have to change if the group does
