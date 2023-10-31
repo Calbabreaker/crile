@@ -87,7 +87,7 @@ impl DynamicBufferAllocator {
 
         // Find space where size fits
         for space in &mut self.buffer_spaces {
-            if size_aligned <= self.descriptor.size - space.cursor {
+            if size_aligned <= space.buffer.size() - space.cursor {
                 let offset = space.cursor;
                 space.cursor += size_aligned;
 

@@ -74,10 +74,6 @@ impl World {
         QueryIterMut::new(self)
     }
 
-    pub fn iter(&mut self) -> WorldIter {
-        WorldIter::new(self)
-    }
-
     pub fn entity(&mut self, id: EntityId) -> EntityRef {
         let location = self.entity_locations[id];
         EntityRef::new(self, location, id)
@@ -226,27 +222,5 @@ impl<'a> EntityRef<'a> {
 
     pub fn id(&self) -> EntityId {
         self.id
-    }
-}
-
-pub struct WorldIter<'a> {
-    world: &'a mut World,
-    id: usize,
-}
-
-impl<'a> WorldIter<'a> {
-    fn new(world: &'a mut World) -> Self {
-        Self { world, id: 0 }
-    }
-
-    pub fn next_entity(&mut self) -> Option<EntityRef> {
-        let id = self.id;
-        let location = self.world.entity_locations.get(id)?;
-        self.id += 1;
-        if location.valid {
-            Some(EntityRef::new(self.world, *location, id))
-        } else {
-            self.next_entity()
-        }
     }
 }

@@ -9,14 +9,14 @@ pub struct Scene {
 
 impl Scene {
     pub fn render(&mut self, render_pass: &mut RenderPass) {
-        if let Some((camera_transform, camera)) = self
+        if let Some((_, (camera_transform, camera))) = self
             .world
             .query::<(TransformComponent, CameraComponent)>()
             .next()
         {
             self.render_instances.clear();
 
-            for (transform, sprite) in self
+            for (_, (transform, sprite)) in self
                 .world
                 .query::<(TransformComponent, SpriteRendererComponent)>()
             {
@@ -39,7 +39,7 @@ impl Scene {
     }
 
     pub fn set_viewport(&mut self, viewport_size: glam::Vec2) {
-        for (camera,) in self.world.query_mut::<(CameraComponent,)>() {
+        for (_, (camera,)) in self.world.query_mut::<(CameraComponent,)>() {
             camera.set_viewport(viewport_size);
         }
     }

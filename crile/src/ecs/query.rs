@@ -1,4 +1,4 @@
-use super::{Archetype, ComponentTuple, World};
+use super::{Archetype, ComponentTuple, EntityId, World};
 
 pub struct QueryIter<'a, T: ComponentTuple> {
     world: &'a World,
@@ -26,7 +26,7 @@ impl<'a, T: ComponentTuple> QueryIter<'a, T> {
         Some(())
     }
 
-    unsafe fn next_mut(&mut self) -> Option<T::MutTuple<'a>> {
+    unsafe fn next_mut(&mut self) -> Option<(EntityId, T::MutTuple<'a>)> {
         match self.current_iter.next() {
             Some(tuple) => Some(tuple),
             None => {
@@ -38,15 +38,14 @@ impl<'a, T: ComponentTuple> QueryIter<'a, T> {
 }
 
 impl<'a, T: ComponentTuple> Iterator for QueryIter<'a, T> {
-    type Item = T::RefTuple<'a>;
+    type Item = (EntityId, T::RefTuple<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        unsafe { Some(T::mut_to_ref(self.next_mut()?)) }
+        unsafe { self.next_mut() }.map(|(id, c)| (id, T::mut_to_ref(c)))
     }
 }
 
-/// This is the same as QueryIter (it uses it internally) but requires mutably borrowing World
-/// in order to ensure borrow rules
+/// This is the same as QueryIter (it uses it internally) but requires mutably borrowing World in order to ensure borrow rules
 pub struct QueryIterMut<'a, T: ComponentTuple> {
     query: QueryIter<'a, T>,
 }
@@ -61,7 +60,7 @@ impl<'a, T: ComponentTuple> QueryIterMut<'a, T> {
 }
 
 impl<'a, T: ComponentTuple> Iterator for QueryIterMut<'a, T> {
-    type Item = T::MutTuple<'a>;
+    type Item = (EntityId, T::MutTuple<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.query.next_mut() }
@@ -71,6 +70,7 @@ impl<'a, T: ComponentTuple> Iterator for QueryIterMut<'a, T> {
 struct ArchetypeIter<T: ComponentTuple> {
     index: usize,
     count: usize,
+    entities: *const EntityId,
     array_ptr_tuple: Option<T::FixedArray<*mut u8>>,
 }
 
@@ -80,6 +80,7 @@ impl<T: ComponentTuple> ArchetypeIter<T> {
             Some(array_ptr_tuple) => Self {
                 index: 0,
                 count: archetype.count(),
+                entities: archetype.entities.as_ptr(),
                 array_ptr_tuple: Some(array_ptr_tuple),
             },
             None => Self::empty(),
@@ -90,18 +91,20 @@ impl<T: ComponentTuple> ArchetypeIter<T> {
         Self {
             index: 0,
             count: 0,
+            entities: std::ptr::null(),
             array_ptr_tuple: None,
         }
     }
 
-    unsafe fn next<'a>(&mut self) -> Option<T::MutTuple<'a>> {
+    unsafe fn next<'a>(&mut self) -> Option<(EntityId, T::MutTuple<'a>)> {
         if self.index < self.count {
             let component_tuple = T::array_ptr_array_get(
                 self.array_ptr_tuple.as_ref().unwrap_unchecked(),
                 self.index,
             );
+            let id = *self.entities.add(self.index);
             self.index += 1;
-            Some(component_tuple)
+            Some((id, component_tuple))
         } else {
             None
         }

@@ -12,26 +12,21 @@ impl SceneHierachyPanel {
         scene: &mut crile::Scene,
         inspector_panel: &mut InspectorPanel,
     ) {
-        egui::SidePanel::left("Hierachy")
-            .resizable(true)
-            .show(ctx, |ui| {
-                let mut iter = scene.world.iter();
-                while let Some(entity) = iter.next_entity() {
-                    if let Some(meta) = entity.get::<crile::MetaDataComponent>() {
-                        #[allow(deprecated)]
-                        let response = egui::CollapsingHeader::new(&meta.name)
-                            .id_source(entity.id())
-                            .selectable(true)
-                            .selected(self.selected_entity_id == entity.id())
-                            // .open(open)
-                            .show(ui, |ui| {});
+        egui::SidePanel::left("Hierachy").show(ctx, |ui| {
+            for (id, (meta,)) in scene.world.query::<(crile::MetaDataComponent,)>() {
+                #[allow(deprecated)]
+                let response = egui::CollapsingHeader::new(&meta.name)
+                    .id_source(id)
+                    .selectable(true)
+                    .selected(self.selected_entity_id == id)
+                    // .open(open)
+                    .show(ui, |_| {});
 
-                        if response.header_response.clicked() {
-                            self.selected_entity_id = entity.id();
-                        }
-                    }
+                if response.header_response.clicked() {
+                    self.selected_entity_id = id;
                 }
-            });
+            }
+        });
 
         inspector_panel.show_entity(ctx, scene.world.entity(self.selected_entity_id));
     }

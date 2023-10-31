@@ -8,7 +8,7 @@ pub struct Archetype {
     pub(crate) component_arrays: Box<[ComponentArray]>,
     /// Maps a component type id to its index inside self.component
     index_map: NoHashHashMap<TypeId, usize>,
-    entities: Box<[EntityId]>,
+    pub(crate) entities: Box<[EntityId]>,
     count: usize,
 }
 
