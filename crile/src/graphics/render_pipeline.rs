@@ -4,7 +4,7 @@ use std::{
 };
 
 use super::WGPUContext;
-use crate::RefId;
+use crate::{BindGroupLayoutBuilder, NoHashHashMap, RefId};
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct RenderPipelineConfig {
@@ -18,71 +18,37 @@ pub struct RenderPipelineConfig {
 #[derive(Default)]
 pub struct RenderPipelineCache {
     pipeline_cache: hashbrown::HashMap<RenderPipelineConfig, RefId<wgpu::RenderPipeline>>,
-    layout_cache: hashbrown::HashMap<u64, RefId<wgpu::PipelineLayout>>,
+    layout_cache: NoHashHashMap<u64, RefId<wgpu::PipelineLayout>>,
+    bind_layout_cache:
+        hashbrown::HashMap<Vec<wgpu::BindGroupLayoutEntry>, RefId<wgpu::BindGroupLayout>>,
 }
 
 impl RenderPipelineCache {
-    pub fn get(
+    pub fn get_pipeline(
         &mut self,
         wgpu: &WGPUContext,
         config: RenderPipelineConfig,
-        bind_group_layouts: &[RefId<wgpu::BindGroupLayout>],
-    ) -> RefId<wgpu::RenderPipeline> {
+        bind_group_layouts: &[&RefId<wgpu::BindGroupLayout>],
+    ) -> &'static wgpu::RenderPipeline {
         let layout = self.get_layout(wgpu, bind_group_layouts);
         let pipeline = self
             .pipeline_cache
             .entry(config.clone())
-            .or_insert_with(|| {
-                wgpu.device
-                    .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                        label: None,
-                        layout: Some(&layout),
-                        vertex: wgpu::VertexState {
-                            module: &config.shader.module,
-                            entry_point: "vs_main",
-                            buffers: config.vertex_buffer_layouts,
-                        },
-                        fragment: Some(wgpu::FragmentState {
-                            module: &config.shader.module,
-                            entry_point: "fs_main",
-                            targets: &[Some(wgpu::ColorTargetState {
-                                format: config.format,
-                                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                                write_mask: wgpu::ColorWrites::ALL,
-                            })],
-                        }),
-                        primitive: wgpu::PrimitiveState {
-                            topology: wgpu::PrimitiveTopology::TriangleList,
-                            strip_index_format: None,
-                            front_face: wgpu::FrontFace::Ccw,
-                            cull_mode: None,
-                            unclipped_depth: false,
-                            polygon_mode: wgpu::PolygonMode::Fill,
-                            conservative: false,
-                        },
-                        multisample: wgpu::MultisampleState {
-                            count: 1,
-                            mask: !0,
-                            alpha_to_coverage_enabled: false,
-                        },
-                        depth_stencil: None,
-                        multiview: None,
-                    })
-                    .into()
-            });
+            .or_insert_with(|| RefId::new(create_pipeline(wgpu, &layout, &config)));
 
-        RefId::clone(pipeline)
+        // The cache should never cleared so it should live forever (unless PipelineCaches get dropped then oh well)
+        unsafe { std::mem::transmute(pipeline.as_ref()) }
     }
 
     fn get_layout(
         &mut self,
         wgpu: &WGPUContext,
-        bind_group_layouts: &[RefId<wgpu::BindGroupLayout>],
+        bind_group_layouts: &[&RefId<wgpu::BindGroupLayout>],
     ) -> RefId<wgpu::PipelineLayout> {
         // Calculate hash from bind_group_layouts ids
         let mut hasher = DefaultHasher::new();
-        for bind_group in bind_group_layouts {
-            bind_group.id().hash(&mut hasher);
+        for layouts in bind_group_layouts {
+            layouts.id().hash(&mut hasher);
         }
         let key = hasher.finish();
 
@@ -100,6 +66,60 @@ impl RenderPipelineCache {
         });
         RefId::clone(layout)
     }
+
+    pub fn get_bind_layout<const COUNT: usize>(
+        &mut self,
+        wgpu: &WGPUContext,
+        builder: BindGroupLayoutBuilder<COUNT>,
+    ) -> RefId<wgpu::BindGroupLayout> {
+        let layout = self
+            .bind_layout_cache
+            .entry_ref(builder.entries())
+            .or_insert_with(|| RefId::new(builder.build(wgpu)));
+        RefId::clone(layout)
+    }
+}
+
+fn create_pipeline(
+    wgpu: &WGPUContext,
+    layout: &wgpu::PipelineLayout,
+    config: &RenderPipelineConfig,
+) -> wgpu::RenderPipeline {
+    wgpu.device
+        .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: None,
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module: &config.shader.module,
+                entry_point: "vs_main",
+                buffers: config.vertex_buffer_layouts,
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &config.shader.module,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None,
+                unclipped_depth: false,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
+            },
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            depth_stencil: None,
+            multiview: None,
+        })
 }
 
 #[derive(PartialEq, Eq)]

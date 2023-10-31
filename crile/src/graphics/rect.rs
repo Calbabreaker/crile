@@ -11,6 +11,15 @@ impl Rect {
         Self { x, y, w, h }
     }
 
+    pub fn from_pos_size(pos: glam::Vec2, size: glam::Vec2) -> Self {
+        Self {
+            x: pos.x,
+            y: pos.y,
+            w: size.x,
+            h: size.y,
+        }
+    }
+
     pub fn constrain(&mut self, size: glam::Vec2) {
         self.w = f32::min(self.w, size.x - self.x);
         self.h = f32::min(self.h, size.y - self.y);

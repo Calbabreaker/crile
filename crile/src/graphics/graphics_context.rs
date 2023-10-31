@@ -1,8 +1,7 @@
 use super::{
-    BindGroupCache, DynamicBufferAllocator, Mesh, RenderPipelineCache, SamplerCache, Shader,
-    ShaderKind, Texture,
+    DynamicBufferAllocator, Mesh, RenderPipelineCache, SamplerCache, Shader, ShaderKind, Texture,
 };
-use crate::{RefId, RefIdHolder, Window};
+use crate::{RefId, Window};
 
 pub struct GraphicsContext {
     pub wgpu: WGPUContext,
@@ -44,10 +43,9 @@ impl GraphicsContext {
                 single_draw_shader: RefId::new(single_draw_shader),
             },
             caches: GraphicsCaches {
-                bind_group: BindGroupCache::default(),
+                bind_group_holder: Vec::new(),
                 render_pipeline: RenderPipelineCache::default(),
                 sampler: SamplerCache::default(),
-                ref_id_holder: RefIdHolder::default(),
                 uniform_buffer_allocator,
                 storage_buffer_allocator,
                 vertex_buffer_allocator,
@@ -124,11 +122,7 @@ impl GraphicsContext {
         self.caches.storage_buffer_allocator.free();
         self.caches.vertex_buffer_allocator.free();
         self.caches.index_buffer_allocator.free();
-        // SAFETY: this gets called at the ends of the frame so there should be no references to
-        // bind groups or pipelines
-        unsafe {
-            self.caches.ref_id_holder.free();
-        }
+        self.caches.bind_group_holder.clear();
     }
 }
 
@@ -140,8 +134,7 @@ pub struct FrameContext {
 
 pub struct GraphicsCaches {
     pub render_pipeline: RenderPipelineCache,
-    pub bind_group: BindGroupCache,
-    pub ref_id_holder: RefIdHolder,
+    pub bind_group_holder: Vec<wgpu::BindGroup>,
     pub uniform_buffer_allocator: DynamicBufferAllocator,
     pub storage_buffer_allocator: DynamicBufferAllocator,
     pub index_buffer_allocator: DynamicBufferAllocator,

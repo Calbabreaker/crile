@@ -72,39 +72,6 @@ impl<T> AsRef<T> for RefId<T> {
     }
 }
 
-pub struct RefIdHolder {
-    refs: Vec<RefId<dyn Any>>,
-}
-
-impl RefIdHolder {
-    pub fn new() -> RefIdHolder {
-        Self {
-            refs: Vec::with_capacity(1024),
-        }
-    }
-
-    /// Holds the ref_id and returns a static reference to the inner value
-    /// This ensures the value will live at least until self.free() is called
-    pub fn hold<T>(&mut self, ref_id: RefId<T>) -> &'static T {
-        let object = unsafe { std::mem::transmute(ref_id.as_ref()) };
-        self.refs.push(ref_id.as_any());
-        object
-    }
-
-    /// # Safety
-    /// There must not be any references to any ref ids still in use or else it might get dropped and cause
-    /// dangling pointers
-    pub unsafe fn free(&mut self) {
-        self.refs.clear()
-    }
-}
-
-impl Default for RefIdHolder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 pub fn index_mut_twice<T>(array: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
     assert!(a != b);
     assert!(a < array.len());

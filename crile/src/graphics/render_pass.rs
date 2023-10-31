@@ -1,10 +1,10 @@
 use std::num::NonZeroU64;
 
 use super::{
-    BindGroupEntries, Color, GraphicsCaches, GraphicsContext, GraphicsData, MeshVertex, Rect,
+    BindGroupBuilder, Color, GraphicsCaches, GraphicsContext, GraphicsData, MeshVertex, Rect,
     RenderPipelineConfig, Shader, ShaderKind, Texture, TextureView, WGPUContext,
 };
-use crate::{MeshView, RefId};
+use crate::{BindGroupLayoutBuilder, MeshView, RefId};
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -26,7 +26,7 @@ pub struct RenderPass<'a> {
     shader: RefId<Shader>,
     dirty_pipline: bool,
 
-    pub target: TextureView<'a>,
+    pub target_texture: TextureView<'a>,
     wgpu: &'a WGPUContext,
     caches: &'a mut GraphicsCaches,
     pub data: &'a GraphicsData,
@@ -68,7 +68,7 @@ impl<'a> RenderPass<'a> {
             gpu_render_pass,
             shader: gfx.data.single_draw_shader.clone(),
             dirty_pipline: true,
-            target,
+            target_texture: target,
 
             // We need to get references to WGPUContext, GraphicsData, GraphicsCaches seperately or rust is
             // going to complain about mutiple borrows
@@ -84,16 +84,15 @@ impl<'a> RenderPass<'a> {
             .storage_buffer_allocator
             .alloc_write(self.wgpu, instances);
 
-        let instances_bind_group = self.caches.bind_group.get(
-            self.wgpu,
-            &BindGroupEntries::new().buffer(
+        let instances_bind_group = BindGroupBuilder::<1>::new()
+            .buffer(
                 wgpu::ShaderStages::VERTEX,
                 &instances_alloc.buffer,
                 wgpu::BufferBindingType::Storage { read_only: true },
                 NonZeroU64::new(instances_alloc.size),
                 true,
-            ),
-        );
+            )
+            .build(self.wgpu);
 
         self.set_bind_group(2, instances_bind_group, &[instances_alloc.offset as u32]);
         self.draw_mesh(mesh, instances.len() as u32);
@@ -115,12 +114,10 @@ impl<'a> RenderPass<'a> {
 
     pub fn set_texture(&mut self, texture: &RefId<Texture>) {
         let sampler = self.caches.sampler.get(self.wgpu, texture.sampler_config);
-        let texture_bind_group = self.caches.bind_group.get(
-            self.wgpu,
-            &BindGroupEntries::new()
-                .texture(wgpu::ShaderStages::FRAGMENT, texture)
-                .sampler(wgpu::ShaderStages::FRAGMENT, &sampler),
-        );
+        let texture_bind_group = BindGroupBuilder::<2>::new()
+            .texture(wgpu::ShaderStages::FRAGMENT, texture)
+            .sampler(wgpu::ShaderStages::FRAGMENT, &sampler)
+            .build(self.wgpu);
 
         self.set_bind_group(1, texture_bind_group, &[]);
     }
@@ -131,16 +128,15 @@ impl<'a> RenderPass<'a> {
             .uniform_buffer_allocator
             .alloc_write(self.wgpu, &[uniform]);
 
-        let uniform_bind_group = self.caches.bind_group.get(
-            self.wgpu,
-            &BindGroupEntries::new().buffer(
+        let uniform_bind_group = BindGroupBuilder::<1>::new()
+            .buffer(
                 wgpu::ShaderStages::VERTEX,
                 &uniform_alloc.buffer,
                 wgpu::BufferBindingType::Uniform,
                 NonZeroU64::new(uniform_alloc.size),
                 true,
-            ),
-        );
+            )
+            .build(self.wgpu);
 
         self.set_bind_group(0, uniform_bind_group, &[uniform_alloc.offset as u32]);
     }
@@ -159,54 +155,55 @@ impl<'a> RenderPass<'a> {
             return;
         }
 
-        let uniform_layout = self.caches.bind_group.get_layout(
+        let uniform_layout = self.caches.render_pipeline.get_bind_layout(
             self.wgpu,
-            &BindGroupEntries::new().buffer_layout(
+            BindGroupLayoutBuilder::<1>::new().buffer(
                 wgpu::ShaderStages::VERTEX,
                 wgpu::BufferBindingType::Uniform,
                 true,
             ),
         );
 
-        let texture_layout = self.caches.bind_group.get_layout(
+        let texture_layout = self.caches.render_pipeline.get_bind_layout(
             self.wgpu,
-            &BindGroupEntries::new()
-                .texture_layout(wgpu::ShaderStages::FRAGMENT)
-                .sampler_layout(wgpu::ShaderStages::FRAGMENT),
+            BindGroupLayoutBuilder::<2>::new()
+                .texture(wgpu::ShaderStages::FRAGMENT)
+                .sampler(wgpu::ShaderStages::FRAGMENT),
         );
 
-        let mut layouts = vec![uniform_layout, texture_layout];
+        let instances_layout = self.caches.render_pipeline.get_bind_layout(
+            self.wgpu,
+            BindGroupLayoutBuilder::<1>::new().buffer(
+                wgpu::ShaderStages::VERTEX,
+                wgpu::BufferBindingType::Storage { read_only: true },
+                true,
+            ),
+        );
 
-        if self.shader.kind == ShaderKind::Instanced {
-            let instances_layout = self.caches.bind_group.get_layout(
-                self.wgpu,
-                &BindGroupEntries::new().buffer_layout(
-                    wgpu::ShaderStages::VERTEX,
-                    wgpu::BufferBindingType::Storage { read_only: true },
-                    true,
-                ),
-            );
-            layouts.push(instances_layout);
-        }
+        let draw_single_layouts = [&uniform_layout, &texture_layout];
+        let instanced_layouts = [&uniform_layout, &texture_layout, &instances_layout];
+        let layouts = match self.shader.kind {
+            ShaderKind::DrawSingle => draw_single_layouts.as_ref(),
+            ShaderKind::Instanced => instanced_layouts.as_ref(),
+        };
 
-        let render_pipeline = self.caches.render_pipeline.get(
+        let render_pipeline = self.caches.render_pipeline.get_pipeline(
             self.wgpu,
             RenderPipelineConfig {
                 shader: self.shader.clone(),
                 vertex_buffer_layouts: &[MeshVertex::LAYOUT],
-                format: self.target.gpu_texture.format(),
+                format: self.target_texture.gpu_texture.format(),
             },
-            &layouts,
+            layouts,
         );
 
-        self.gpu_render_pass
-            .set_pipeline(self.caches.ref_id_holder.hold(render_pipeline));
+        self.gpu_render_pass.set_pipeline(render_pipeline);
         self.dirty_pipline = false;
     }
 
     /// Set the rect area where pixels will be visible
     pub fn set_scissor_rect(&mut self, mut rect: Rect) {
-        rect.constrain(self.target.size().as_vec2());
+        rect.constrain(self.target_texture.size().as_vec2());
         self.gpu_render_pass.set_scissor_rect(
             rect.x as u32,
             rect.y as u32,
@@ -216,26 +213,22 @@ impl<'a> RenderPass<'a> {
     }
 
     pub fn reset_scissor_rect(&mut self) {
-        let size = self.target.size();
+        let size = self.target_texture.size();
         self.gpu_render_pass.set_scissor_rect(0, 0, size.x, size.y);
     }
 
-    fn set_bind_group(&mut self, index: u32, bind_group: RefId<wgpu::BindGroup>, offsets: &[u32]) {
+    fn set_bind_group(&mut self, index: u32, bind_group: wgpu::BindGroup, offsets: &[u32]) {
+        // Bind group will get drop soon after it is created but it needs to live until the end of frame
+        self.caches.bind_group_holder.push(bind_group);
+        let bind_group = self.caches.bind_group_holder.last().unwrap();
         self.gpu_render_pass.set_bind_group(
             index,
-            // We need to use the holder that will hold the RefId until the end of the frame since
-            // render_pipeline requires that and using RefId on it's own might drop the inner value
-            self.caches.ref_id_holder.hold(bind_group),
+            unsafe { &*(bind_group as *const wgpu::BindGroup) },
             offsets,
         );
     }
 
     pub fn target_rect(&self) -> Rect {
-        Rect {
-            x: 0.,
-            y: 0.,
-            w: self.target.size().x as f32,
-            h: self.target.size().y as f32,
-        }
+        Rect::from_pos_size(glam::Vec2::ZERO, self.target_texture.size().as_vec2())
     }
 }
