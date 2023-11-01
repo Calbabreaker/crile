@@ -19,8 +19,8 @@ impl DynamicBufferSpace {
 #[derive(Debug)]
 pub struct BufferAllocation {
     pub offset: u64,
-    pub buffer: RefId<wgpu::Buffer>,
     pub size: u64,
+    pub buffer: RefId<wgpu::Buffer>,
 }
 
 impl BufferAllocation {
@@ -96,8 +96,8 @@ impl DynamicBufferAllocator {
 
                 return BufferAllocation {
                     offset,
-                    buffer: RefId::clone(&space.buffer),
                     size,
+                    buffer: RefId::clone(&space.buffer),
                 };
             }
         }

@@ -3,18 +3,20 @@ use std::{mem::MaybeUninit, num::NonZeroU64};
 use super::WGPUContext;
 use crate::{RefId, Texture};
 
-pub struct BindGroupLayoutBuilder<const SIZE: usize> {
-    entries: [wgpu::BindGroupLayoutEntry; SIZE],
+const MAX_SIZE: usize = 4;
+
+pub struct BindGroupLayoutBuilder {
+    entries: [wgpu::BindGroupLayoutEntry; MAX_SIZE],
     length: usize,
 }
 
-impl<const SIZE: usize> BindGroupLayoutBuilder<SIZE> {
+impl BindGroupLayoutBuilder {
     pub fn new() -> Self {
         unsafe {
             Self {
-                // Need to start uninitialized since these types don't impl Default
-                // Should be safe since we ensure length and size matches on bind group creation
-                entries: [MaybeUninit::zeroed().assume_init(); SIZE],
+                // Need to start uninitialized the number used could be less than MAX_SIZE
+                // Should be safe since we only get entries up to the length
+                entries: [MaybeUninit::zeroed().assume_init(); MAX_SIZE],
                 length: 0,
             }
         }
@@ -75,24 +77,23 @@ impl<const SIZE: usize> BindGroupLayoutBuilder<SIZE> {
     }
 
     pub fn entries(&self) -> &[wgpu::BindGroupLayoutEntry] {
-        assert_eq!(self.length, SIZE);
-        &self.entries
+        &self.entries[0..self.length]
     }
 }
 
-impl<const SIZE: usize> Default for BindGroupLayoutBuilder<SIZE> {
+impl Default for BindGroupLayoutBuilder {
     fn default() -> Self {
         Self::new()
     }
 }
 
 /// Builder-like pattern to create bind groups
-pub struct BindGroupBuilder<'a, const SIZE: usize> {
-    layout_builder: BindGroupLayoutBuilder<SIZE>,
-    entries: [wgpu::BindGroupEntry<'a>; SIZE],
+pub struct BindGroupBuilder<'a> {
+    layout_builder: BindGroupLayoutBuilder,
+    entries: [wgpu::BindGroupEntry<'a>; MAX_SIZE],
 }
 
-impl<'a, const SIZE: usize> BindGroupBuilder<'a, SIZE> {
+impl<'a> BindGroupBuilder<'a> {
     pub fn new() -> Self {
         unsafe {
             Self {
@@ -150,12 +151,16 @@ impl<'a, const SIZE: usize> BindGroupBuilder<'a, SIZE> {
         wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: &self.layout_builder.build(wgpu),
-            entries: &self.entries,
+            entries: self.entries(),
         })
+    }
+
+    pub fn entries(&self) -> &[wgpu::BindGroupEntry] {
+        &self.entries[0..self.layout_builder.length]
     }
 }
 
-impl<'a, const SIZE: usize> Default for BindGroupBuilder<'a, SIZE> {
+impl<'a> Default for BindGroupBuilder<'a> {
     fn default() -> Self {
         Self::new()
     }

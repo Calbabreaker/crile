@@ -84,7 +84,7 @@ impl<'a> RenderPass<'a> {
             .storage_buffer_allocator
             .alloc_write(self.wgpu, instances);
 
-        let instances_bind_group = BindGroupBuilder::<1>::new()
+        let instances_bind_group = BindGroupBuilder::new()
             .buffer(
                 wgpu::ShaderStages::VERTEX,
                 &instances_alloc.buffer,
@@ -114,7 +114,7 @@ impl<'a> RenderPass<'a> {
 
     pub fn set_texture(&mut self, texture: &RefId<Texture>) {
         let sampler = self.caches.sampler.get(self.wgpu, texture.sampler_config);
-        let texture_bind_group = BindGroupBuilder::<2>::new()
+        let texture_bind_group = BindGroupBuilder::new()
             .texture(wgpu::ShaderStages::FRAGMENT, texture)
             .sampler(wgpu::ShaderStages::FRAGMENT, &sampler)
             .build(self.wgpu);
@@ -128,7 +128,7 @@ impl<'a> RenderPass<'a> {
             .uniform_buffer_allocator
             .alloc_write(self.wgpu, &[uniform]);
 
-        let uniform_bind_group = BindGroupBuilder::<1>::new()
+        let uniform_bind_group = BindGroupBuilder::new()
             .buffer(
                 wgpu::ShaderStages::VERTEX,
                 &uniform_alloc.buffer,
@@ -157,7 +157,7 @@ impl<'a> RenderPass<'a> {
 
         let uniform_layout = self.caches.render_pipeline.get_bind_layout(
             self.wgpu,
-            BindGroupLayoutBuilder::<1>::new().buffer(
+            BindGroupLayoutBuilder::new().buffer(
                 wgpu::ShaderStages::VERTEX,
                 wgpu::BufferBindingType::Uniform,
                 true,
@@ -166,14 +166,14 @@ impl<'a> RenderPass<'a> {
 
         let texture_layout = self.caches.render_pipeline.get_bind_layout(
             self.wgpu,
-            BindGroupLayoutBuilder::<2>::new()
+            BindGroupLayoutBuilder::new()
                 .texture(wgpu::ShaderStages::FRAGMENT)
                 .sampler(wgpu::ShaderStages::FRAGMENT),
         );
 
         let instances_layout = self.caches.render_pipeline.get_bind_layout(
             self.wgpu,
-            BindGroupLayoutBuilder::<1>::new().buffer(
+            BindGroupLayoutBuilder::new().buffer(
                 wgpu::ShaderStages::VERTEX,
                 wgpu::BufferBindingType::Storage { read_only: true },
                 true,

@@ -12,7 +12,7 @@ pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
             .striped(true)
             .show(ui, |ui| {
                 if let Some(transform) = entity.get::<crile::TransformComponent>() {
-                    ui.label("Translation: ");
+                    ui.label("Translation ");
                     ui.horizontal(|ui| {
                         ui.add(egui::DragValue::new(&mut transform.translation.x).speed(0.1));
                         ui.add(egui::DragValue::new(&mut transform.translation.y).speed(0.1));

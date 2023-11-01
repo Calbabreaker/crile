@@ -67,10 +67,10 @@ impl RenderPipelineCache {
         RefId::clone(layout)
     }
 
-    pub fn get_bind_layout<const COUNT: usize>(
+    pub fn get_bind_layout(
         &mut self,
         wgpu: &WGPUContext,
-        builder: BindGroupLayoutBuilder<COUNT>,
+        builder: BindGroupLayoutBuilder,
     ) -> RefId<wgpu::BindGroupLayout> {
         let layout = self
             .bind_layout_cache

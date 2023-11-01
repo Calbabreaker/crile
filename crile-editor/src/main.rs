@@ -44,7 +44,9 @@ impl crile::Application for CrileEditorApp {
         egui::CentralPanel::default()
             .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(0.))
             .show(&ctx, |ui| {
-                egui_dock::DockArea::new(&mut self.dock_state).show_inside(ui, &mut self.state);
+                egui_dock::DockArea::new(&mut self.dock_state)
+                    .show_close_buttons(false)
+                    .show_inside(ui, &mut self.state);
             });
 
         self.egui.end_frame(engine, ctx);

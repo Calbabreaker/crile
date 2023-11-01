@@ -179,8 +179,8 @@ impl WGPUContext {
             .await
             .expect("Failed to find GPU adapter!");
 
-        let adapter_info = adapter.get_info();
-        log::info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
+        let info = adapter.get_info();
+        log::info!("Using {} ({:?})", info.name, info.backend);
 
         let (device, queue) = adapter
             .request_device(
