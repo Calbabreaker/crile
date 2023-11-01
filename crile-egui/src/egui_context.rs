@@ -141,15 +141,13 @@ impl EguiContext {
         });
 
         for job in &self.paint_jobs {
-            if let Some(texture) = self.textures.get(&job.texture_id) {
-                render_pass.set_scissor_rect(job.rect);
-                render_pass.set_texture(texture);
-                render_pass.draw_mesh_single(crile::MeshView::new(
-                    job.vertex_alloc.as_slice(),
-                    job.index_alloc.as_slice(),
-                    job.index_count,
-                ));
-            }
+            render_pass.set_scissor_rect(job.rect);
+            render_pass.set_texture(&self.textures[&job.texture_id]);
+            render_pass.draw_mesh_single(crile::MeshView::new(
+                job.vertex_alloc.as_slice(),
+                job.index_alloc.as_slice(),
+                job.index_count,
+            ));
         }
 
         render_pass.reset_scissor_rect();

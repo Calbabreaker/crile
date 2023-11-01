@@ -26,6 +26,8 @@ impl crile::Application for CrileEditorApp {
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
+        self.check_scene_texture(&mut engine.gfx);
+
         let ctx = self.egui.begin_frame(engine);
 
         egui::TopBottomPanel::top("top_panel").show(&ctx, |ui| {
@@ -49,7 +51,15 @@ impl crile::Application for CrileEditorApp {
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
-        self.render_scene_texture(&mut engine.gfx);
+        if let Some(texture) = &self.texture_output {
+            let mut scene_render_pass = crile::RenderPass::new(
+                &mut engine.gfx,
+                Some(crile::Color::BLACK),
+                Some(texture.view()),
+            );
+
+            self.state.scene.render(&mut scene_render_pass);
+        }
 
         let mut render_pass =
             crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK), None);
@@ -66,7 +76,7 @@ impl crile::Application for CrileEditorApp {
 }
 
 impl CrileEditorApp {
-    pub fn render_scene_texture(&mut self, gfx: &mut crile::GraphicsContext) {
+    pub fn check_scene_texture(&mut self, gfx: &mut crile::GraphicsContext) {
         if self.state.viewport_size.x == 0. || self.state.viewport_size.y == 0. {
             return;
         }
@@ -92,13 +102,6 @@ impl CrileEditorApp {
             self.state.texture_id = Some(self.egui.register_texture(&texture));
             self.texture_output = Some(texture);
             self.state.scene.set_viewport(self.state.viewport_size);
-        }
-
-        if let Some(texture) = &self.texture_output {
-            let mut scene_render_pass =
-                crile::RenderPass::new(gfx, Some(crile::Color::BLACK), Some(texture.view()));
-
-            self.state.scene.render(&mut scene_render_pass);
         }
     }
 }
