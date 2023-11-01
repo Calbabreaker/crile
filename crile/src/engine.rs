@@ -57,7 +57,7 @@ impl Engine {
     }
 }
 
-pub fn run<A: Application>() -> Result<(), winit::error::EventLoopError> {
+pub fn run_app<A: Application>() -> Result<(), winit::error::EventLoopError> {
     env_logger::builder()
         .filter_module("crile", log::LevelFilter::Trace)
         .filter_level(log::LevelFilter::Error)

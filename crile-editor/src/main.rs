@@ -1,48 +1,27 @@
-use crile::Event;
+use crate::tabs::{EditorState, Tab};
 
-use crate::{inspector_panel::InspectorPanel, scene_hierachy_panel::SceneHierachyPanel};
+mod tabs;
 
-mod inspector_panel;
-mod scene_hierachy_panel;
-
-pub struct SceneApp {
+pub struct CrileEditorApp {
     egui: crile_egui::EguiContext,
-    scene: crile::Scene,
-    scene_hierachy_panel: SceneHierachyPanel,
-    inspector_panel: InspectorPanel,
-    scene_texture_output: Option<crile::RefId<crile::Texture>>,
-    scene_texture_id: Option<egui::TextureId>,
+    dock_state: egui_dock::DockState<Tab>,
+    state: EditorState,
+    texture_output: Option<crile::RefId<crile::Texture>>,
 }
 
-impl crile::Application for SceneApp {
+impl crile::Application for CrileEditorApp {
     fn new(engine: &mut crile::Engine) -> Self {
-        let mut scene = crile::Scene::default();
-        scene.world.spawn((
-            crile::MetaDataComponent {
-                name: "Camera".to_string(),
-            },
-            crile::TransformComponent::default(),
-            crile::CameraComponent::default(),
-        ));
+        let mut dock_state = egui_dock::DockState::new(vec![Tab::Viewport]);
 
-        scene.world.spawn((
-            crile::MetaDataComponent {
-                name: "Sprite".to_string(),
-            },
-            crile::TransformComponent::default(),
-            crile::SpriteRendererComponent {
-                color: crile::Color::from_rgb(255, 0, 0),
-            },
-        ));
+        let surface = dock_state.main_surface_mut();
+        let [old, _] = surface.split_left(egui_dock::NodeIndex::root(), 0.15, vec![Tab::Hierarchy]);
+        surface.split_right(old, 0.80, vec![Tab::Inspector]);
 
-        scene.set_viewport(engine.window.size().as_vec2());
         Self {
             egui: crile_egui::EguiContext::new(engine),
-            scene,
-            scene_texture_output: None,
-            scene_texture_id: None,
-            scene_hierachy_panel: SceneHierachyPanel::default(),
-            inspector_panel: InspectorPanel::default(),
+            state: EditorState::default(),
+            dock_state,
+            texture_output: None,
         }
     }
 
@@ -60,67 +39,25 @@ impl crile::Application for SceneApp {
             });
         });
 
-        self.scene_hierachy_panel
-            .show_scene(&ctx, &mut self.scene, &mut self.inspector_panel);
         egui::CentralPanel::default()
-            .frame(egui::Frame::default().inner_margin(egui::Vec2::ZERO))
+            .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(0.))
             .show(&ctx, |ui| {
-                let available_size =
-                    glam::uvec2(ui.available_width() as u32, ui.available_height() as u32);
-
-                if available_size.x == 0 || available_size.y == 0 {
-                    return;
-                }
-
-                // If the viewport size is different from the texture output
-                let texture_invalid = match &self.scene_texture_output {
-                    None => true,
-                    Some(ref texture) => texture.view().size() != available_size,
-                };
-
-                if texture_invalid {
-                    if let Some(texture) = self.scene_texture_output.take() {
-                        self.egui.unregister_texture(&texture)
-                    }
-
-                    let texture = crile::Texture::new_render_attach(
-                        &engine.gfx.wgpu,
-                        available_size.x,
-                        available_size.y,
-                    )
-                    .into();
-
-                    self.scene_texture_id = Some(self.egui.register_texture(&texture));
-                    self.scene_texture_output = Some(texture);
-                    self.scene.set_viewport(available_size.as_vec2());
-                }
-
-                if let Some(id) = self.scene_texture_id {
-                    ui.image(id, ui.available_size());
-                }
+                egui_dock::DockArea::new(&mut self.dock_state).show_inside(ui, &mut self.state);
             });
 
         self.egui.end_frame(engine, ctx);
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
-        if let Some(texture) = &self.scene_texture_output {
-            let mut scene_render_pass = crile::RenderPass::new(
-                &mut engine.gfx,
-                Some(crile::Color::BLACK),
-                Some(texture.view()),
-            );
-
-            self.scene.render(&mut scene_render_pass);
-        }
+        self.render_scene_texture(&mut engine.gfx);
 
         let mut render_pass =
             crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK), None);
         self.egui.render(&mut render_pass);
     }
 
-    fn event(&mut self, engine: &mut crile::Engine, event: &Event) {
-        if event == &Event::WindowClose {
+    fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
+        if event == &crile::Event::WindowClose {
             engine.request_close();
         }
 
@@ -128,6 +65,44 @@ impl crile::Application for SceneApp {
     }
 }
 
+impl CrileEditorApp {
+    pub fn render_scene_texture(&mut self, gfx: &mut crile::GraphicsContext) {
+        if self.state.viewport_size.x == 0. || self.state.viewport_size.y == 0. {
+            return;
+        }
+
+        // If the viewport size is different from the texture output
+        let resized = match self.texture_output {
+            None => true,
+            Some(ref texture) => texture.view().size().as_vec2() != self.state.viewport_size,
+        };
+
+        if resized {
+            if let Some(texture) = self.texture_output.take() {
+                self.egui.unregister_texture(&texture);
+            }
+
+            let texture = crile::Texture::new_render_attach(
+                &gfx.wgpu,
+                self.state.viewport_size.x as u32,
+                self.state.viewport_size.y as u32,
+            )
+            .into();
+
+            self.state.texture_id = Some(self.egui.register_texture(&texture));
+            self.texture_output = Some(texture);
+            self.state.scene.set_viewport(self.state.viewport_size);
+        }
+
+        if let Some(texture) = &self.texture_output {
+            let mut scene_render_pass =
+                crile::RenderPass::new(gfx, Some(crile::Color::BLACK), Some(texture.view()));
+
+            self.state.scene.render(&mut scene_render_pass);
+        }
+    }
+}
+
 fn main() {
-    crile::run::<SceneApp>().unwrap();
+    crile::run_app::<CrileEditorApp>().unwrap();
 }

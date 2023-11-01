@@ -70,8 +70,8 @@ impl<'a, T: ComponentTuple> Iterator for QueryIterMut<'a, T> {
 struct ArchetypeIter<T: ComponentTuple> {
     index: usize,
     count: usize,
-    entities: *const EntityId,
-    array_ptr_tuple: Option<T::FixedArray<*mut u8>>,
+    entity_array: *const EntityId,
+    array_ptr_array: Option<T::FixedArray<*mut u8>>,
 }
 
 impl<T: ComponentTuple> ArchetypeIter<T> {
@@ -80,8 +80,8 @@ impl<T: ComponentTuple> ArchetypeIter<T> {
             Some(array_ptr_tuple) => Self {
                 index: 0,
                 count: archetype.count(),
-                entities: archetype.entities.as_ptr(),
-                array_ptr_tuple: Some(array_ptr_tuple),
+                entity_array: archetype.entities.as_ptr(),
+                array_ptr_array: Some(array_ptr_tuple),
             },
             None => Self::empty(),
         }
@@ -91,18 +91,18 @@ impl<T: ComponentTuple> ArchetypeIter<T> {
         Self {
             index: 0,
             count: 0,
-            entities: std::ptr::null(),
-            array_ptr_tuple: None,
+            entity_array: std::ptr::null(),
+            array_ptr_array: None,
         }
     }
 
     unsafe fn next<'a>(&mut self) -> Option<(EntityId, T::MutTuple<'a>)> {
         if self.index < self.count {
             let component_tuple = T::array_ptr_array_get(
-                self.array_ptr_tuple.as_ref().unwrap_unchecked(),
+                self.array_ptr_array.as_ref().unwrap_unchecked(),
                 self.index,
             );
-            let id = *self.entities.add(self.index);
+            let id = *self.entity_array.add(self.index);
             self.index += 1;
             Some((id, component_tuple))
         } else {

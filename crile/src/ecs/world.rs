@@ -134,7 +134,7 @@ impl<'a> EntityRef<'a> {
 
     // TODO: add borrow checking probably unsafe right now
     pub fn get<T: 'static>(&self) -> Option<&mut T> {
-        self.archetype.borrow_component(self.location.entity_index)
+        unsafe { self.archetype.borrow_component(self.location.entity_index) }
     }
 
     pub fn add<T: 'static>(&mut self, component: T) {

@@ -53,7 +53,7 @@ pub trait ComponentTuple {
     /// Moves every component from the tuple to whatever put_func does and consumes self
     fn take_all(self, put_func: impl FnMut(*const u8, TypeId));
 
-    /// Gets a tuple of component arrays from the archetype that matches this component tuple
+    /// Gets an array of component arrays from the archetype that matches this component tuple
     /// We use a static sized tuple to prevent unnecessary heap allocation
     fn get_array_ptrs(archetype: &Archetype) -> Option<Self::FixedArray<*mut u8>>;
 

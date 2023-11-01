@@ -62,13 +62,11 @@ impl Archetype {
         std::ptr::copy_nonoverlapping(component_ptr, array.ptr.add(index * size), size);
     }
 
-    pub(crate) fn borrow_component<'a, T: 'static>(&self, index: usize) -> Option<&'a mut T> {
-        assert!(index < self.count);
+    pub(crate) unsafe fn borrow_component<T: 'static>(&self, index: usize) -> Option<&mut T> {
+        debug_assert!(index < self.count);
 
         let array = self.get_array(&TypeId::of::<T>())?;
-        Some(unsafe {
-            &mut *array.ptr.cast::<T>().add(index) //
-        })
+        Some(&mut *array.ptr.cast::<T>().add(index))
     }
 
     /// Returns the entity index inside this archetype

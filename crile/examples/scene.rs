@@ -44,5 +44,5 @@ impl crile::Application for SceneApp {
 }
 
 fn main() {
-    crile::run::<SceneApp>().unwrap()
+    crile::run_app::<SceneApp>().unwrap()
 }
