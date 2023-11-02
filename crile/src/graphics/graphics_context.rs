@@ -162,7 +162,7 @@ impl WGPUContext {
         // Init with backends from environment variables or the default
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::all()),
-            dx12_shader_compiler: wgpu::Dx12Compiler::default(),
+            ..Default::default()
         });
 
         // SAFETY: Surface needs to live as long as the window

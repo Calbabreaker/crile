@@ -58,10 +58,12 @@ impl<'a> RenderPass<'a> {
                             None => wgpu::LoadOp::Load,
                             Some(c) => wgpu::LoadOp::Clear(c.into()),
                         },
-                        store: true,
+                        store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
         Self {

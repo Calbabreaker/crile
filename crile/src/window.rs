@@ -16,10 +16,6 @@ impl Window {
         }
     }
 
-    pub fn request_redraw(&self) {
-        self.window.request_redraw();
-    }
-
     pub fn pre_present_notify(&self) {
         self.window.pre_present_notify();
     }

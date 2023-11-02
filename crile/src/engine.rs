@@ -33,7 +33,6 @@ impl Engine {
         self.time.update();
         app.update(self);
         self.input.clear();
-        self.window.request_redraw();
     }
 
     fn render(&mut self, app: &mut impl Application) {
@@ -67,10 +66,12 @@ pub fn run_app<A: Application>() -> Result<(), winit::error::EventLoopError> {
     let mut engine = Engine::new(&event_loop);
     let mut app = A::new(&mut engine);
 
-    event_loop.run(move |event, _, control_flow| {
+    event_loop.run(move |event, elwt| {
         match event {
-            winit::event::Event::AboutToWait => engine.update(&mut app),
-            winit::event::Event::RedrawRequested(_) => engine.render(&mut app),
+            winit::event::Event::AboutToWait => {
+                engine.update(&mut app);
+                engine.render(&mut app);
+            }
             event => {
                 if let Some(event) = crate::events::convert_event(event) {
                     engine.event(&mut app, &event);
@@ -79,7 +80,7 @@ pub fn run_app<A: Application>() -> Result<(), winit::error::EventLoopError> {
         }
 
         if engine.should_close {
-            control_flow.set_exit()
+            elwt.exit()
         }
     })
 }

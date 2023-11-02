@@ -56,7 +56,10 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
             winit::event::WindowEvent::KeyboardInput { event, .. } => Event::KeyInput {
                 state: event.state,
                 key: event.logical_key.clone(),
-                keycode: event.physical_key,
+                keycode: match event.physical_key {
+                    winit::keyboard::PhysicalKey::Code(c) => c,
+                    winit::keyboard::PhysicalKey::Unidentified(_) => KeyCode::F35,
+                },
                 repeat: event.repeat,
                 text: event.text_with_all_modifiers().unwrap_or("").to_string(),
             },
