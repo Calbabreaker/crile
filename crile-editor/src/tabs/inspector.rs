@@ -6,7 +6,7 @@ pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
         let meta = entity.get::<crile::MetaDataComponent>().unwrap();
         ui.text_edit_singleline(&mut meta.name);
 
-        egui::Grid::new("my_grid")
+        egui::Grid::new("a")
             .num_columns(2)
             .spacing([40.0, 4.0])
             .striped(true)

@@ -41,12 +41,18 @@ pub enum Event {
         hovering: bool,
     },
     WindowClose,
+    AppUpdate,
+    AppRedraw,
 }
 
 pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
     Some(match event {
+        winit::event::Event::AboutToWait => Event::AppUpdate,
         winit::event::Event::WindowEvent { ref event, .. } => match event {
-            winit::event::WindowEvent::CloseRequested => Event::WindowClose,
+            winit::event::WindowEvent::RedrawRequested => Event::AppRedraw,
+            winit::event::WindowEvent::CloseRequested | winit::event::WindowEvent::Destroyed => {
+                Event::WindowClose
+            }
             winit::event::WindowEvent::Resized(size) => Event::WindowResize {
                 size: glam::UVec2::new(size.width, size.height),
             },

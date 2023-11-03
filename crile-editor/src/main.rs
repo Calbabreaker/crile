@@ -6,11 +6,11 @@ pub struct CrileEditorApp {
     egui: crile_egui::EguiContext,
     dock_state: egui_dock::DockState<Tab>,
     state: EditorState,
-    texture_output: Option<crile::RefId<crile::Texture>>,
+    viewport_texture: Option<crile::RefId<crile::Texture>>,
 }
 
-impl crile::Application for CrileEditorApp {
-    fn new(engine: &mut crile::Engine) -> Self {
+impl Default for CrileEditorApp {
+    fn default() -> Self {
         let mut dock_state = egui_dock::DockState::new(vec![Tab::Viewport]);
 
         let surface = dock_state.main_surface_mut();
@@ -18,11 +18,17 @@ impl crile::Application for CrileEditorApp {
         surface.split_right(old, 0.80, vec![Tab::Inspector]);
 
         Self {
-            egui: crile_egui::EguiContext::new(engine),
+            egui: crile_egui::EguiContext::default(),
             state: EditorState::default(),
             dock_state,
-            texture_output: None,
+            viewport_texture: None,
         }
+    }
+}
+
+impl crile::Application for CrileEditorApp {
+    fn init(&mut self, engine: &mut crile::Engine) {
+        self.egui.init(engine);
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
@@ -53,7 +59,7 @@ impl crile::Application for CrileEditorApp {
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
-        if let Some(texture) = &self.texture_output {
+        if let Some(texture) = &self.viewport_texture {
             let mut scene_render_pass = crile::RenderPass::new(
                 &mut engine.gfx,
                 Some(crile::Color::BLACK),
@@ -84,13 +90,13 @@ impl CrileEditorApp {
         }
 
         // If the viewport size is different from the texture output
-        let resized = match self.texture_output {
+        let resized = match self.viewport_texture {
             None => true,
             Some(ref texture) => texture.view().size().as_vec2() != self.state.viewport_size,
         };
 
         if resized {
-            if let Some(texture) = self.texture_output.take() {
+            if let Some(texture) = self.viewport_texture.take() {
                 self.egui.unregister_texture(&texture);
             }
 
@@ -101,13 +107,13 @@ impl CrileEditorApp {
             )
             .into();
 
-            self.state.texture_id = Some(self.egui.register_texture(&texture));
-            self.texture_output = Some(texture);
+            self.state.viewport_texture_id = Some(self.egui.register_texture(&texture));
+            self.viewport_texture = Some(texture);
             self.state.scene.set_viewport(self.state.viewport_size);
         }
     }
 }
 
 fn main() {
-    crile::run_app::<CrileEditorApp>().unwrap();
+    crile::run_app(CrileEditorApp::default()).unwrap();
 }

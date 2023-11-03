@@ -7,6 +7,7 @@ struct PaintJob {
     rect: crile::Rect,
 }
 
+#[derive(Default)]
 pub struct EguiContext {
     ctx: Option<egui::Context>,
     raw_input: egui::RawInput,
@@ -15,17 +16,11 @@ pub struct EguiContext {
 }
 
 impl EguiContext {
-    pub fn new(engine: &crile::Engine) -> Self {
-        Self {
-            ctx: Some(egui::Context::default()),
-            raw_input: egui::RawInput {
-                max_texture_side: Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize),
-                screen_rect: rect_from_size(engine.window.size()),
-                ..Default::default()
-            },
-            paint_jobs: Vec::new(),
-            textures: hashbrown::HashMap::new(),
-        }
+    pub fn init(&mut self, engine: &crile::Engine) {
+        self.ctx = Some(egui::Context::default());
+        self.raw_input.max_texture_side =
+            Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize);
+        self.set_viewport(engine.window.size())
     }
 
     pub fn begin_frame(&mut self, engine: &mut crile::Engine) -> egui::Context {
@@ -44,7 +39,7 @@ impl EguiContext {
         let ctx = self
             .ctx
             .take()
-            .expect("tried to call egui begine frame twice");
+            .expect("tried to call egui begin frame before end frame or context is unintialized");
         ctx.begin_frame(self.raw_input.clone());
         ctx
     }
@@ -158,9 +153,7 @@ impl EguiContext {
         let modifiers = to_egui_modifiers(engine.input.key_modifiers());
 
         match event {
-            crile::Event::WindowResize { size } => {
-                self.raw_input.screen_rect = rect_from_size(*size)
-            }
+            crile::Event::WindowResize { size } => self.set_viewport(*size),
             crile::Event::MouseMoved { .. } => {
                 self.push_event(egui::Event::PointerMoved(mouse_position))
             }
@@ -216,6 +209,13 @@ impl EguiContext {
         self.raw_input.events.push(event);
     }
 
+    fn set_viewport(&mut self, size: glam::UVec2) {
+        self.raw_input.screen_rect = Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(size.x as f32, size.y as f32),
+        ))
+    }
+
     pub fn register_texture(&mut self, texture: &crile::RefId<crile::Texture>) -> egui::TextureId {
         let id = egui::TextureId::User(texture.id());
         self.textures.insert(id, texture.clone());
@@ -226,13 +226,6 @@ impl EguiContext {
         let id = egui::TextureId::User(texture.id());
         self.textures.remove(&id);
     }
-}
-
-fn rect_from_size(size: glam::UVec2) -> Option<egui::Rect> {
-    Some(egui::Rect::from_min_size(
-        egui::Pos2::ZERO,
-        egui::vec2(size.x as f32, size.y as f32),
-    ))
 }
 
 fn to_egui_pos(vec: glam::Vec2) -> egui::Pos2 {

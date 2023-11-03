@@ -16,10 +16,6 @@ impl Window {
         }
     }
 
-    pub fn pre_present_notify(&self) {
-        self.window.pre_present_notify();
-    }
-
     /// Returns the width and height of the window
     /// Guarentees to be at least 1
     pub fn size(&self) -> glam::UVec2 {
@@ -27,7 +23,7 @@ impl Window {
         glam::UVec2::new(size.width.max(1), size.height.max(1))
     }
 
-    pub(crate) fn handle(&self) -> &winit::window::Window {
+    pub(crate) fn win(&self) -> &winit::window::Window {
         &self.window
     }
 

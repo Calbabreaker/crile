@@ -167,8 +167,8 @@ impl WGPUContext {
 
         // SAFETY: Surface needs to live as long as the window
         // Both window and RendererAPI exist within Engine so they should have the same lifetime
-        let surface = unsafe { instance.create_surface(&window.handle()) }
-            .expect("Failed to create surface!");
+        let surface =
+            unsafe { instance.create_surface(&window.win()) }.expect("Failed to create surface!");
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
