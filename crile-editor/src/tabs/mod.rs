@@ -31,9 +31,9 @@ impl egui_dock::TabViewer for EditorState {
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
         match tab {
-            Tab::Hierarchy => hierarchy::show(self, ui),
-            Tab::Viewport => viewport::show(self, ui),
-            Tab::Inspector => inspector::show(self, ui),
+            Tab::Hierarchy => hierarchy::ui(self, ui),
+            Tab::Viewport => viewport::ui(self, ui),
+            Tab::Inspector => inspector::ui(self, ui),
         }
     }
 }
@@ -55,7 +55,7 @@ impl Default for EditorState {
             },
             crile::TransformComponent::default(),
             crile::SpriteRendererComponent {
-                color: crile::Color::from_rgb(255, 0, 0),
+                color: crile::Color::from_rgb(99, 123, 255),
             },
         ));
 

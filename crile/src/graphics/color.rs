@@ -1,4 +1,4 @@
-/// Color with rgba values from 0 to 1 in srgb color space
+/// Color with rgba values from 0 to 1 in SRGB color space
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Color {

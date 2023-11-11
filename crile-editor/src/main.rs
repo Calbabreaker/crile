@@ -41,7 +41,7 @@ impl crile::Application for CrileEditorApp {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Quit").clicked() {
-                        engine.request_close();
+                        engine.request_exit();
                     }
                 });
             });
@@ -76,7 +76,7 @@ impl crile::Application for CrileEditorApp {
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
         if event == &crile::Event::WindowClose {
-            engine.request_close();
+            engine.request_exit();
         }
 
         self.egui.event(engine, event);

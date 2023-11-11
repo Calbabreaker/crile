@@ -1,6 +1,6 @@
 use crate::tabs::{EditorState, Selection};
 
-pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
+pub fn ui(state: &mut EditorState, ui: &mut egui::Ui) {
     for (id, (meta,)) in state.scene.world.query::<(crile::MetaDataComponent,)>() {
         #[allow(deprecated)]
         let response = egui::CollapsingHeader::new(&meta.name)
