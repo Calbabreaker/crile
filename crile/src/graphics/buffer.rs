@@ -79,10 +79,10 @@ impl DynamicBufferAllocator {
         // Aligns size to alignment since gpus require the buffer to have a certain alignment
         let size_aligned = (size / self.alignment + 1) * self.alignment;
         assert!(
-            size_aligned <= self.descriptor.size,
-            "requested size ({0}) is greater than buffer size ({1})",
+            size_aligned <= self.max_size,
+            "requested size ({0}) is greater than max size ({1})",
             size_aligned,
-            self.descriptor.size
+            self.max_size
         );
 
         // Find space where size fits
@@ -103,12 +103,12 @@ impl DynamicBufferAllocator {
         }
 
         // Didn't find any so grow and try again
-        self.grow(wgpu);
+        self.grow(wgpu, size_aligned);
         self.alloc_write(wgpu, data)
     }
 
-    pub fn grow(&mut self, wgpu: &WGPUContext) {
-        self.descriptor.size = u64::min(self.descriptor.size * 2, self.max_size);
+    pub fn grow(&mut self, wgpu: &WGPUContext, required_size: u64) {
+        self.descriptor.size = u64::clamp(self.descriptor.size * 2, required_size, self.max_size);
         self.buffer_spaces
             .push(DynamicBufferSpace::new(wgpu, &self.descriptor));
     }

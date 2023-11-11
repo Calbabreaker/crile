@@ -13,7 +13,7 @@ pub struct Engine {
     pub window: Window,
     pub time: Time,
     pub input: Input,
-    should_close: bool,
+    should_exit: bool,
 }
 
 impl Engine {
@@ -25,7 +25,7 @@ impl Engine {
             time: Time::default(),
             input: Input::default(),
             window,
-            should_close: false,
+            should_exit: false,
         }
     }
 
@@ -55,8 +55,8 @@ impl Engine {
         app.event(self, event);
     }
 
-    pub fn request_close(&mut self) {
-        self.should_close = true;
+    pub fn request_exit(&mut self) {
+        self.should_exit = true;
     }
 }
 
@@ -76,7 +76,7 @@ pub fn run_app(mut app: impl Application) -> Result<(), winit::error::EventLoopE
             engine.event(&mut app, &event);
         }
 
-        if engine.should_close {
+        if engine.should_exit {
             elwt.exit()
         }
     })

@@ -1,4 +1,4 @@
-use std::{any::Any, rc::Rc, sync::atomic::AtomicU64};
+use std::{rc::Rc, sync::atomic::AtomicU64};
 
 /// Wraps the object T in an reference counted smart pointer with a unique id
 /// Allows keeping unique objects and useful for hashing and comparing T
@@ -19,13 +19,6 @@ impl<T: 'static> RefId<T> {
 
     pub fn id(&self) -> u64 {
         self.id
-    }
-
-    pub fn as_any(self) -> RefId<dyn Any> {
-        RefId {
-            object: self.object,
-            id: self.id,
-        }
     }
 }
 
