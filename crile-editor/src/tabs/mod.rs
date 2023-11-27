@@ -44,6 +44,7 @@ impl Default for EditorState {
         scene.world.spawn((
             crile::MetaDataComponent {
                 name: "Camera".to_string(),
+                ..Default::default()
             },
             crile::TransformComponent::default(),
             crile::CameraComponent::default(),
@@ -52,6 +53,7 @@ impl Default for EditorState {
         scene.world.spawn((
             crile::MetaDataComponent {
                 name: "Sprite".to_string(),
+                ..Default::default()
             },
             crile::TransformComponent::default(),
             crile::SpriteRendererComponent {

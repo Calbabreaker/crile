@@ -1,8 +1,9 @@
-use crate::Color;
+use crate::{Color, EntityId};
 
 #[derive(Debug, Default)]
 pub struct MetaDataComponent {
     pub name: String,
+    pub children: Vec<EntityId>,
 }
 
 #[derive(Debug)]
