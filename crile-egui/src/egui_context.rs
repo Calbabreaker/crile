@@ -20,7 +20,7 @@ impl EguiContext {
         self.ctx = Some(egui::Context::default());
         self.raw_input.max_texture_side =
             Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize);
-        self.set_viewport(engine.window.size())
+        self.set_viewport(engine.window.size());
     }
 
     pub fn begin_frame(&mut self, engine: &mut crile::Engine) -> egui::Context {
@@ -82,7 +82,7 @@ impl EguiContext {
         }
 
         // Get all the paint jobs
-        let clipped_primitives = ctx.tessellate(full_output.shapes);
+        let clipped_primitives = ctx.tessellate(full_output.shapes, 1.);
         for egui::ClippedPrimitive {
             primitive,
             clip_rect,
