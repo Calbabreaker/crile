@@ -17,7 +17,9 @@ impl Archetype {
         for w in type_infos.windows(2) {
             match w[0].cmp(&w[1]) {
                 std::cmp::Ordering::Less => (),
-                std::cmp::Ordering::Equal => panic!("created a entity with duplicate components"),
+                std::cmp::Ordering::Equal => {
+                    panic!("created an entity with duplicate components: {:?}", w[0])
+                }
                 std::cmp::Ordering::Greater => panic!("type infos not sorted"),
             }
         }
@@ -162,8 +164,8 @@ impl ComponentArray {
             self.type_info.layout.align(),
         ));
 
-        std::ptr::copy_nonoverlapping(self.ptr, data.cast(), count);
         if old_cap > 0 {
+            std::ptr::copy_nonoverlapping(self.ptr, data.cast(), count);
             std::alloc::dealloc(
                 self.ptr.cast(),
                 std::alloc::Layout::from_size_align_unchecked(

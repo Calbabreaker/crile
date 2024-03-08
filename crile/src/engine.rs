@@ -1,4 +1,5 @@
-use crate::{graphics::GraphicsContext, Event, Input, Time, Window};
+use crate::{graphics::GraphicsContext, Event, EventKind, Input, Time, Window};
+use copypasta::ClipboardProvider;
 
 /// For applications to implement in order to run
 pub trait Application {
@@ -13,50 +14,63 @@ pub struct Engine {
     pub window: Window,
     pub time: Time,
     pub input: Input,
+    pub clipboard: copypasta::ClipboardContext,
     should_exit: bool,
 }
 
 impl Engine {
     fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
-        let window = Window::new(event_loop);
-        let gfx = GraphicsContext::new(&window);
+        let gfx = GraphicsContext::new();
+        let window = Window::new(&gfx.wgpu, event_loop);
         Self {
             gfx,
             time: Time::default(),
             input: Input::default(),
             window,
             should_exit: false,
+            clipboard: copypasta::ClipboardContext::new().unwrap(),
         }
     }
 
     fn update(&mut self, app: &mut impl Application) {
         self.time.update();
         app.update(self);
+        self.window.winit.request_redraw();
         self.input.clear();
-        self.window.win().request_redraw();
     }
 
     fn render(&mut self, app: &mut impl Application) {
-        self.gfx.begin_frame();
+        self.gfx.begin_frame(&self.window);
         app.render(self);
-        self.window.win().pre_present_notify();
+        self.window.winit.pre_present_notify();
         self.gfx.end_frame();
     }
 
     fn event(&mut self, app: &mut impl Application, event: &Event) {
-        match event {
-            Event::WindowResize { size } => self.gfx.resize(*size),
-            Event::AppUpdate => self.update(app),
-            Event::AppRedraw => self.render(app),
+        match event.kind {
+            EventKind::AppUpdate => self.update(app),
+            EventKind::AppRedraw => self.render(app),
             _ => (),
         };
 
-        self.input.process_event(event);
+        if event.window_id == Some(self.window.id()) {
+            self.window.process_event(&event.kind, &self.gfx.wgpu);
+        }
+
+        self.input.process_event(&event.kind);
         app.event(self, event);
     }
 
     pub fn request_exit(&mut self) {
         self.should_exit = true;
+    }
+
+    pub fn set_clipboard(&mut self, contents: String) {
+        self.clipboard.set_contents(contents).unwrap();
+    }
+
+    pub fn get_clipboard(&mut self) -> String {
+        self.clipboard.get_contents().unwrap()
     }
 }
 

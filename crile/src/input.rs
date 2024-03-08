@@ -1,6 +1,6 @@
 use core::hash::Hash;
 
-use crate::{ButtonState, Event, KeyCode, KeyModifiers, MouseButton};
+use crate::{ButtonState, EventKind, KeyCode, KeyModifiers, MouseButton};
 
 struct InputState<T> {
     pressed: hashbrown::HashSet<T>,
@@ -73,9 +73,9 @@ impl Input {
     }
 
     /// Update an internal state with crile::Event
-    pub fn process_event(&mut self, event: &Event) {
+    pub fn process_event(&mut self, event: &EventKind) {
         match event {
-            Event::KeyInput {
+            EventKind::KeyInput {
                 keycode,
                 state,
                 repeat: false,
@@ -84,12 +84,12 @@ impl Input {
                 ButtonState::Pressed => self.key_state.press(*keycode),
                 ButtonState::Released => self.key_state.release(*keycode),
             },
-            Event::MouseInput { button, state } => match state {
+            EventKind::MouseInput { button, state } => match state {
                 ButtonState::Pressed => self.mouse_state.press(*button),
                 ButtonState::Released => self.mouse_state.release(*button),
             },
-            Event::ModifiersChanged { modifiers } => self.key_modifiers = *modifiers,
-            Event::MouseMoved { position } => {
+            EventKind::KeyModifiersChanged { modifiers } => self.key_modifiers = *modifiers,
+            EventKind::MouseMoved { position } => {
                 self.mouse_position = *position;
             }
             _ => (),

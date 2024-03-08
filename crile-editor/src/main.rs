@@ -75,11 +75,13 @@ impl crile::Application for CrileEditorApp {
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
-        if event == &crile::Event::WindowClose {
+        if event.kind == crile::EventKind::WindowClose {
             engine.request_exit();
         }
 
-        self.egui.event(engine, event);
+        if event.window_id == Some(engine.window.id()) {
+            self.egui.process_event(engine, &event.kind);
+        }
     }
 }
 

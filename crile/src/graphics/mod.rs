@@ -7,6 +7,7 @@ mod rect;
 mod render_pass;
 mod render_pipeline;
 mod texture;
+mod window;
 
 pub use bind_group::*;
 pub use buffer::*;
@@ -17,3 +18,4 @@ pub use rect::*;
 pub use render_pass::*;
 pub use render_pipeline::*;
 pub use texture::*;
+pub use window::*;

@@ -8,6 +8,8 @@ pub struct TypeInfo {
     pub id: TypeId,
     pub layout: std::alloc::Layout,
     pub drop: unsafe fn(*mut u8),
+    #[cfg(debug_assertions)]
+    pub typename: &'static str,
 }
 
 impl TypeInfo {
@@ -16,6 +18,8 @@ impl TypeInfo {
             drop: |ptr| unsafe { ptr.cast::<T>().drop_in_place() },
             id: TypeId::of::<T>(),
             layout: std::alloc::Layout::new::<T>(),
+            #[cfg(debug_assertions)]
+            typename: std::any::type_name::<T>(),
         }
     }
 }

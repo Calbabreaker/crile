@@ -2,11 +2,12 @@ use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 pub use winit::{
     event::{ElementState as ButtonState, MouseButton},
     keyboard::{Key, KeyCode, ModifiersState as KeyModifiers},
+    window::WindowId,
 };
 
 // We create our own event enum instead of using winit so we can manage it ourselves.
 #[derive(Debug, PartialEq)]
-pub enum Event {
+pub enum EventKind {
     WindowResize {
         size: glam::UVec2,
     },
@@ -30,14 +31,14 @@ pub enum Event {
         keycode: KeyCode,
         text: String,
     },
-    ModifiersChanged {
+    KeyModifiersChanged {
         modifiers: KeyModifiers,
     },
     WindowFocusChanged {
         focused: bool,
     },
-    /// Sent wheneever the mouse leaves or exits the window
-    MouseHoverChanged {
+    /// whenever the mouse leaves or exits the window
+    WindowHoverChanged {
         hovering: bool,
     },
     WindowClose,
@@ -45,21 +46,29 @@ pub enum Event {
     AppRedraw,
 }
 
+#[derive(Debug)]
+pub struct Event {
+    pub kind: EventKind,
+    pub window_id: Option<WindowId>,
+}
+
 pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
-    Some(match event {
-        winit::event::Event::AboutToWait => Event::AppUpdate,
+    let kind = match event {
+        winit::event::Event::AboutToWait => EventKind::AppUpdate,
         winit::event::Event::WindowEvent { ref event, .. } => match event {
-            winit::event::WindowEvent::RedrawRequested => Event::AppRedraw,
+            winit::event::WindowEvent::RedrawRequested => EventKind::AppRedraw,
             winit::event::WindowEvent::CloseRequested | winit::event::WindowEvent::Destroyed => {
-                Event::WindowClose
+                EventKind::WindowClose
             }
-            winit::event::WindowEvent::Resized(size) => Event::WindowResize {
+            winit::event::WindowEvent::Resized(size) => EventKind::WindowResize {
                 size: glam::UVec2::new(size.width, size.height),
             },
-            winit::event::WindowEvent::ModifiersChanged(modifiers) => Event::ModifiersChanged {
-                modifiers: modifiers.state(),
-            },
-            winit::event::WindowEvent::KeyboardInput { event, .. } => Event::KeyInput {
+            winit::event::WindowEvent::ModifiersChanged(modifiers) => {
+                EventKind::KeyModifiersChanged {
+                    modifiers: modifiers.state(),
+                }
+            }
+            winit::event::WindowEvent::KeyboardInput { event, .. } => EventKind::KeyInput {
                 state: event.state,
                 key: event.logical_key.clone(),
                 keycode: match event.physical_key {
@@ -69,32 +78,39 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
                 repeat: event.repeat,
                 text: event.text_with_all_modifiers().unwrap_or("").to_string(),
             },
-            winit::event::WindowEvent::MouseInput { state, button, .. } => Event::MouseInput {
+            winit::event::WindowEvent::MouseInput { state, button, .. } => EventKind::MouseInput {
                 state: *state,
                 button: *button,
             },
-            winit::event::WindowEvent::CursorMoved { position, .. } => Event::MouseMoved {
+            winit::event::WindowEvent::CursorMoved { position, .. } => EventKind::MouseMoved {
                 position: glam::Vec2::new(position.x as f32, position.y as f32),
             },
             winit::event::WindowEvent::MouseWheel { delta, .. } => match delta {
-                winit::event::MouseScrollDelta::LineDelta(x, y) => Event::MouseScrolled {
+                winit::event::MouseScrollDelta::LineDelta(x, y) => EventKind::MouseScrolled {
                     delta: glam::Vec2::new(*x, *y),
                 },
-                winit::event::MouseScrollDelta::PixelDelta(pos) => Event::MouseScrolled {
+                winit::event::MouseScrollDelta::PixelDelta(pos) => EventKind::MouseScrolled {
                     delta: glam::Vec2::new(pos.x as f32, pos.y as f32),
                 },
             },
             winit::event::WindowEvent::Focused(focused) => {
-                Event::WindowFocusChanged { focused: *focused }
+                EventKind::WindowFocusChanged { focused: *focused }
             }
             winit::event::WindowEvent::CursorLeft { .. } => {
-                Event::MouseHoverChanged { hovering: false }
+                EventKind::WindowHoverChanged { hovering: false }
             }
             winit::event::WindowEvent::CursorEntered { .. } => {
-                Event::MouseHoverChanged { hovering: true }
+                EventKind::WindowHoverChanged { hovering: true }
             }
             _ => return None,
         },
         _ => return None,
-    })
+    };
+
+    let window_id = match event {
+        winit::event::Event::WindowEvent { window_id, .. } => Some(window_id),
+        _ => None,
+    };
+
+    Some(Event { kind, window_id })
 }

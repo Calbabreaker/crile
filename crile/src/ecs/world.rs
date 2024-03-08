@@ -100,6 +100,7 @@ pub struct ArchetypeSet {
 
 impl ArchetypeSet {
     fn index_from_ids(&mut self, ids: &[TypeId], infos: &[TypeInfo]) -> usize {
+        // Returns the archetype with the ids or creates a new one
         *self.type_ids_index_map.entry_ref(ids).or_insert_with(|| {
             let archetype = Archetype::new(infos);
             self.archetypes.push(archetype);

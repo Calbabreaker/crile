@@ -11,8 +11,8 @@ pub struct GraphicsContext {
 }
 
 impl GraphicsContext {
-    pub fn new(window: &Window) -> Self {
-        let wgpu = pollster::block_on(WGPUContext::new(window));
+    pub fn new() -> Self {
+        let wgpu = pollster::block_on(WGPUContext::new());
 
         let single_draw_shader = Shader::new(
             &wgpu,
@@ -56,47 +56,11 @@ impl GraphicsContext {
         }
     }
 
-    pub fn resize(&mut self, size: glam::UVec2) {
-        let wgpu = &mut self.wgpu;
-        wgpu.surface_config.width = size.x;
-        wgpu.surface_config.height = size.y;
-        wgpu.surface.configure(&wgpu.device, &wgpu.surface_config);
-    }
-
-    /// Tries to enable/disable vsync
-    /// On some platforms disabling vsync is not possible
-    pub fn set_vsync(&mut self, enable: bool) {
-        let wgpu = &mut self.wgpu;
-        wgpu.surface_config.present_mode = match enable {
-            true => wgpu::PresentMode::AutoVsync,
-            false => wgpu::PresentMode::AutoNoVsync,
-        };
-        wgpu.surface.configure(&wgpu.device, &wgpu.surface_config);
-    }
-
-    pub fn vsync_enabled(&self) -> bool {
-        use wgpu::PresentMode::*;
-        match self.wgpu.surface_config.present_mode {
-            AutoVsync | Fifo | FifoRelaxed => true,
-            AutoNoVsync | Mailbox | Immediate => false,
-        }
-    }
-
-    pub fn begin_frame(&mut self) {
+    pub fn begin_frame(&mut self, window: &Window) {
         assert!(self.frame.is_none(), "called begin frame before end frame");
 
         let wgpu = &self.wgpu;
-        let output = match wgpu.surface.get_current_texture() {
-            Err(_) => {
-                // Surface lost or something so reconfigure and try to reobtain
-                wgpu.surface.configure(&wgpu.device, &wgpu.surface_config);
-
-                wgpu.surface
-                    .get_current_texture()
-                    .expect("failed to get surface texture")
-            }
-            Ok(output) => output,
-        };
+        let output = window.viewport.get_texture(wgpu);
 
         self.frame = Some(FrameContext {
             encoder: wgpu
@@ -126,6 +90,12 @@ impl GraphicsContext {
     }
 }
 
+impl Default for GraphicsContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct FrameContext {
     pub encoder: wgpu::CommandEncoder,
     pub output_view: wgpu::TextureView,
@@ -152,28 +122,24 @@ pub struct GraphicsData {
 pub struct WGPUContext {
     pub queue: wgpu::Queue,
     pub device: wgpu::Device,
-    pub surface: wgpu::Surface,
-    pub surface_config: wgpu::SurfaceConfiguration,
+    pub adapter: wgpu::Adapter,
+    pub instance: wgpu::Instance,
     pub limits: wgpu::Limits,
 }
 
 impl WGPUContext {
-    async fn new(window: &Window) -> Self {
+    async fn new() -> Self {
         // Init with backends from environment variables or the default
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::all()),
             ..Default::default()
         });
 
-        // SAFETY: Surface needs to live as long as the window
-        // Both window and RendererAPI exist within Engine so they should have the same lifetime
-        let surface =
-            unsafe { instance.create_surface(&window.win()) }.expect("Failed to create surface!");
-
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
-                compatible_surface: Some(&surface),
+                // compatible_surface: Some(&surface),
+                compatible_surface: None,
                 force_fallback_adapter: false,
             })
             .await
@@ -185,8 +151,8 @@ impl WGPUContext {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
-                    limits: wgpu::Limits::default(),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::default(),
                     label: None,
                 },
                 None,
@@ -194,37 +160,12 @@ impl WGPUContext {
             .await
             .expect("Failed to request a device!");
 
-        let surface_capabilities = surface.get_capabilities(&adapter);
-
-        // Prefer SRGB surface formats
-        let surface_format = surface_capabilities
-            .formats
-            .iter()
-            .find(|f| f.is_srgb())
-            .unwrap_or_else(|| {
-                log::warn!("SRGB surface not supported, colors will come out darker");
-                &surface_capabilities.formats[0]
-            });
-
-        let size = window.size();
-        let surface_config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            present_mode: surface_capabilities.present_modes[0],
-            format: *surface_format,
-            alpha_mode: surface_capabilities.alpha_modes[0],
-            width: size.x,
-            height: size.y,
-            view_formats: Vec::default(),
-        };
-
-        surface.configure(&device, &surface_config);
-
         Self {
             limits: device.limits(),
             queue,
-            surface_config,
             device,
-            surface,
+            instance,
+            adapter,
         }
     }
 }

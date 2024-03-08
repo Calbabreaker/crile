@@ -32,7 +32,7 @@ impl EguiContext {
             } else if engine.input.key_just_pressed(crile::KeyCode::KeyX) {
                 self.push_event(egui::Event::Cut);
             } else if engine.input.key_just_pressed(crile::KeyCode::KeyV) {
-                self.push_event(egui::Event::Paste(engine.window.get_clipboard()));
+                self.push_event(egui::Event::Paste(engine.get_clipboard()));
             }
         }
 
@@ -48,7 +48,7 @@ impl EguiContext {
         let mut full_output = ctx.end_frame();
         let copied_text = full_output.platform_output.copied_text;
         if !copied_text.is_empty() {
-            engine.window.set_clipboard(copied_text);
+            engine.set_clipboard(copied_text);
         }
 
         let wgpu = &engine.gfx.wgpu;
@@ -148,16 +148,16 @@ impl EguiContext {
         render_pass.reset_scissor_rect();
     }
 
-    pub fn event(&mut self, engine: &crile::Engine, event: &crile::Event) {
+    pub fn process_event(&mut self, engine: &crile::Engine, event: &crile::EventKind) {
         let mouse_position = to_egui_pos(engine.input.mouse_position());
         let modifiers = to_egui_modifiers(engine.input.key_modifiers());
 
         match event {
-            crile::Event::WindowResize { size } => self.set_viewport(*size),
-            crile::Event::MouseMoved { .. } => {
+            crile::EventKind::WindowResize { size } => self.set_viewport(*size),
+            crile::EventKind::MouseMoved { .. } => {
                 self.push_event(egui::Event::PointerMoved(mouse_position))
             }
-            crile::Event::MouseInput { state, button } => {
+            crile::EventKind::MouseInput { state, button } => {
                 self.push_event(egui::Event::PointerButton {
                     pos: mouse_position,
                     button: match button {
@@ -172,10 +172,10 @@ impl EguiContext {
                     pressed: state.is_pressed(),
                 })
             }
-            crile::Event::MouseScrolled { delta } => {
+            crile::EventKind::MouseScrolled { delta } => {
                 self.push_event(egui::Event::Scroll(egui::vec2(delta.x, delta.y)))
             }
-            crile::Event::KeyInput {
+            crile::EventKind::KeyInput {
                 state,
                 repeat,
                 keycode,
@@ -189,16 +189,17 @@ impl EguiContext {
                 if let Some(key) = to_egui_key(*keycode) {
                     self.push_event(egui::Event::Key {
                         key,
+                        physical_key: None,
                         pressed: state.is_pressed(),
                         repeat: *repeat,
                         modifiers,
                     });
                 }
             }
-            crile::Event::WindowFocusChanged { focused } => {
+            crile::EventKind::WindowFocusChanged { focused } => {
                 self.push_event(egui::Event::WindowFocused(*focused))
             }
-            crile::Event::MouseHoverChanged { hovering: false } => {
+            crile::EventKind::WindowHoverChanged { hovering: false } => {
                 self.push_event(egui::Event::PointerGone)
             }
             _ => (),

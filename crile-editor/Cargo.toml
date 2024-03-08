@@ -4,8 +4,8 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-egui = "0.24"
-egui_dock = "0.9"
+egui = "0.26"
+egui_dock = "0.11"
 glam = "0.25"
 
 crile = { path = "../crile" }
