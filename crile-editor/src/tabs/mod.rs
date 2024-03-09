@@ -38,6 +38,11 @@ impl Default for EditorState {
             },
         ));
 
+        scene.world.spawn((crile::MetaDataComponent {
+            name: "Empty".to_owned(),
+            ..Default::default()
+        },));
+
         Self {
             scene,
             selection: Selection::None,

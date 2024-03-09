@@ -71,6 +71,10 @@ impl Archetype {
         Some(&mut *array.ptr.cast::<T>().add(index))
     }
 
+    pub(crate) fn has_component<T: 'static>(&self) -> bool {
+        self.index_map.contains_key(&TypeId::of::<T>())
+    }
+
     /// Returns the entity index inside this archetype
     pub(crate) fn new_entity(&mut self, entity: EntityId) -> usize {
         if self.count >= self.entities.len() {

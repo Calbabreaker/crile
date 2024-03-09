@@ -1,4 +1,4 @@
-use std::any::TypeId;
+use std::{any::TypeId, sync::Arc};
 
 use super::{Archetype, ComponentTuple, QueryIter, QueryIterMut, TypeInfo};
 use crate::{index_mut_twice, NoHashHashMap};
@@ -136,6 +136,10 @@ impl<'a> EntityRef<'a> {
     // TODO: add borrow checking probably unsafe right now
     pub fn get<T: 'static>(&self) -> Option<&mut T> {
         unsafe { self.archetype.borrow_component(self.location.entity_index) }
+    }
+
+    pub fn has<T: 'static>(&self) -> bool {
+        self.archetype.has_component::<T>()
     }
 
     pub fn add<T: 'static>(&mut self, component: T) {

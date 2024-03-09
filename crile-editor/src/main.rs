@@ -32,13 +32,17 @@ impl crile::Application for CrileEditorApp {
             });
         });
 
-        egui::SidePanel::left("Hierachy").show(&ctx, |ui| {
-            tabs::hierarchy::ui(&mut self.state, ui);
-        });
+        egui::SidePanel::left("Hierachy")
+            .width_range(80.0..=200.0)
+            .show(&ctx, |ui| {
+                tabs::hierarchy::ui(&mut self.state, ui);
+            });
 
-        egui::SidePanel::right("Inspector").show(&ctx, |ui| {
-            tabs::inspector::ui(&mut self.state, ui);
-        });
+        egui::SidePanel::right("Inspector")
+            .width_range(260.0..=500.0)
+            .show(&ctx, |ui| {
+                tabs::inspector::ui(&mut self.state, ui);
+            });
 
         egui::CentralPanel::default()
             .frame(egui::Frame::none())

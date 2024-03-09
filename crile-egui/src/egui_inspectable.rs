@@ -1,6 +1,5 @@
 pub trait EguiInspectable {
     fn inspect(&mut self, ui: &mut egui::Ui);
-
     fn pretty_name() -> &'static str {
         ""
     }
@@ -58,7 +57,7 @@ impl EguiInspectable for crile::CameraComponent {
 fn grid(ui: &mut egui::Ui, func: impl FnOnce(&mut egui::Ui)) {
     egui::Grid::new(std::any::type_name_of_val(&func))
         .num_columns(2)
-        .spacing([40.0, 4.0])
+        .spacing([30.0, 4.0])
         .show(ui, func);
 }
 
@@ -69,16 +68,27 @@ fn inspect_with_label(ui: &mut egui::Ui, label: &str, inpectable: &mut impl Egui
 
 impl EguiInspectable for f32 {
     fn inspect(&mut self, ui: &mut egui::Ui) {
-        ui.add(egui::DragValue::new(self).speed(0.01));
+        ui.add_sized(ui.available_size(), egui::DragValue::new(self).speed(0.01));
     }
 }
 
 impl EguiInspectable for glam::Vec3 {
     fn inspect(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            inspect_with_label(ui, "X", &mut self.x);
-            inspect_with_label(ui, "Y", &mut self.y);
-            inspect_with_label(ui, "Z", &mut self.z);
+            ui.style_mut().spacing.interact_size.x = 0.;
+            let font_size = ui.style().text_styles[&egui::TextStyle::Body].size;
+            let item_spacing = ui.style().spacing.item_spacing;
+            let size = egui::vec2(
+                (ui.available_width() / 3.).floor() - font_size - item_spacing.x,
+                ui.style().spacing.interact_size.y,
+            );
+
+            ui.label("X");
+            ui.add_sized(size, egui::DragValue::new(&mut self.x).speed(0.01));
+            ui.label("Y");
+            ui.add_sized(size, egui::DragValue::new(&mut self.y).speed(0.01));
+            ui.label("Z");
+            ui.add_sized(size, egui::DragValue::new(&mut self.z).speed(0.01));
         });
     }
 }
@@ -92,6 +102,6 @@ impl EguiInspectable for crile::Color {
             (self.a * 255.) as u8,
         );
         ui.color_edit_button_srgba(&mut rgba);
-        // *self = Self::from_rgba(rgba.r(), rgba.g(), rgba.b(), rgba.a());
+        *self = Self::from_rgba(rgba.r(), rgba.g(), rgba.b(), rgba.a());
     }
 }
