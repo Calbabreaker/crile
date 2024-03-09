@@ -9,8 +9,8 @@ pub struct CrileEditorApp {
     viewport_texture: Option<crile::RefId<crile::Texture>>,
 }
 
-impl Default for CrileEditorApp {
-    fn default() -> Self {
+impl crile::Application for CrileEditorApp {
+    fn new(engine: &mut crile::Engine) -> Self {
         let mut dock_state = egui_dock::DockState::new(vec![Tab::Viewport]);
 
         let surface = dock_state.main_surface_mut();
@@ -18,17 +18,11 @@ impl Default for CrileEditorApp {
         surface.split_right(old, 0.80, vec![Tab::Inspector]);
 
         Self {
-            egui: crile_egui::EguiContext::default(),
+            egui: crile_egui::EguiContext::new(engine),
             state: EditorState::default(),
             dock_state,
             viewport_texture: None,
         }
-    }
-}
-
-impl crile::Application for CrileEditorApp {
-    fn init(&mut self, engine: &mut crile::Engine) {
-        self.egui.init(engine);
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
@@ -117,5 +111,5 @@ impl CrileEditorApp {
 }
 
 fn main() {
-    crile::run_app(CrileEditorApp::default()).unwrap();
+    crile::run_app::<CrileEditorApp>().unwrap();
 }

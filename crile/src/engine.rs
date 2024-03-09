@@ -1,9 +1,9 @@
-use crate::{graphics::GraphicsContext, Event, EventKind, Input, Time, Window};
+use crate::{Event, EventKind, GraphicsContext, Input, Time, Window};
 use copypasta::ClipboardProvider;
 
 /// For applications to implement in order to run
 pub trait Application {
-    fn init(&mut self, engine: &mut Engine);
+    fn new(engine: &mut Engine) -> Self;
     fn update(&mut self, engine: &mut Engine);
     fn render(&mut self, engine: &mut Engine);
     fn event(&mut self, engine: &mut Engine, event: &Event);
@@ -74,7 +74,7 @@ impl Engine {
     }
 }
 
-pub fn run_app(mut app: impl Application) -> Result<(), winit::error::EventLoopError> {
+pub fn run_app<A: Application>() -> Result<(), winit::error::EventLoopError> {
     env_logger::builder()
         .filter_module("crile", log::LevelFilter::Trace)
         .filter_level(log::LevelFilter::Warn)
@@ -83,7 +83,7 @@ pub fn run_app(mut app: impl Application) -> Result<(), winit::error::EventLoopE
     let event_loop = winit::event_loop::EventLoop::new()?;
 
     let mut engine = Engine::new(&event_loop);
-    app.init(&mut engine);
+    let mut app = A::new(&mut engine);
 
     event_loop.run(move |event, elwt| {
         if let Some(event) = crate::events::convert_event(event) {
