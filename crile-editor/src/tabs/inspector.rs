@@ -1,6 +1,6 @@
 use crile_egui::EguiInspectable;
 
-use crate::tabs::{EditorState, Selection};
+use crate::{EditorState, Selection};
 
 pub fn ui(state: &mut EditorState, ui: &mut egui::Ui) {
     if let Selection::Entity(id) = state.selection {
@@ -8,13 +8,15 @@ pub fn ui(state: &mut EditorState, ui: &mut egui::Ui) {
         let meta = entity.get::<crile::MetaDataComponent>().unwrap();
         ui.text_edit_singleline(&mut meta.name);
 
-        macro_rules! inspect_components {
-            ( [$($component: ty),*]) => {{
-                $( inspect_component::<$component>(ui, &entity); )*
-            }};
-        }
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            macro_rules! inspect_components {
+                ( [$($component: ty),*]) => {{
+                    $( inspect_component::<$component>(ui, &entity); )*
+                }};
+            }
 
-        crile::with_components!(inspect_components);
+            crile::with_components!(inspect_components);
+        });
     }
 }
 

@@ -1,26 +1,18 @@
-use crate::tabs::{EditorState, Tab};
-
 mod tabs;
+
+pub use crate::tabs::{EditorState, Selection};
 
 pub struct CrileEditorApp {
     egui: crile_egui::EguiContext,
-    dock_state: egui_dock::DockState<Tab>,
     state: EditorState,
     viewport_texture: Option<crile::RefId<crile::Texture>>,
 }
 
 impl crile::Application for CrileEditorApp {
     fn new(engine: &mut crile::Engine) -> Self {
-        let mut dock_state = egui_dock::DockState::new(vec![Tab::Viewport]);
-
-        let surface = dock_state.main_surface_mut();
-        let [old, _] = surface.split_left(egui_dock::NodeIndex::root(), 0.15, vec![Tab::Hierarchy]);
-        surface.split_right(old, 0.80, vec![Tab::Inspector]);
-
         Self {
             egui: crile_egui::EguiContext::new(engine),
             state: EditorState::default(),
-            dock_state,
             viewport_texture: None,
         }
     }
@@ -31,7 +23,6 @@ impl crile::Application for CrileEditorApp {
         let ctx = self.egui.begin_frame(engine);
 
         egui::TopBottomPanel::top("top_panel").show(&ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Quit").clicked() {
@@ -41,12 +32,18 @@ impl crile::Application for CrileEditorApp {
             });
         });
 
+        egui::SidePanel::left("Hierachy").show(&ctx, |ui| {
+            tabs::hierarchy::ui(&mut self.state, ui);
+        });
+
+        egui::SidePanel::right("Inspector").show(&ctx, |ui| {
+            tabs::inspector::ui(&mut self.state, ui);
+        });
+
         egui::CentralPanel::default()
-            .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(0.))
+            .frame(egui::Frame::none())
             .show(&ctx, |ui| {
-                egui_dock::DockArea::new(&mut self.dock_state)
-                    .show_close_buttons(false)
-                    .show_inside(ui, &mut self.state);
+                tabs::viewport::ui(&mut self.state, ui);
             });
 
         self.egui.end_frame(engine, ctx);

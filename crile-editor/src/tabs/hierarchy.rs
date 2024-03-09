@@ -1,4 +1,4 @@
-use crate::tabs::{EditorState, Selection};
+use crate::{EditorState, Selection};
 
 pub fn ui(state: &mut EditorState, ui: &mut egui::Ui) {
     for (id, (meta,)) in state.scene.world.query::<(crile::MetaDataComponent,)>() {

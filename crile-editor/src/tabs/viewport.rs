@@ -1,4 +1,4 @@
-use crate::tabs::EditorState;
+use crate::EditorState;
 
 pub fn ui(state: &mut EditorState, ui: &mut egui::Ui) {
     state.viewport_size = glam::vec2(ui.available_width(), ui.available_height());

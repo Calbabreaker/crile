@@ -1,13 +1,6 @@
-mod hierarchy;
-mod inspector;
-mod viewport;
-
-#[derive(Debug)]
-pub enum Tab {
-    Hierarchy,
-    Viewport,
-    Inspector,
-}
+pub mod hierarchy;
+pub mod inspector;
+pub mod viewport;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Selection {
@@ -20,22 +13,6 @@ pub struct EditorState {
     pub viewport_texture_id: Option<egui::TextureId>,
     pub viewport_size: glam::Vec2,
     pub selection: Selection,
-}
-
-impl egui_dock::TabViewer for EditorState {
-    type Tab = Tab;
-
-    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
-        format!("{tab:?}").into()
-    }
-
-    fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
-        match tab {
-            Tab::Hierarchy => hierarchy::ui(self, ui),
-            Tab::Viewport => viewport::ui(self, ui),
-            Tab::Inspector => inspector::ui(self, ui),
-        }
-    }
 }
 
 impl Default for EditorState {
