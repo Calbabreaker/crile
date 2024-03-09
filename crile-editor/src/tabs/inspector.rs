@@ -8,14 +8,19 @@ pub fn ui(state: &mut EditorState, ui: &mut egui::Ui) {
         let meta = entity.get::<crile::MetaDataComponent>().unwrap();
         ui.text_edit_singleline(&mut meta.name);
 
-        component_ui::<crile::TransformComponent>(ui, &entity);
-        component_ui::<crile::SpriteRendererComponent>(ui, &entity);
-        component_ui::<crile::CameraComponent>(ui, &entity);
+        macro_rules! inspect_components {
+            ( [$($component: ty),*]) => {{
+                $( inspect_component::<$component>(ui, &entity); )*
+            }};
+        }
+
+        crile::with_components!(inspect_components);
     }
 }
 
-fn component_ui<T: EguiInspectable + 'static>(ui: &mut egui::Ui, entity: &crile::EntityRef) {
+fn inspect_component<T: EguiInspectable + 'static>(ui: &mut egui::Ui, entity: &crile::EntityRef) {
     if let Some(component) = entity.get::<T>() {
-        component.ui(ui);
+        ui.label(T::pretty_name());
+        component.inspect(ui);
     }
 }

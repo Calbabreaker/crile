@@ -77,3 +77,12 @@ impl CameraComponent {
         glam::Mat4::orthographic_lh(left, right, bottom, top, self.near, self.far)
     }
 }
+
+/// Calls a macro with all the components crile has
+#[macro_export]
+macro_rules! with_components {
+    ($macro: ident) => {{
+        use ::crile::*;
+        $macro!([CameraComponent, TransformComponent, SpriteRendererComponent])
+    }};
+}
