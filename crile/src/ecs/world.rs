@@ -1,4 +1,4 @@
-use std::{any::TypeId, sync::Arc};
+use std::any::TypeId;
 
 use super::{Archetype, ComponentTuple, QueryIter, QueryIterMut, TypeInfo};
 use crate::{index_mut_twice, NoHashHashMap};

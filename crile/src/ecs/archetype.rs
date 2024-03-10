@@ -146,7 +146,7 @@ impl Drop for Archetype {
 
         for array in self.component_arrays.iter_mut() {
             unsafe {
-                array.clean(self.entities.len());
+                array.clean(self.count, self.entities.len());
             }
         }
     }
@@ -195,13 +195,21 @@ impl ComponentArray {
         }
     }
 
-    unsafe fn clean(&mut self, length: usize) {
-        let offset = self.type_info.layout.size() * length;
-        (self.type_info.drop)(self.ptr.add(offset));
+    unsafe fn clean(&mut self, count: usize, capacity: usize) {
+        let size = self.type_info.layout.size();
+        // Call the destructer on the components
+        for i in 0..count {
+            let offset = size * i;
+            (self.type_info.drop)(self.ptr.add(offset));
+        }
 
+        // Deallocate the component array data
         std::alloc::dealloc(
             self.ptr,
-            std::alloc::Layout::from_size_align_unchecked(offset, self.type_info.layout.align()),
+            std::alloc::Layout::from_size_align_unchecked(
+                size * capacity,
+                self.type_info.layout.align(),
+            ),
         );
     }
 }
