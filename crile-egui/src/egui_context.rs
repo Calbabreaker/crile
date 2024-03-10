@@ -63,6 +63,11 @@ impl EguiContext {
 
         // Store all the texture egui is using
         while let Some((id, delta)) = full_output.textures_delta.set.pop() {
+            // TODO: do texture updates
+            if delta.pos.is_some() {
+                continue;
+            }
+
             let (pixels, width, height) = match &delta.image {
                 egui::ImageData::Color(image) => {
                     let pixels = image

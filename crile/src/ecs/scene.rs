@@ -1,10 +1,26 @@
 use super::{CameraComponent, SpriteRendererComponent, TransformComponent, World};
-use crate::{DrawUniform, RenderInstance, RenderPass};
+use crate::{
+    ComponentTuple, DrawUniform, EntityId, EntityRef, MetaDataComponent, RenderInstance, RenderPass,
+};
 
-#[derive(Default)]
 pub struct Scene {
     pub world: World,
+    root_entity_id: EntityId,
     render_instances: Vec<RenderInstance>,
+}
+
+impl Default for Scene {
+    fn default() -> Self {
+        let mut world = World::default();
+        Self {
+            root_entity_id: world.spawn((MetaDataComponent {
+                name: "Root".to_owned(),
+                ..Default::default()
+            },)),
+            world,
+            render_instances: Vec::default(),
+        }
+    }
 }
 
 impl Scene {
@@ -42,5 +58,24 @@ impl Scene {
         for (_, (camera,)) in self.world.query_mut::<(CameraComponent,)>() {
             camera.set_viewport(viewport_size);
         }
+    }
+
+    pub fn spawn<T: ComponentTuple>(
+        &mut self,
+        components: T,
+        parent_id: Option<EntityId>,
+    ) -> EntityId {
+        let id = self.world.spawn(components);
+
+        let parent_id = parent_id.unwrap_or(self.root_entity_id);
+        let entity = self.world.entity(parent_id);
+        let meta = entity.get::<MetaDataComponent>().unwrap();
+        meta.children.push(id);
+
+        id
+    }
+
+    pub fn root_entity(&self) -> EntityRef {
+        self.world.entity(self.root_entity_id)
     }
 }

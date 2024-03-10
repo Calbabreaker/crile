@@ -9,7 +9,6 @@ pub type EntityId = usize;
 struct EntityLocation {
     archetype_index: usize,
     entity_index: usize,
-    valid: bool,
 }
 
 /// Contains all the data for an ECS instance.
@@ -50,7 +49,6 @@ impl World {
         self.entity_locations[id] = EntityLocation {
             archetype_index,
             entity_index,
-            valid: true,
         };
 
         id
@@ -63,7 +61,6 @@ impl World {
         self.entity_locations[moved_id].entity_index = location.entity_index;
 
         self.free_entity_ids.push(id);
-        self.entity_locations[id].valid = false;
     }
 
     pub fn query<T: ComponentTuple>(&self) -> QueryIter<T> {
@@ -74,9 +71,12 @@ impl World {
         QueryIterMut::new(self)
     }
 
-    pub fn entity(&mut self, id: EntityId) -> EntityRef {
-        let location = self.entity_locations[id];
-        EntityRef::new(self, location, id)
+    pub fn entity(&self, id: EntityId) -> EntityRef {
+        EntityRef::new(self, self.entity_locations[id], id)
+    }
+
+    pub fn entity_mut(&mut self, id: EntityId) -> EntityMut {
+        EntityMut::new(self, self.entity_locations[id], id)
     }
 
     fn alloc_entity(&mut self) -> EntityId {
@@ -109,14 +109,49 @@ impl ArchetypeSet {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct EntityRef<'a> {
+    archetype: &'a Archetype,
+    location: EntityLocation,
+    id: EntityId,
+}
+
+impl<'a> EntityRef<'a> {
+    fn new(world: &'a World, location: EntityLocation, id: EntityId) -> Self {
+        // Safety:
+        // This archetype reference is never accessed after world is modified so it is safe to use
+        let archetype = &world.archetype_set.archetypes[location.archetype_index];
+
+        Self {
+            archetype,
+            location,
+            id,
+        }
+    }
+
+    // TODO: add borrow checking probably unsafe right now
+    pub fn get<T: 'static>(&self) -> Option<&mut T> {
+        unsafe { self.archetype.borrow_component(self.location.entity_index) }
+    }
+
+    pub fn has<T: 'static>(&self) -> bool {
+        self.archetype.has_component::<T>()
+    }
+
+    pub fn id(&self) -> EntityId {
+        self.id
+    }
+}
+
+// Same as entity ref but with add and remove component functions
+pub struct EntityMut<'a> {
     archetype: &'a Archetype,
     location: EntityLocation,
     id: EntityId,
     world: &'a mut World,
 }
 
-impl<'a> EntityRef<'a> {
+impl<'a> EntityMut<'a> {
     fn new(world: &'a mut World, location: EntityLocation, id: EntityId) -> Self {
         // Safety:
         // This archetype reference is never accessed after world is modified so it is safe to use
@@ -148,11 +183,17 @@ impl<'a> EntityRef<'a> {
         let pos = type_infos.binary_search(&TypeInfo::of::<T>()).unwrap_err();
         type_infos.insert(pos, TypeInfo::of::<T>());
 
+        let entity_index = self.location.entity_index;
         self.modify_components(&type_infos, |source_arch, target_arch, target_index| {
             // Move all the components into the new archetype
             for array in source_arch.component_arrays.iter() {
                 unsafe {
-                    target_arch.put_component(target_index, array.ptr, array.type_info.id);
+                    let offset = array.type_info.layout.size() * entity_index;
+                    target_arch.put_component(
+                        target_index,
+                        array.ptr.add(offset),
+                        array.type_info.id,
+                    );
                 }
             }
 
@@ -192,14 +233,14 @@ impl<'a> EntityRef<'a> {
         new_type_infos: &[TypeInfo],
         modify_func: impl Fn(&mut Archetype, &mut Archetype, usize),
     ) {
-        let type_ids = new_type_infos
+        let new_type_ids = new_type_infos
             .iter()
             .map(|info| info.id)
             .collect::<Box<_>>();
         let target_arch_index = self
             .world
             .archetype_set
-            .index_from_ids(&type_ids, new_type_infos);
+            .index_from_ids(&new_type_ids, new_type_infos);
 
         if self.location.archetype_index == target_arch_index {
             return;

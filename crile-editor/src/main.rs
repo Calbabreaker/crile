@@ -33,7 +33,7 @@ impl crile::Application for CrileEditorApp {
         });
 
         egui::SidePanel::left("Hierachy")
-            .width_range(80.0..=200.0)
+            .width_range(150.0..=300.0)
             .show(&ctx, |ui| {
                 tabs::hierarchy::ui(&mut self.state, ui);
             });
