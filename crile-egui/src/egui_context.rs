@@ -56,6 +56,9 @@ impl EguiContext {
             engine.set_clipboard(copied_text);
         }
 
+        let icon = to_engine_cursor_icon(full_output.platform_output.cursor_icon);
+        engine.window.set_cursor_icon(icon);
+
         let wgpu = &engine.gfx.wgpu;
 
         // Store all the texture egui is using
@@ -278,5 +281,45 @@ fn to_egui_key(keycode: crile::KeyCode) -> Option<egui::Key> {
         crile::KeyCode::KeyW => egui::Key::W,
         crile::KeyCode::KeyZ => egui::Key::Z,
         _ => return None,
+    })
+}
+
+fn to_engine_cursor_icon(icon: egui::CursorIcon) -> Option<crile::CursorIcon> {
+    Some(match icon {
+        egui::CursorIcon::Default => crile::CursorIcon::Default,
+        egui::CursorIcon::None => return None,
+        egui::CursorIcon::ContextMenu => crile::CursorIcon::ContextMenu,
+        egui::CursorIcon::Help => crile::CursorIcon::Help,
+        egui::CursorIcon::PointingHand => crile::CursorIcon::Pointer,
+        egui::CursorIcon::Progress => crile::CursorIcon::Progress,
+        egui::CursorIcon::Wait => crile::CursorIcon::Wait,
+        egui::CursorIcon::Cell => crile::CursorIcon::Cell,
+        egui::CursorIcon::Crosshair => crile::CursorIcon::Crosshair,
+        egui::CursorIcon::Text => crile::CursorIcon::Text,
+        egui::CursorIcon::VerticalText => crile::CursorIcon::VerticalText,
+        egui::CursorIcon::Alias => crile::CursorIcon::Alias,
+        egui::CursorIcon::Copy => crile::CursorIcon::Copy,
+        egui::CursorIcon::Move => crile::CursorIcon::Move,
+        egui::CursorIcon::NoDrop => crile::CursorIcon::NoDrop,
+        egui::CursorIcon::NotAllowed => crile::CursorIcon::NotAllowed,
+        egui::CursorIcon::Grab => crile::CursorIcon::Grab,
+        egui::CursorIcon::Grabbing => crile::CursorIcon::Grabbing,
+        egui::CursorIcon::AllScroll => crile::CursorIcon::AllScroll,
+        egui::CursorIcon::ResizeHorizontal => crile::CursorIcon::ColResize,
+        egui::CursorIcon::ResizeNeSw => crile::CursorIcon::SwResize,
+        egui::CursorIcon::ResizeNwSe => crile::CursorIcon::SeResize,
+        egui::CursorIcon::ResizeVertical => crile::CursorIcon::RowResize,
+        egui::CursorIcon::ResizeEast => crile::CursorIcon::EResize,
+        egui::CursorIcon::ResizeSouthEast => crile::CursorIcon::SeResize,
+        egui::CursorIcon::ResizeSouth => crile::CursorIcon::SResize,
+        egui::CursorIcon::ResizeSouthWest => crile::CursorIcon::SwResize,
+        egui::CursorIcon::ResizeWest => crile::CursorIcon::WResize,
+        egui::CursorIcon::ResizeNorthWest => crile::CursorIcon::NwResize,
+        egui::CursorIcon::ResizeNorth => crile::CursorIcon::NResize,
+        egui::CursorIcon::ResizeNorthEast => crile::CursorIcon::NeResize,
+        egui::CursorIcon::ResizeColumn => crile::CursorIcon::ColResize,
+        egui::CursorIcon::ResizeRow => crile::CursorIcon::RowResize,
+        egui::CursorIcon::ZoomIn => crile::CursorIcon::ZoomIn,
+        egui::CursorIcon::ZoomOut => crile::CursorIcon::ZoomOut,
     })
 }

@@ -75,13 +75,14 @@ impl EguiInspectable for f32 {
 impl EguiInspectable for glam::Vec3 {
     fn inspect(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.style_mut().spacing.interact_size.x = 0.;
+            ui.spacing_mut().interact_size.x = 0.;
+            // Make sure vec3 control resizes to fit
             let font_size = ui.style().text_styles[&egui::TextStyle::Body].size;
-            let item_spacing = ui.style().spacing.item_spacing;
             let size = egui::vec2(
-                (ui.available_width() / 3.).floor() - font_size - item_spacing.x,
-                ui.style().spacing.interact_size.y,
-            );
+                ui.available_width() / 3. - font_size - ui.spacing().item_spacing.x,
+                ui.spacing().interact_size.y,
+            )
+            .floor();
 
             ui.label("X");
             ui.add_sized(size, egui::DragValue::new(&mut self.x).speed(0.01));

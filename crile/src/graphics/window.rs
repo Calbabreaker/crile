@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{EventKind, WGPUContext, WindowId};
+pub use winit::window::CursorIcon;
 
 pub struct Window {
     pub(crate) winit: Arc<winit::window::Window>,
@@ -37,6 +38,34 @@ impl Window {
         if let EventKind::WindowResize { size } = event {
             self.viewport.resize(*size, wgpu)
         };
+    }
+
+    /// Sets the cursor icon
+    /// Use None to make it invisible
+    pub fn set_cursor_icon(&self, icon: Option<CursorIcon>) {
+        if let Some(icon) = icon {
+            self.winit.set_cursor_icon(icon);
+        } else {
+            self.winit.set_cursor_visible(false);
+        }
+    }
+
+    /// Tries to lock/unlock the cursor within the window
+    /// Returns whether or not it was successful
+    pub fn set_cursor_lock(&self, lock: bool) -> bool {
+        if lock {
+            self.winit
+                .set_cursor_grab(winit::window::CursorGrabMode::Locked)
+                .or_else(|_| {
+                    self.winit
+                        .set_cursor_grab(winit::window::CursorGrabMode::Confined)
+                })
+                .is_ok()
+        } else {
+            self.winit
+                .set_cursor_grab(winit::window::CursorGrabMode::None)
+                .is_ok()
+        }
     }
 }
 
