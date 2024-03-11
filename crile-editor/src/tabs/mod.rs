@@ -13,6 +13,7 @@ pub struct EditorState {
     pub viewport_texture_id: Option<egui::TextureId>,
     pub viewport_size: glam::Vec2,
     pub selection: Selection,
+    pub viewport_texture: Option<crile::RefId<crile::Texture>>,
 }
 
 impl Default for EditorState {
@@ -20,11 +21,8 @@ impl Default for EditorState {
         let mut scene = crile::Scene::default();
 
         scene.spawn(
+            "Camera",
             (
-                crile::MetaDataComponent {
-                    name: "Camera".to_string(),
-                    ..Default::default()
-                },
                 crile::TransformComponent::default(),
                 crile::CameraComponent::default(),
             ),
@@ -32,11 +30,8 @@ impl Default for EditorState {
         );
 
         scene.spawn(
+            "Sprite",
             (
-                crile::MetaDataComponent {
-                    name: "Sprite".to_string(),
-                    ..Default::default()
-                },
                 crile::TransformComponent::default(),
                 crile::SpriteRendererComponent {
                     color: crile::Color::from_rgb(99, 123, 255),
@@ -50,6 +45,7 @@ impl Default for EditorState {
             selection: Selection::None,
             viewport_texture_id: None,
             viewport_size: glam::Vec2::ZERO,
+            viewport_texture: None,
         }
     }
 }

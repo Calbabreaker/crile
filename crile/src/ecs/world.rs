@@ -9,6 +9,7 @@ pub type EntityId = usize;
 struct EntityLocation {
     archetype_index: usize,
     entity_index: usize,
+    valid: bool,
 }
 
 /// Contains all the data for an ECS instance.
@@ -49,13 +50,16 @@ impl World {
         self.entity_locations[id] = EntityLocation {
             archetype_index,
             entity_index,
+            valid: true,
         };
 
         id
     }
 
     pub fn despawn(&mut self, id: EntityId) {
-        let location = &self.entity_locations[id];
+        let location = &mut self.entity_locations[id];
+        location.valid = false;
+
         let archetype = &mut self.archetype_set.archetypes[location.archetype_index];
         let moved_id = archetype.remove_entity(location.entity_index, true);
         self.entity_locations[moved_id].entity_index = location.entity_index;
@@ -71,12 +75,29 @@ impl World {
         QueryIterMut::new(self)
     }
 
-    pub fn entity(&self, id: EntityId) -> EntityRef {
-        EntityRef::new(self, self.entity_locations[id], id)
+    pub fn entity(&self, id: EntityId) -> Option<EntityRef> {
+        Some(EntityRef::new(self, self.location(id)?, id))
     }
 
-    pub fn entity_mut(&mut self, id: EntityId) -> EntityMut {
-        EntityMut::new(self, self.entity_locations[id], id)
+    pub fn entity_mut(&mut self, id: EntityId) -> Option<EntityMut> {
+        Some(EntityMut::new(self, self.location(id)?, id))
+    }
+
+    /// Gets a component from the entity id
+    /// Shorthand for self.entity(id)?.get<T>()?;
+    pub fn get<T: 'static>(&self, id: EntityId) -> Option<&mut T> {
+        let location = self.location(id)?;
+        let archetype = &self.archetype_set.archetypes[location.archetype_index];
+        unsafe { archetype.borrow_component(location.entity_index) }
+    }
+
+    fn location(&self, id: EntityId) -> Option<EntityLocation> {
+        let location = self.entity_locations.get(id)?;
+        if location.valid {
+            Some(*location)
+        } else {
+            None
+        }
     }
 
     fn alloc_entity(&mut self) -> EntityId {
@@ -184,10 +205,11 @@ impl<'a> EntityMut<'a> {
         type_infos.insert(pos, TypeInfo::of::<T>());
 
         let entity_index = self.location.entity_index;
-        self.modify_components(&type_infos, |source_arch, target_arch, target_index| {
-            // Move all the components into the new archetype
-            for array in source_arch.component_arrays.iter() {
-                unsafe {
+        self.modify_components(
+            &type_infos,
+            |source_arch, target_arch, _, target_index| unsafe {
+                // Move all the components into the new archetype
+                for array in source_arch.component_arrays.iter() {
                     let offset = array.type_info.layout.size() * entity_index;
                     target_arch.put_component(
                         target_index,
@@ -195,17 +217,18 @@ impl<'a> EntityMut<'a> {
                         array.type_info.id,
                     );
                 }
-            }
 
-            // Add the requested component into the new archetype
-            unsafe {
+                // Add the requested component into the new archetype
                 target_arch.put_component(
                     target_index,
                     &component as *const T as *const u8,
                     TypeId::of::<T>(),
                 );
-            }
-        });
+            },
+        );
+
+        // Make sure component doesn't have it's destructor called
+        std::mem::forget(component);
     }
 
     pub fn remove<T: 'static>(&mut self) {
@@ -216,22 +239,27 @@ impl<'a> EntityMut<'a> {
             .filter(|info| info.id != TypeId::of::<T>())
             .collect::<Box<_>>();
 
-        self.modify_components(&type_infos, |source_arch, target_arch, target_index| {
-            // Move all the components into the new archetype except for the removed component
-            for array in source_arch.component_arrays.iter() {
-                if array.type_info.id != TypeId::of::<T>() {
-                    unsafe {
+        self.modify_components(
+            &type_infos,
+            |source_arch, target_arch, source_index, target_index| unsafe {
+                // Move all the components into the new archetype except for the removed component
+                for array in source_arch.component_arrays.iter_mut() {
+                    if array.type_info.id != TypeId::of::<T>() {
+                        // Call drop on removed component
+                        array.drop_component(source_index)
+                    } else {
+                        // Put the component into the new archetype
                         target_arch.put_component(target_index, array.ptr, array.type_info.id);
                     }
                 }
-            }
-        });
+            },
+        );
     }
 
     fn modify_components(
         &mut self,
         new_type_infos: &[TypeInfo],
-        modify_func: impl Fn(&mut Archetype, &mut Archetype, usize),
+        modify_func: impl Fn(&mut Archetype, &mut Archetype, usize, usize),
     ) {
         let new_type_ids = new_type_infos
             .iter()
@@ -253,7 +281,8 @@ impl<'a> EntityMut<'a> {
         );
 
         let target_index = target_arch.new_entity(self.id);
-        modify_func(source_arch, target_arch, target_index);
+        let source_index = self.location.entity_index;
+        modify_func(source_arch, target_arch, source_index, target_index);
 
         // Remove the old entity
         let moved_id = source_arch.remove_entity(self.location.entity_index, false);

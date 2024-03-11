@@ -1,6 +1,6 @@
 use crate::{EditorState, Selection};
 
-pub fn ui(state: &mut EditorState, ui: &mut egui::Ui) {
+pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
     ui.add_space(5.);
     let mut action = HierachyAction::None;
 
@@ -31,19 +31,12 @@ pub fn ui(state: &mut EditorState, ui: &mut egui::Ui) {
 
     match action {
         HierachyAction::AddChildEntity(parent_id) => {
-            state.scene.spawn(
-                (
-                    crile::MetaDataComponent {
-                        name: "Empty entity".to_owned(),
-                        ..Default::default()
-                    },
-                    crile::TransformComponent::default(),
-                ),
-                parent_id,
-            );
+            state
+                .scene
+                .spawn("Empty", (crile::TransformComponent::default(),), parent_id);
         }
         HierachyAction::DestroyEntity(id) => {
-            state.scene.world.despawn(id);
+            state.scene.despawn(id);
         }
         HierachyAction::None => (),
     }
@@ -62,8 +55,9 @@ fn display_entity(
     world: &crile::World,
     action: &mut HierachyAction,
 ) {
-    let entity = world.entity(id);
-    let meta = entity.get::<crile::MetaDataComponent>().unwrap();
+    let meta = world
+        .get::<crile::MetaDataComponent>(id)
+        .expect("displaying invalid entity");
 
     let has_children = !meta.children.is_empty();
     let header_state = egui::collapsing_header::CollapsingState::load_with_default_open(

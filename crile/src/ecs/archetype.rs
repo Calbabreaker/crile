@@ -183,33 +183,37 @@ impl ComponentArray {
     }
 
     unsafe fn swap_remove(&mut self, index: usize, last_index: usize, should_drop: bool) {
-        let size = self.type_info.layout.size();
-        let to_remove = self.ptr.add(index * size);
         if should_drop {
-            (self.type_info.drop)(to_remove);
+            self.drop_component(index);
         }
 
         if index != last_index {
+            let size = self.type_info.layout.size();
+            let to_remove = self.ptr.add(index * size);
             let last = self.ptr.add(last_index * size);
+
             std::ptr::copy_nonoverlapping(last, to_remove, size);
         }
     }
 
     unsafe fn clean(&mut self, count: usize, capacity: usize) {
-        let size = self.type_info.layout.size();
         // Call the destructer on the components
         for i in 0..count {
-            let offset = size * i;
-            (self.type_info.drop)(self.ptr.add(offset));
+            self.drop_component(i);
         }
 
         // Deallocate the component array data
         std::alloc::dealloc(
             self.ptr,
             std::alloc::Layout::from_size_align_unchecked(
-                size * capacity,
+                self.type_info.layout.size() * capacity,
                 self.type_info.layout.align(),
             ),
         );
+    }
+
+    pub(crate) unsafe fn drop_component(&mut self, index: usize) {
+        let offset = self.type_info.layout.size() * index;
+        (self.type_info.drop)(self.ptr.add(offset));
     }
 }

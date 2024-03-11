@@ -2,38 +2,45 @@ use crile_egui::EguiInspectable;
 
 use crate::{EditorState, Selection};
 
-pub fn ui(state: &mut EditorState, ui: &mut egui::Ui) {
+pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
     ui.add_space(5.);
 
     ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
         if let Selection::Entity(id) = state.selection {
-            let mut entity = state.scene.world.entity_mut(id);
-            let meta = entity.get::<crile::MetaDataComponent>().unwrap();
-            ui.text_edit_singleline(&mut meta.name);
-            ui.add_space(5.);
+            if let Some(meta) = state.scene.world.get::<crile::MetaDataComponent>(id) {
+                ui.text_edit_singleline(&mut meta.name);
+                ui.add_space(5.);
 
-            macro_rules! inspect_components {
+                let mut entity = state.scene.world.entity_mut(id).unwrap();
+                inspect_entity(ui, &mut entity)
+            } else {
+                state.selection = Selection::None;
+            }
+        }
+    });
+}
+
+fn inspect_entity(ui: &mut egui::Ui, entity: &mut crile::EntityMut) {
+    macro_rules! inspect_components {
+        ( [$($component: ty),*]) => {{
+            $( inspect_component::<$component>(ui, entity); )*
+        }};
+    }
+
+    crile::with_components!(inspect_components);
+
+    ui.separator();
+
+    ui.vertical_centered(|ui| {
+        ui.menu_button("Add component", |ui| {
+            macro_rules! add_component_buttons {
                 ( [$($component: ty),*]) => {{
-                    $( inspect_component::<$component>(ui, &mut entity); )*
+                    $( add_component_button::<$component>(ui, entity); )*
                 }};
             }
 
-            crile::with_components!(inspect_components);
-
-            ui.separator();
-
-            ui.vertical_centered(|ui| {
-                ui.menu_button("Add component", |ui| {
-                    macro_rules! add_component_buttons {
-                        ( [$($component: ty),*]) => {{
-                            $( add_component_button::<$component>(ui, &mut entity); )*
-                        }};
-                    }
-
-                    crile::with_components!(add_component_buttons);
-                });
-            });
-        }
+            crile::with_components!(add_component_buttons);
+        });
     });
 }
 

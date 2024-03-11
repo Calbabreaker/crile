@@ -4,6 +4,7 @@ use crate::{Color, EntityId};
 pub struct MetaDataComponent {
     pub name: String,
     pub children: Vec<EntityId>,
+    pub parent: EntityId,
 }
 
 #[derive(Debug)]
