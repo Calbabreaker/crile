@@ -77,7 +77,7 @@ impl DynamicBufferAllocator {
 
         // TODO: use size.div_ceil once https://github.com/rust-lang/rust/issues/88581 is stablized
         // Aligns size to alignment since gpus require the buffer to have a certain alignment
-        let size_aligned = (size / self.alignment + 1) * self.alignment;
+        let size_aligned = self.align(size);
         assert!(
             size_aligned <= self.max_size,
             "requested size ({0}) is greater than max size ({1})",
@@ -108,7 +108,8 @@ impl DynamicBufferAllocator {
     }
 
     pub fn grow(&mut self, wgpu: &WGPUContext, required_size: u64) {
-        self.descriptor.size = u64::clamp(self.descriptor.size * 2, required_size, self.max_size);
+        let size_aligned = self.align(required_size);
+        self.descriptor.size = u64::clamp(self.descriptor.size * 2, size_aligned, self.max_size);
         self.buffer_spaces
             .push(DynamicBufferSpace::new(wgpu, &self.descriptor));
     }
@@ -117,5 +118,11 @@ impl DynamicBufferAllocator {
         for space in &mut self.buffer_spaces {
             space.cursor = 0;
         }
+    }
+
+    fn align(&self, size: u64) -> u64 {
+        // TODO: use size.div_ceil once https://github.com/rust-lang/rust/issues/88581 is stablized
+        // Aligns size to alignment since gpus require the buffer to have a certain alignment
+        (size / self.alignment + 1) * self.alignment
     }
 }

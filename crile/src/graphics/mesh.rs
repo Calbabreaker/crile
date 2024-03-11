@@ -39,23 +39,23 @@ impl Mesh {
             wgpu,
             &[
                 MeshVertex {
-                    position: [0., 0.],
+                    position: [-0.5, -0.5],
                     // Flip the texture coords in the y direction to flip the texture
                     texture_coords: [0., 1.],
                     color: [1.; 4],
                 },
                 MeshVertex {
-                    position: [1., 0.],
+                    position: [0.5, -0.5],
                     texture_coords: [1., 1.],
                     color: [1.; 4],
                 },
                 MeshVertex {
-                    position: [1., 1.],
+                    position: [0.5, 0.5],
                     texture_coords: [1., 0.],
                     color: [1.; 4],
                 },
                 MeshVertex {
-                    position: [0.0, 1.0],
+                    position: [-0.5, 0.5],
                     texture_coords: [0., 0.],
                     color: [1.; 4],
                 },
