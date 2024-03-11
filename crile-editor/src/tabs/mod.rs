@@ -11,9 +11,10 @@ pub enum Selection {
 pub struct EditorState {
     pub scene: crile::Scene,
     pub viewport_texture_id: Option<egui::TextureId>,
-    pub viewport_size: glam::Vec2,
+    pub viewport_size: glam::UVec2,
     pub selection: Selection,
     pub viewport_texture: Option<crile::RefId<crile::Texture>>,
+    pub depth_texture: Option<crile::Texture>,
 }
 
 impl Default for EditorState {
@@ -44,8 +45,9 @@ impl Default for EditorState {
             scene,
             selection: Selection::None,
             viewport_texture_id: None,
-            viewport_size: glam::Vec2::ZERO,
+            viewport_size: glam::UVec2::ZERO,
             viewport_texture: None,
+            depth_texture: None,
         }
     }
 }

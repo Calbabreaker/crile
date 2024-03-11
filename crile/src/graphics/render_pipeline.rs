@@ -4,13 +4,14 @@ use std::{
 };
 
 use super::WGPUContext;
-use crate::{BindGroupLayoutBuilder, NoHashHashMap, RefId};
+use crate::{BindGroupLayoutBuilder, NoHashHashMap, RefId, Texture};
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct RenderPipelineConfig {
     pub shader: RefId<Shader>,
     pub vertex_buffer_layouts: &'static [wgpu::VertexBufferLayout<'static>],
     pub format: wgpu::TextureFormat,
+    pub has_depth: bool,
 }
 
 /// Caches gpu resources to prevent unnesscery creation
@@ -117,7 +118,17 @@ fn create_pipeline(
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
-            depth_stencil: None,
+            depth_stencil: if config.has_depth {
+                Some(wgpu::DepthStencilState {
+                    format: Texture::DEPTH_FORMAT,
+                    depth_write_enabled: true,
+                    depth_compare: wgpu::CompareFunction::Less,
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                })
+            } else {
+                None
+            },
             multiview: None,
         })
 }

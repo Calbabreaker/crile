@@ -1,6 +1,24 @@
 use super::WGPUContext;
 use crate::RefId;
 
+pub struct TextureConfig {
+    pub sampler_config: SamplerConfig,
+    pub size: glam::UVec2,
+    pub usage: wgpu::TextureUsages,
+    pub format: wgpu::TextureFormat,
+}
+
+impl Default for TextureConfig {
+    fn default() -> Self {
+        Self {
+            sampler_config: SamplerConfig::linear(),
+            size: glam::UVec2::ZERO,
+            usage: wgpu::TextureUsages::empty(),
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        }
+    }
+}
+
 /// Wrapper around the wgpu texture objects
 #[derive(Debug)]
 pub struct Texture {
@@ -10,18 +28,26 @@ pub struct Texture {
 }
 
 impl Texture {
+    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+
     pub fn from_image(wgpu: &WGPUContext, image: image::DynamicImage) -> Self {
-        Self::from_pixels(wgpu, image.width(), image.height(), &image.to_rgba8())
+        Self::from_pixels(
+            wgpu,
+            glam::uvec2(image.width(), image.height()),
+            &image.to_rgba8(),
+        )
     }
 
     /// Creats a new texture to be rendrered
     /// Note: only expects rgba8 images
-    pub fn from_pixels(wgpu: &WGPUContext, width: u32, height: u32, pixels: &[u8]) -> Self {
+    pub fn from_pixels(wgpu: &WGPUContext, size: glam::UVec2, pixels: &[u8]) -> Self {
         let texture = Self::new(
             wgpu,
-            width,
-            height,
-            wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+            TextureConfig {
+                size,
+                usage: wgpu::TextureUsages::COPY_DST,
+                ..Default::default()
+            },
         );
 
         wgpu.queue.write_texture(
@@ -29,8 +55,8 @@ impl Texture {
             pixels,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
+                bytes_per_row: Some(4 * size.x),
+                rows_per_image: Some(size.y),
             },
             texture.gpu_texture.size(),
         );
@@ -38,28 +64,42 @@ impl Texture {
         texture
     }
 
-    pub fn new_render_attach(wgpu: &WGPUContext, width: u32, height: u32) -> Self {
+    pub fn new_render_attach(wgpu: &WGPUContext, size: glam::UVec2) -> Self {
         Self::new(
             wgpu,
-            width,
-            height,
-            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            TextureConfig {
+                size,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                ..Default::default()
+            },
         )
     }
 
-    pub fn new(wgpu: &WGPUContext, width: u32, height: u32, usage: wgpu::TextureUsages) -> Self {
+    pub fn new_depth(wgpu: &WGPUContext, size: glam::UVec2) -> Self {
+        Self::new(
+            wgpu,
+            TextureConfig {
+                size,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                format: Self::DEPTH_FORMAT,
+                ..Default::default()
+            },
+        )
+    }
+
+    pub fn new(wgpu: &WGPUContext, config: TextureConfig) -> Self {
         let gpu_texture = wgpu.device.create_texture(&wgpu::TextureDescriptor {
             label: None,
             size: wgpu::Extent3d {
-                width,
-                height,
+                width: config.size.x,
+                height: config.size.y,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage,
+            format: config.format,
+            usage: config.usage | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
         let gpu_view = gpu_texture.create_view(&wgpu::TextureViewDescriptor::default());

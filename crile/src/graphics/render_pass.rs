@@ -24,6 +24,7 @@ pub struct RenderInstance {
 pub struct RenderPass<'a> {
     gpu_render_pass: wgpu::RenderPass<'a>,
     shader: RefId<Shader>,
+    has_depth: bool,
     dirty_pipline: bool,
 
     pub target_texture: TextureView<'a>,
@@ -38,6 +39,7 @@ impl<'a> RenderPass<'a> {
     pub fn new(
         gfx: &'a mut GraphicsContext,
         clear_color: Option<Color>,
+        depth_texture: Option<&'a Texture>,
         target: Option<TextureView<'a>>,
     ) -> Self {
         let frame = gfx
@@ -61,7 +63,16 @@ impl<'a> RenderPass<'a> {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: depth_texture.map(|depth_texture| {
+                    wgpu::RenderPassDepthStencilAttachment {
+                        view: &depth_texture.gpu_view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }
+                }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
@@ -71,6 +82,7 @@ impl<'a> RenderPass<'a> {
             shader: gfx.data.single_draw_shader.clone(),
             dirty_pipline: true,
             target_texture: target,
+            has_depth: depth_texture.is_some(),
 
             // We need to get references to WGPUContext, GraphicsData, GraphicsCaches seperately or rust is
             // going to complain about mutiple borrows
@@ -195,6 +207,7 @@ impl<'a> RenderPass<'a> {
                 shader: self.shader.clone(),
                 vertex_buffer_layouts: &[MeshVertex::LAYOUT],
                 format: self.target_texture.gpu_texture.format(),
+                has_depth: self.has_depth,
             },
             layouts,
         );

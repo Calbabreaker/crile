@@ -26,7 +26,7 @@ impl GraphicsContext {
             ShaderKind::Instanced,
         );
 
-        let white_texture = Texture::from_pixels(&wgpu, 1, 1, &[255, 255, 255, 255]);
+        let white_texture = Texture::from_pixels(&wgpu, glam::UVec2::ONE, &[255, 255, 255, 255]);
         let uniform_buffer_allocator =
             DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::UNIFORM);
         let storage_buffer_allocator =

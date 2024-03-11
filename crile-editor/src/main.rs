@@ -57,14 +57,16 @@ impl crile::Application for CrileEditorApp {
             let mut scene_render_pass = crile::RenderPass::new(
                 &mut engine.gfx,
                 Some(crile::Color::BLACK),
+                self.state.depth_texture.as_ref(),
                 Some(texture.view()),
             );
 
             self.state.scene.render(&mut scene_render_pass);
         }
 
+        // Now render onto the window
         let mut render_pass =
-            crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK), None);
+            crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK), None, None);
         self.egui.render(&mut render_pass);
     }
 

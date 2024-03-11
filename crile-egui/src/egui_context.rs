@@ -86,7 +86,11 @@ impl EguiContext {
                 }
             };
 
-            let texture = crile::Texture::from_pixels(wgpu, width as u32, height as u32, &pixels);
+            let texture = crile::Texture::from_pixels(
+                wgpu,
+                glam::uvec2(width as u32, height as u32),
+                &pixels,
+            );
             self.textures.insert(id, texture.into());
         }
 
