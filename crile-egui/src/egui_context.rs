@@ -63,11 +63,6 @@ impl EguiContext {
 
         // Store all the texture egui is using
         while let Some((id, delta)) = full_output.textures_delta.set.pop() {
-            // TODO: do texture updates
-            if delta.pos.is_some() {
-                continue;
-            }
-
             let (pixels, width, height) = match &delta.image {
                 egui::ImageData::Color(image) => {
                     let pixels = image
@@ -86,12 +81,18 @@ impl EguiContext {
                 }
             };
 
-            let texture = crile::Texture::from_pixels(
-                wgpu,
-                glam::uvec2(width as u32, height as u32),
-                &pixels,
-            );
-            self.textures.insert(id, texture.into());
+            let size = glam::uvec2(width as u32, height as u32);
+
+            if let Some(pos) = delta.pos {
+                // Update the existing texture
+                let texture = &self.textures[&id];
+                let origin = glam::uvec2(pos[0] as u32, pos[1] as u32);
+                texture.write_data(wgpu, origin, size, &pixels);
+            } else {
+                // Create new texture
+                let texture = crile::Texture::from_pixels(wgpu, size, &pixels);
+                self.textures.insert(id, texture.into());
+            }
         }
 
         while let Some(id) = full_output.textures_delta.free.pop() {

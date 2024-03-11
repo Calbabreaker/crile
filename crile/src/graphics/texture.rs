@@ -50,16 +50,7 @@ impl Texture {
             },
         );
 
-        wgpu.queue.write_texture(
-            texture.gpu_texture.as_image_copy(),
-            pixels,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * size.x),
-                rows_per_image: Some(size.y),
-            },
-            texture.gpu_texture.size(),
-        );
+        texture.write_data(wgpu, glam::UVec2::ZERO, texture.view().size(), pixels);
 
         texture
     }
@@ -109,6 +100,38 @@ impl Texture {
             gpu_view,
             sampler_config: SamplerConfig::linear(),
         }
+    }
+
+    pub fn write_data(
+        &self,
+        wgpu: &WGPUContext,
+        origin: glam::UVec2,
+        source_size: glam::UVec2,
+        data_bytes: &[u8],
+    ) {
+        wgpu.queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.gpu_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: origin.x,
+                    y: origin.y,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            data_bytes,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * source_size.x),
+                rows_per_image: Some(source_size.y),
+            },
+            wgpu::Extent3d {
+                width: source_size.x,
+                height: source_size.y,
+                depth_or_array_layers: 1,
+            },
+        );
     }
 
     pub fn view(&self) -> TextureView {
