@@ -32,12 +32,21 @@ impl Scene {
         {
             self.render_instances.clear();
 
-            for (_, (transform, sprite)) in self
+            for (id, (transform, sprite)) in self
                 .world
                 .query::<(TransformComponent, SpriteRendererComponent)>()
             {
+                // Go through each parent and multiple by their transforms
+                // TODO: a bit inefficient think about caching?
+                let mut global_transform = transform.get_matrix();
+                self.for_each_parent(id, &mut |parent_id| {
+                    if let Some(transform) = self.world.get::<TransformComponent>(parent_id) {
+                        global_transform = transform.get_matrix() * global_transform;
+                    }
+                });
+
                 self.render_instances.push(RenderInstance {
-                    transform: transform.get_matrix(),
+                    transform: global_transform,
                     color: sprite.color,
                 })
             }
@@ -101,7 +110,7 @@ impl Scene {
         }
 
         let mut children_list = Vec::new();
-        self.for_each_child_recursive(meta, &mut |id| children_list.push(id));
+        self.for_each_child(meta, &mut |id| children_list.push(id));
         for child in children_list {
             self.world.despawn(child);
         }
@@ -109,17 +118,22 @@ impl Scene {
         self.world.despawn(id);
     }
 
-    pub fn for_each_child_recursive(
-        &self,
-        meta: &MetaDataComponent,
-        func: &mut impl FnMut(EntityId),
-    ) {
+    pub fn for_each_child(&self, meta: &MetaDataComponent, func: &mut impl FnMut(EntityId)) {
         for child in meta.children.clone() {
             if let Some(meta) = self.world.get::<MetaDataComponent>(child) {
-                self.for_each_child_recursive(meta, func);
+                self.for_each_child(meta, func);
             }
 
             func(child);
+        }
+    }
+
+    pub fn for_each_parent(&self, id: EntityId, func: &mut impl FnMut(EntityId)) {
+        if let Some(meta) = self.world.get::<MetaDataComponent>(id) {
+            if meta.parent != self.root_entity_id {
+                self.for_each_parent(meta.parent, func);
+                func(meta.parent);
+            }
         }
     }
 
