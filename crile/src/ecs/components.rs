@@ -84,6 +84,6 @@ impl CameraComponent {
 macro_rules! with_components {
     ($macro: ident) => {{
         use ::crile::*;
-        $macro!([CameraComponent, TransformComponent, SpriteRendererComponent])
+        $macro!([TransformComponent, CameraComponent, SpriteRendererComponent])
     }};
 }

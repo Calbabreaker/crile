@@ -244,7 +244,7 @@ impl<'a> EntityMut<'a> {
             |source_arch, target_arch, source_index, target_index| unsafe {
                 // Move all the components into the new archetype except for the removed component
                 for array in source_arch.component_arrays.iter_mut() {
-                    if array.type_info.id != TypeId::of::<T>() {
+                    if array.type_info.id == TypeId::of::<T>() {
                         // Call drop on removed component
                         array.drop_component(source_index)
                     } else {
