@@ -54,3 +54,11 @@ impl Rect {
         self.y + self.h
     }
 }
+
+impl std::ops::Mul<f32> for Rect {
+    type Output = Self;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Self::new(self.x * rhs, self.y * rhs, self.w * rhs, self.h * rhs)
+    }
+}

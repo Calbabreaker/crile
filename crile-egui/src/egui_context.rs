@@ -12,25 +12,35 @@ pub struct EguiContext {
     raw_input: egui::RawInput,
     paint_jobs: Vec<PaintJob>,
     textures: hashbrown::HashMap<egui::TextureId, crile::RefId<crile::Texture>>,
+    /// Used to scale the ui by the factor
+    scale_factor: f32,
+    /// Scale factor of the window so the user requested scale factor would be propertional to it
+    window_scale: f32,
 }
 
 impl EguiContext {
     pub fn new(engine: &crile::Engine) -> Self {
-        Self {
+        let mut egui = Self {
             ctx: Some(egui::Context::default()),
+            window_scale: engine.window.scale_factor() as f32,
+            scale_factor: 1.,
             raw_input: egui::RawInput {
                 max_texture_side: Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize),
-                screen_rect: Some(egui_rect(engine.window.size())),
                 ..Default::default()
             },
             textures: hashbrown::HashMap::new(),
             paint_jobs: Vec::new(),
-        }
+        };
+
+        egui.set_ui_scale(1., engine.window.size());
+        egui
     }
 
+    #[must_use]
     pub fn begin_frame(&mut self, engine: &mut crile::Engine) -> egui::Context {
         self.paint_jobs.clear();
 
+        self.raw_input.time = Some(engine.time.since_start() as f64);
         if to_egui_modifiers(engine.input.key_modifiers()).command {
             if engine.input.key_just_pressed(crile::KeyCode::KeyC) {
                 self.push_event(egui::Event::Copy);
@@ -45,6 +55,7 @@ impl EguiContext {
             .ctx
             .take()
             .expect("tried to call egui begin frame before end frame or context is unintialized");
+        ctx.set_pixels_per_point(self.scale_factor);
         ctx.begin_frame(self.raw_input.clone());
         ctx
     }
@@ -100,7 +111,7 @@ impl EguiContext {
         }
 
         // Get all the paint jobs
-        let clipped_primitives = ctx.tessellate(full_output.shapes, 1.);
+        let clipped_primitives = ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
         for egui::ClippedPrimitive {
             primitive,
             clip_rect,
@@ -118,6 +129,13 @@ impl EguiContext {
                         })
                         .collect::<Vec<_>>();
 
+                    let rect = crile::Rect {
+                        x: clip_rect.min.x,
+                        y: clip_rect.min.y,
+                        w: (clip_rect.max.x - clip_rect.min.x),
+                        h: (clip_rect.max.y - clip_rect.min.y),
+                    };
+
                     self.paint_jobs.push(PaintJob {
                         texture_id: mesh.texture_id,
                         vertex_alloc: engine
@@ -131,12 +149,7 @@ impl EguiContext {
                             .index_buffer_allocator
                             .alloc_write(wgpu, &mesh.indices),
                         index_count: mesh.indices.len() as u32,
-                        rect: crile::Rect {
-                            x: clip_rect.min.x,
-                            y: clip_rect.min.y,
-                            w: (clip_rect.max.x - clip_rect.min.x),
-                            h: (clip_rect.max.y - clip_rect.min.y),
-                        },
+                        rect: rect * self.scale_factor,
                     })
                 }
                 egui::epaint::Primitive::Callback(_) => unimplemented!(),
@@ -150,7 +163,8 @@ impl EguiContext {
     pub fn render<'a>(&'a mut self, render_pass: &mut crile::RenderPass<'a>) {
         render_pass.set_shader(render_pass.data.single_draw_shader.clone());
         render_pass.set_uniform(crile::DrawUniform {
-            transform: render_pass.target_rect().matrix(),
+            transform: render_pass.target_rect().matrix()
+                * glam::Mat4::from_scale(glam::Vec3::splat(self.scale_factor)),
         });
 
         for job in &self.paint_jobs {
@@ -167,13 +181,11 @@ impl EguiContext {
     }
 
     pub fn process_event(&mut self, engine: &crile::Engine, event: &crile::EventKind) {
-        let mouse_position = to_egui_pos(engine.input.mouse_position());
+        let mouse_position = to_egui_pos(engine.input.mouse_position() / self.scale_factor);
         let modifiers = to_egui_modifiers(engine.input.key_modifiers());
 
         match event {
-            crile::EventKind::WindowResize { size } => {
-                self.raw_input.screen_rect = Some(egui_rect(*size))
-            }
+            crile::EventKind::WindowResize { size } => self.resize_event(size),
             crile::EventKind::MouseMoved { .. } => {
                 self.push_event(egui::Event::PointerMoved(mouse_position))
             }
@@ -193,7 +205,9 @@ impl EguiContext {
                 })
             }
             crile::EventKind::MouseScrolled { delta } => {
-                self.push_event(egui::Event::Scroll(egui::vec2(delta.x, delta.y)))
+                self.push_event(egui::Event::Scroll(
+                    egui::vec2(delta.x, delta.y) / self.scale_factor,
+                ));
             }
             crile::EventKind::KeyInput {
                 state,
@@ -219,6 +233,11 @@ impl EguiContext {
             crile::EventKind::WindowFocusChanged { focused } => {
                 self.push_event(egui::Event::WindowFocused(*focused))
             }
+            crile::EventKind::WindowScaleChanged { factor } => {
+                let ui_scale = self.scale_factor / self.window_scale;
+                self.window_scale = *factor as f32;
+                self.set_ui_scale(ui_scale, engine.window.size());
+            }
             crile::EventKind::WindowHoverChanged { hovering: false } => {
                 self.push_event(egui::Event::PointerGone)
             }
@@ -226,8 +245,10 @@ impl EguiContext {
         }
     }
 
-    fn push_event(&mut self, event: egui::Event) {
-        self.raw_input.events.push(event);
+    /// Sets the scale of the ui propertional to the window scale factor
+    pub fn set_ui_scale(&mut self, scale: f32, unscaled_size: glam::UVec2) {
+        self.scale_factor = scale * self.window_scale;
+        self.resize_event(&unscaled_size);
     }
 
     pub fn register_texture(&mut self, texture: &crile::RefId<crile::Texture>) -> egui::TextureId {
@@ -236,14 +257,26 @@ impl EguiContext {
         id
     }
 
+    /// Returns the viewport size of the egui context with the scale factor applied
+    pub fn actual_size(&self) -> egui::Vec2 {
+        self.raw_input.screen_rect.unwrap().size()
+    }
+
     pub fn unregister_texture(&mut self, texture: &crile::RefId<crile::Texture>) {
         let id = egui::TextureId::User(texture.id());
         self.textures.remove(&id);
     }
-}
 
-fn egui_rect(size: glam::UVec2) -> egui::Rect {
-    egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(size.x as f32, size.y as f32))
+    fn push_event(&mut self, event: egui::Event) {
+        self.raw_input.events.push(event);
+    }
+
+    fn resize_event(&mut self, size: &glam::UVec2) {
+        self.raw_input.screen_rect = Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(size.x as f32, size.y as f32) / self.scale_factor,
+        ));
+    }
 }
 
 fn to_egui_pos(vec: glam::Vec2) -> egui::Pos2 {

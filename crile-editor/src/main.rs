@@ -1,10 +1,16 @@
+mod options;
 mod tabs;
 
-pub use crate::tabs::{EditorState, Selection};
+pub use crate::{
+    options::Options,
+    tabs::{EditorState, Selection},
+};
 
 pub struct CrileEditorApp {
     egui: crile_egui::EguiContext,
     state: EditorState,
+    options: Options,
+    options_open: bool,
 }
 
 impl crile::Application for CrileEditorApp {
@@ -12,6 +18,8 @@ impl crile::Application for CrileEditorApp {
         Self {
             egui: crile_egui::EguiContext::new(engine),
             state: EditorState::default(),
+            options: Options::default(),
+            options_open: false,
         }
     }
 
@@ -20,18 +28,33 @@ impl crile::Application for CrileEditorApp {
 
         let ctx = self.egui.begin_frame(engine);
 
+        egui::Window::new("Options")
+            .default_pos(self.egui.actual_size().to_pos2() / 2.)
+            .open(&mut self.options_open)
+            .show(&ctx, |ui| {
+                if self.options.show(ui) {
+                    self.egui
+                        .set_ui_scale(self.options.ui_scale, engine.window.size())
+                }
+            });
+
         egui::TopBottomPanel::top("top_panel").show(&ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Quit").clicked() {
                         engine.request_exit();
                     }
+
+                    if ui.button("Options").clicked() {
+                        self.options_open = true;
+                        ui.close_menu();
+                    }
                 });
             });
         });
 
         egui::SidePanel::left("Hierachy")
-            .width_range(150.0..=300.0)
+            .width_range(150.0..=400.0)
             .show(&ctx, |ui| {
                 tabs::hierarchy::show(&mut self.state, ui);
             });

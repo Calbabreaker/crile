@@ -16,7 +16,7 @@ pub fn check_texture(
     wgpu: &crile::WGPUContext,
     egui: &mut crile_egui::EguiContext,
 ) {
-    if state.viewport_size == glam::UVec2::ZERO {
+    if state.viewport_size.x == 0 || state.viewport_size.y == 0 {
         return;
     }
 

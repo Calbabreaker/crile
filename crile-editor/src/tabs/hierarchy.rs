@@ -72,7 +72,6 @@ fn display_entity(
                 *selection == Selection::Entity(id),
                 egui::RichText::new(&meta.name),
             );
-            // let response = ui.add_sized(egui::vec2(ui.available_width(), 0.), label);
             if response.clicked() {
                 *selection = Selection::Entity(id)
             }

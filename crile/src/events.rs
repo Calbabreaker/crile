@@ -41,6 +41,9 @@ pub enum EventKind {
     WindowHoverChanged {
         hovering: bool,
     },
+    WindowScaleChanged {
+        factor: f64,
+    },
     WindowClose,
     AppUpdate,
     AppRedraw,
@@ -78,6 +81,11 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
                 repeat: event.repeat,
                 text: event.text_with_all_modifiers().unwrap_or("").to_string(),
             },
+            winit::event::WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                EventKind::WindowScaleChanged {
+                    factor: *scale_factor,
+                }
+            }
             winit::event::WindowEvent::MouseInput { state, button, .. } => EventKind::MouseInput {
                 state: *state,
                 button: *button,

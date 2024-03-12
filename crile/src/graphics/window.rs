@@ -14,7 +14,7 @@ impl Window {
             winit::window::WindowBuilder::new()
                 .with_title("Crile")
                 .build(event_loop)
-                .unwrap(),
+                .expect("failed to create window"),
         );
 
         Self {
@@ -28,6 +28,10 @@ impl Window {
     pub fn size(&self) -> glam::UVec2 {
         let size = self.winit.inner_size();
         glam::UVec2::new(size.width.max(1), size.height.max(1))
+    }
+
+    pub fn scale_factor(&self) -> f64 {
+        self.winit.scale_factor()
     }
 
     pub fn id(&self) -> WindowId {
