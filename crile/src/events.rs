@@ -45,6 +45,9 @@ pub enum EventKind {
         factor: f64,
     },
     WindowClose,
+    FileDropped {
+        path: std::path::PathBuf,
+    },
     AppUpdate,
     AppRedraw,
 }
@@ -56,9 +59,14 @@ pub struct Event {
 }
 
 pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
+    let window_id = match event {
+        winit::event::Event::WindowEvent { window_id, .. } => Some(window_id),
+        _ => None,
+    };
+
     let kind = match event {
         winit::event::Event::AboutToWait => EventKind::AppUpdate,
-        winit::event::Event::WindowEvent { ref event, .. } => match event {
+        winit::event::Event::WindowEvent { event, .. } => match event {
             winit::event::WindowEvent::RedrawRequested => EventKind::AppRedraw,
             winit::event::WindowEvent::CloseRequested | winit::event::WindowEvent::Destroyed => {
                 EventKind::WindowClose
@@ -73,36 +81,35 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
             }
             winit::event::WindowEvent::KeyboardInput { event, .. } => EventKind::KeyInput {
                 state: event.state,
-                key: event.logical_key.clone(),
+                text: event.text_with_all_modifiers().unwrap_or("").to_string(),
+                key: event.logical_key,
                 keycode: match event.physical_key {
                     winit::keyboard::PhysicalKey::Code(c) => c,
                     winit::keyboard::PhysicalKey::Unidentified(_) => KeyCode::F35,
                 },
                 repeat: event.repeat,
-                text: event.text_with_all_modifiers().unwrap_or("").to_string(),
             },
             winit::event::WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 EventKind::WindowScaleChanged {
-                    factor: *scale_factor,
+                    factor: scale_factor,
                 }
             }
-            winit::event::WindowEvent::MouseInput { state, button, .. } => EventKind::MouseInput {
-                state: *state,
-                button: *button,
-            },
+            winit::event::WindowEvent::MouseInput { state, button, .. } => {
+                EventKind::MouseInput { state, button }
+            }
             winit::event::WindowEvent::CursorMoved { position, .. } => EventKind::MouseMoved {
                 position: glam::Vec2::new(position.x as f32, position.y as f32),
             },
             winit::event::WindowEvent::MouseWheel { delta, .. } => match delta {
                 winit::event::MouseScrollDelta::LineDelta(x, y) => EventKind::MouseScrolled {
-                    delta: glam::Vec2::new(*x, *y),
+                    delta: glam::Vec2::new(x, y),
                 },
                 winit::event::MouseScrollDelta::PixelDelta(pos) => EventKind::MouseScrolled {
                     delta: glam::Vec2::new(pos.x as f32, pos.y as f32),
                 },
             },
             winit::event::WindowEvent::Focused(focused) => {
-                EventKind::WindowFocusChanged { focused: *focused }
+                EventKind::WindowFocusChanged { focused }
             }
             winit::event::WindowEvent::CursorLeft { .. } => {
                 EventKind::WindowHoverChanged { hovering: false }
@@ -110,14 +117,10 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
             winit::event::WindowEvent::CursorEntered { .. } => {
                 EventKind::WindowHoverChanged { hovering: true }
             }
+            winit::event::WindowEvent::DroppedFile(path) => EventKind::FileDropped { path },
             _ => return None,
         },
         _ => return None,
-    };
-
-    let window_id = match event {
-        winit::event::Event::WindowEvent { window_id, .. } => Some(window_id),
-        _ => None,
     };
 
     Some(Event { kind, window_id })
