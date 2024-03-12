@@ -59,9 +59,21 @@ impl<T> std::ops::Deref for RefId<T> {
     }
 }
 
+// impl<T> std::ops::DerefMut for RefId<T> {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         self.object.borrow_mut()
+//     }
+// }
+
 impl<T> AsRef<T> for RefId<T> {
     fn as_ref(&self) -> &T {
         &self.object
+    }
+}
+
+impl<T> From<&RefId<T>> for RefId<T> {
+    fn from(value: &RefId<T>) -> Self {
+        value.clone()
     }
 }
 

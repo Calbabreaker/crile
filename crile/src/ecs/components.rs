@@ -1,4 +1,4 @@
-use crate::{Color, EntityId};
+use crate::{Color, EntityId, RefId, Texture};
 
 #[derive(Debug, Default)]
 pub struct MetaDataComponent {
@@ -37,6 +37,8 @@ impl TransformComponent {
 #[derive(Debug, Default)]
 pub struct SpriteRendererComponent {
     pub color: Color,
+    pub texture: Option<RefId<Texture>>,
+    pub texture_path: std::path::PathBuf,
 }
 
 #[derive(Debug)]

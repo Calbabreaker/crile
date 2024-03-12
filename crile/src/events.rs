@@ -48,6 +48,9 @@ pub enum EventKind {
     FileDropped {
         path: std::path::PathBuf,
     },
+    FileHovered {
+        path: std::path::PathBuf,
+    },
     AppUpdate,
     AppRedraw,
 }
@@ -118,6 +121,7 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
                 EventKind::WindowHoverChanged { hovering: true }
             }
             winit::event::WindowEvent::DroppedFile(path) => EventKind::FileDropped { path },
+            winit::event::WindowEvent::HoveredFile(path) => EventKind::FileHovered { path },
             _ => return None,
         },
         _ => return None,

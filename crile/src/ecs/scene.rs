@@ -1,12 +1,13 @@
 use super::{CameraComponent, SpriteRendererComponent, TransformComponent, World};
 use crate::{
-    ComponentTuple, DrawUniform, EntityId, EntityRef, MetaDataComponent, RenderInstance, RenderPass,
+    ComponentTuple, DrawUniform, EntityId, EntityRef, MetaDataComponent, RefId, RenderInstance,
+    RenderPass, Texture,
 };
 
 pub struct Scene {
     pub world: World,
     root_entity_id: EntityId,
-    render_instances: Vec<RenderInstance>,
+    render_instances_map: hashbrown::HashMap<RefId<Texture>, Vec<RenderInstance>>,
 }
 
 impl Default for Scene {
@@ -18,7 +19,7 @@ impl Default for Scene {
                 ..Default::default()
             },)),
             world,
-            render_instances: Vec::default(),
+            render_instances_map: Default::default(),
         }
     }
 }
@@ -30,7 +31,9 @@ impl Scene {
             .query::<(TransformComponent, CameraComponent)>()
             .next()
         {
-            self.render_instances.clear();
+            for intances in self.render_instances_map.values_mut() {
+                intances.clear()
+            }
 
             for (id, (transform, sprite)) in self
                 .world
@@ -45,7 +48,12 @@ impl Scene {
                     }
                 });
 
-                self.render_instances.push(RenderInstance {
+                let texture = sprite
+                    .texture
+                    .as_ref()
+                    .unwrap_or(&render_pass.data.white_texture);
+                let instances = self.render_instances_map.entry_ref(texture).or_default();
+                instances.push(RenderInstance {
                     transform: global_transform,
                     color: sprite.color,
                 })
@@ -53,13 +61,14 @@ impl Scene {
 
             let view_matrix = camera_transform.get_matrix().inverse();
 
-            render_pass.set_texture(&render_pass.data.white_texture);
             render_pass.set_uniform(DrawUniform {
                 transform: view_matrix * camera.projection(),
             });
             render_pass.set_shader(render_pass.data.instanced_shader.clone());
-            render_pass
-                .draw_mesh_instanced(render_pass.data.square_mesh.view(), &self.render_instances);
+            for (texture, instances) in &self.render_instances_map {
+                render_pass.set_texture(texture);
+                render_pass.draw_mesh_instanced(render_pass.data.square_mesh.view(), instances);
+            }
         }
     }
 

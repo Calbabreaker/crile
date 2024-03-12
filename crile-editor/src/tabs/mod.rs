@@ -36,6 +36,7 @@ impl Default for EditorState {
                 crile::TransformComponent::default(),
                 crile::SpriteRendererComponent {
                     color: crile::Color::from_rgb(99, 123, 255),
+                    ..Default::default()
                 },
             ),
             None,
