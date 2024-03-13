@@ -41,12 +41,22 @@ pub struct SpriteRendererComponent {
     pub texture_path: std::path::PathBuf,
 }
 
+#[derive(Debug, Default, PartialEq, Eq)]
+pub enum ProjectionKind {
+    Perspective,
+    #[default]
+    Orthographic,
+}
+
 #[derive(Debug)]
 pub struct CameraComponent {
     aspect_ratio: f32,
     pub near: f32,
     pub far: f32,
     pub ortho_size: f32,
+    /// Vertical field-of-view of the camera
+    pub fov: f32,
+    pub projection_kind: ProjectionKind,
 }
 
 impl Default for CameraComponent {
@@ -56,6 +66,8 @@ impl Default for CameraComponent {
             near: -1.0,
             far: 1.0,
             ortho_size: 5.0,
+            fov: 45.,
+            projection_kind: ProjectionKind::default(),
         }
     }
 }
@@ -73,11 +85,21 @@ impl CameraComponent {
     }
 
     pub fn projection(&self) -> glam::Mat4 {
-        let left = -self.ortho_size * self.aspect_ratio;
-        let right = self.ortho_size * self.aspect_ratio;
-        let bottom = -self.ortho_size;
-        let top = self.ortho_size;
-        glam::Mat4::orthographic_lh(left, right, bottom, top, self.near, self.far)
+        match self.projection_kind {
+            ProjectionKind::Perspective => glam::Mat4::perspective_rh(
+                self.fov.to_radians(),
+                self.aspect_ratio,
+                self.near.max(0.001),
+                self.far,
+            ),
+            ProjectionKind::Orthographic => {
+                let left = -self.ortho_size * self.aspect_ratio;
+                let right = self.ortho_size * self.aspect_ratio;
+                let bottom = -self.ortho_size;
+                let top = self.ortho_size;
+                glam::Mat4::orthographic_rh(left, right, bottom, top, self.near, self.far)
+            }
+        }
     }
 }
 

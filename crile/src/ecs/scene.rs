@@ -62,7 +62,7 @@ impl Scene {
             let view_matrix = camera_transform.get_matrix().inverse();
 
             render_pass.set_uniform(DrawUniform {
-                transform: view_matrix * camera.projection(),
+                transform: camera.projection() * view_matrix,
             });
             render_pass.set_shader(render_pass.data.instanced_shader.clone());
             for (texture, instances) in &self.render_instances_map {

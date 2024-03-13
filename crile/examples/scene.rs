@@ -17,10 +17,11 @@ impl crile::Application for SceneApp {
             crile::TransformComponent::default(),
             crile::SpriteRendererComponent {
                 color: crile::Color::from_rgb(255, 0, 0),
+                ..Default::default()
             },
         ));
 
-        scene.set_viewport(engine.window.size().as_vec2());
+        scene.set_viewport(engine.window.size());
         Self { scene }
     }
 
@@ -35,7 +36,7 @@ impl crile::Application for SceneApp {
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
         match event.kind {
             crile::EventKind::WindowClose => engine.request_exit(),
-            crile::EventKind::WindowResize { size } => self.scene.set_viewport(size.as_vec2()),
+            crile::EventKind::WindowResize { size } => self.scene.set_viewport(size),
             _ => (),
         }
     }

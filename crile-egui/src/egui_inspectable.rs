@@ -43,7 +43,32 @@ impl EguiInspectable for crile::CameraComponent {
         ui.end_row();
         inspect_with_label(ui, "Far", &mut self.far);
         ui.end_row();
-        inspect_with_label(ui, "Orthographic Size", &mut self.ortho_size);
+        match self.projection_kind {
+            crile::ProjectionKind::Orthographic => {
+                inspect_with_label(ui, "Size", &mut self.ortho_size);
+            }
+            crile::ProjectionKind::Perspective => {
+                inspect_with_label(ui, "FOV", &mut self.fov);
+            }
+        }
+        ui.end_row();
+
+        ui.label("Projection");
+        egui::ComboBox::from_id_source("Projection")
+            .selected_text(format!("{:?}", self.projection_kind))
+            .width(ui.available_width())
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut self.projection_kind,
+                    crile::ProjectionKind::Perspective,
+                    "Perspective",
+                );
+                ui.selectable_value(
+                    &mut self.projection_kind,
+                    crile::ProjectionKind::Orthographic,
+                    "Orthographic",
+                );
+            });
         ui.end_row();
     }
 }
