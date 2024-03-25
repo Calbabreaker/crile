@@ -35,10 +35,10 @@ impl TransformComponent {
 }
 
 #[derive(Debug, Default)]
-pub struct SpriteRendererComponent {
+pub struct SpriteComponent {
     pub color: Color,
     pub texture: Option<RefId<Texture>>,
-    pub texture_path: std::path::PathBuf,
+    pub texture_path: Option<std::path::PathBuf>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -108,6 +108,6 @@ impl CameraComponent {
 macro_rules! with_components {
     ($macro: ident) => {{
         use ::crile::*;
-        $macro!([TransformComponent, CameraComponent, SpriteRendererComponent])
+        $macro!([TransformComponent, CameraComponent, SpriteComponent])
     }};
 }

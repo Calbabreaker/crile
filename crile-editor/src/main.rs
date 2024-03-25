@@ -72,6 +72,8 @@ impl crile::Application for CrileEditorApp {
             });
 
         self.egui.end_frame(engine, ctx);
+
+        self.state.scene.update(engine);
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {

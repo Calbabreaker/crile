@@ -1,7 +1,7 @@
-use super::{CameraComponent, SpriteRendererComponent, TransformComponent, World};
+use super::{CameraComponent, SpriteComponent, TransformComponent, World};
 use crate::{
-    ComponentTuple, DrawUniform, EntityId, EntityRef, MetaDataComponent, RefId, RenderInstance,
-    RenderPass, Texture,
+    ComponentTuple, DrawUniform, Engine, EntityId, EntityRef, MetaDataComponent, RefId,
+    RenderInstance, RenderPass, Texture,
 };
 
 pub struct Scene {
@@ -31,13 +31,10 @@ impl Scene {
             .query::<(TransformComponent, CameraComponent)>()
             .next()
         {
-            for intances in self.render_instances_map.values_mut() {
-                intances.clear()
-            }
+            self.render_instances_map.clear();
 
-            for (id, (transform, sprite)) in self
-                .world
-                .query::<(TransformComponent, SpriteRendererComponent)>()
+            for (id, (transform, sprite)) in
+                self.world.query::<(TransformComponent, SpriteComponent)>()
             {
                 // Go through each parent and multiple by their transforms
                 // TODO: a bit inefficient think about caching?
@@ -68,6 +65,18 @@ impl Scene {
             for (texture, instances) in &self.render_instances_map {
                 render_pass.set_texture(texture);
                 render_pass.draw_mesh_instanced(render_pass.data.square_mesh.view(), instances);
+            }
+        }
+    }
+
+    pub fn update(&mut self, engine: &mut Engine) {
+        for (_, (sprite,)) in self.world.query_mut::<(SpriteComponent,)>() {
+            if let Some(path) = &sprite.texture_path {
+                log::info!("Loading {:?}", path);
+                let texture = engine.asset_library.load_texture(&engine.gfx.wgpu, path);
+
+                sprite.texture = texture;
+                sprite.texture_path = None;
             }
         }
     }

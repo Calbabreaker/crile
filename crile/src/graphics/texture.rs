@@ -2,7 +2,6 @@ use super::WGPUContext;
 use crate::RefId;
 
 pub struct TextureConfig {
-    pub sampler_config: SamplerConfig,
     pub size: glam::UVec2,
     pub usage: wgpu::TextureUsages,
     pub format: wgpu::TextureFormat,
@@ -11,7 +10,6 @@ pub struct TextureConfig {
 impl Default for TextureConfig {
     fn default() -> Self {
         Self {
-            sampler_config: SamplerConfig::linear(),
             size: glam::UVec2::ZERO,
             usage: wgpu::TextureUsages::empty(),
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -73,7 +71,6 @@ impl Texture {
                 size,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                 format: Self::DEPTH_FORMAT,
-                ..Default::default()
             },
         )
     }

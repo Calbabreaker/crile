@@ -1,4 +1,4 @@
-use crate::{Event, EventKind, GraphicsContext, Input, Time, Window};
+use crate::{AssetLibrary, Event, EventKind, GraphicsContext, Input, Time, Window};
 use copypasta::ClipboardProvider;
 
 /// For applications to implement in order to run
@@ -15,6 +15,7 @@ pub struct Engine {
     pub time: Time,
     pub input: Input,
     pub clipboard: copypasta::ClipboardContext,
+    pub asset_library: AssetLibrary,
     should_exit: bool,
 }
 
@@ -26,6 +27,7 @@ impl Engine {
             gfx,
             time: Time::default(),
             input: Input::default(),
+            asset_library: AssetLibrary::default(),
             window,
             should_exit: false,
             clipboard: copypasta::ClipboardContext::new().unwrap(),

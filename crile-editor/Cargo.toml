@@ -7,7 +7,6 @@ edition = "2021"
 egui = "0.26"
 egui_dock = "0.11"
 glam = "0.25"
-rfd = { version = "0.14", default-features = false, features = [ "gtk3" ] }
 
 crile = { path = "../crile" }
 crile-egui = { path = "../crile-egui" }

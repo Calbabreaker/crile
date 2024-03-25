@@ -15,7 +15,7 @@ impl crile::Application for SceneApp {
 
         scene.world.spawn((
             crile::TransformComponent::default(),
-            crile::SpriteRendererComponent {
+            crile::SpriteComponent {
                 color: crile::Color::from_rgb(255, 0, 0),
                 ..Default::default()
             },

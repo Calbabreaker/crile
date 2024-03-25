@@ -22,7 +22,7 @@ impl EguiInspectable for crile::TransformComponent {
     }
 }
 
-impl EguiInspectable for crile::SpriteRendererComponent {
+impl EguiInspectable for crile::SpriteComponent {
     fn pretty_name() -> &'static str {
         "Sprite Component"
     }
@@ -30,6 +30,18 @@ impl EguiInspectable for crile::SpriteRendererComponent {
     fn inspect(&mut self, ui: &mut egui::Ui) {
         inspect_with_label(ui, "Color", &mut self.color);
         ui.end_row();
+
+        ui.label("Texture");
+        if ui.button("Choose file").clicked() {
+            let file = rfd::FileDialog::new()
+                .add_filter("image", &["jpg", "png", "jpeg"])
+                .pick_file();
+
+            if let Some(file) = file {
+                self.texture_path = Some(file);
+                self.texture = None;
+            }
+        }
     }
 }
 

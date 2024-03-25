@@ -8,3 +8,4 @@ egui = "0.26"
 hashbrown = "0.14"
 glam = "0.25"
 crile = { path = "../crile" }
+rfd = { version = "0.14", default-features = false, features = [ "gtk3" ] }
