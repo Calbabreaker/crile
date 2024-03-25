@@ -1,6 +1,8 @@
 mod options;
 mod tabs;
 
+use std::fs::File;
+
 pub use crate::{
     options::Options,
     tabs::{EditorState, Selection},
@@ -43,6 +45,16 @@ impl crile::Application for CrileEditorApp {
                 ui.menu_button("File", |ui| {
                     if ui.button("Quit").clicked() {
                         engine.request_exit();
+                    }
+
+                    if ui.button("Save As").clicked() {
+                        self.state.save_scene();
+                        ui.close_menu();
+                    }
+
+                    if ui.button("Load").clicked() {
+                        self.state.load_scene();
+                        ui.close_menu();
                     }
 
                     if ui.button("Options").clicked() {

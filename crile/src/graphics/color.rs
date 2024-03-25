@@ -1,6 +1,9 @@
+use bytemuck::{Pod, Zeroable};
+use serde::{Deserialize, Serialize};
+
 /// Color with rgba values from 0 to 1 in SRGB color space
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable, Deserialize, Serialize)]
 pub struct Color {
     pub r: f32,
     pub g: f32,

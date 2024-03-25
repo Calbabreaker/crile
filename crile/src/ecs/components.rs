@@ -1,13 +1,15 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{Color, EntityId, RefId, Texture};
 
-#[derive(Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct MetaDataComponent {
     pub name: String,
     pub children: Vec<EntityId>,
     pub parent: EntityId,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransformComponent {
     pub translation: glam::Vec3,
     pub rotation: glam::Vec3,
@@ -34,21 +36,22 @@ impl TransformComponent {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct SpriteComponent {
     pub color: Color,
+    #[serde(skip)]
     pub texture: Option<RefId<Texture>>,
     pub texture_path: Option<std::path::PathBuf>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub enum ProjectionKind {
     Perspective,
     #[default]
     Orthographic,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CameraComponent {
     aspect_ratio: f32,
     pub near: f32,
@@ -107,7 +110,7 @@ impl CameraComponent {
 #[macro_export]
 macro_rules! with_components {
     ($macro: ident) => {{
-        use ::crile::*;
+        use $crate::*;
         $macro!([TransformComponent, CameraComponent, SpriteComponent])
     }};
 }

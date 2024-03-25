@@ -26,13 +26,22 @@ pub struct World {
     tuple_id_index_map: NoHashHashMap<TypeId, usize>,
 
     free_entity_ids: Vec<EntityId>,
-    entity_count: EntityId,
+    next_free_id: EntityId,
     entity_locations: Vec<EntityLocation>,
 }
 
 impl World {
     pub fn spawn<T: ComponentTuple>(&mut self, components: T) -> EntityId {
-        let id = self.alloc_entity();
+        let id = self.free_entity_ids.pop().unwrap_or(self.next_free_id);
+        self.spawn_with_id(components, id);
+        id
+    }
+
+    pub fn spawn_with_id<T: ComponentTuple>(&mut self, components: T, id: EntityId) {
+        assert!(
+            self.entity_locations.get(id).map_or(true, |l| !l.valid),
+            "id {id} already in use"
+        );
 
         // First use the index the map with the comopnent tuple id since that's faster to compute with
         let archetype_index = *self.tuple_id_index_map.entry(T::id()).or_insert_with(|| {
@@ -47,13 +56,17 @@ impl World {
             archetype.put_component(entity_index, ptr, id);
         });
 
+        if id >= self.entity_locations.len() {
+            self.entity_locations
+                .resize_with(id + 1, EntityLocation::default);
+            self.next_free_id = id + 1;
+        }
+
         self.entity_locations[id] = EntityLocation {
             archetype_index,
             entity_index,
             valid: true,
         };
-
-        id
     }
 
     pub fn despawn(&mut self, id: EntityId) {
@@ -97,17 +110,6 @@ impl World {
             Some(*location)
         } else {
             None
-        }
-    }
-
-    fn alloc_entity(&mut self) -> EntityId {
-        if let Some(id) = self.free_entity_ids.pop() {
-            id
-        } else {
-            let id = self.entity_count;
-            self.entity_count += 1;
-            self.entity_locations.push(EntityLocation::default());
-            id
         }
     }
 }

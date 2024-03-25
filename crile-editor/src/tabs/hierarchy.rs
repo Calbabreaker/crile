@@ -4,8 +4,7 @@ pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
     ui.add_space(5.);
     let mut action = HierachyAction::None;
 
-    let root_entity = state.scene.root_entity();
-    let root_meta = root_entity.get::<crile::MetaDataComponent>().unwrap();
+    let root_meta = state.scene.root_meta();
 
     for child_id in &root_meta.children {
         display_entity(

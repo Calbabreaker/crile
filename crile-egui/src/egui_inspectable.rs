@@ -34,6 +34,7 @@ impl EguiInspectable for crile::SpriteComponent {
         ui.label("Texture");
         if ui.button("Choose file").clicked() {
             let file = rfd::FileDialog::new()
+                .set_directory(std::env::current_dir().unwrap_or("/".into()))
                 .add_filter("image", &["jpg", "png", "jpeg"])
                 .pick_file();
 

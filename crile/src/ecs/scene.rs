@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use super::{CameraComponent, SpriteComponent, TransformComponent, World};
 use crate::{
     ComponentTuple, DrawUniform, Engine, EntityId, EntityRef, MetaDataComponent, RefId,
@@ -156,6 +158,14 @@ impl Scene {
     }
 
     pub fn root_entity(&self) -> EntityRef {
-        self.world.entity(self.root_entity_id).unwrap()
+        self.world
+            .entity(self.root_entity_id)
+            .expect("root entity somehow does not exist")
+    }
+
+    pub fn root_meta(&self) -> &mut MetaDataComponent {
+        self.world
+            .get(self.root_entity_id)
+            .expect("root entity somehow has no meta")
     }
 }

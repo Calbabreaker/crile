@@ -52,3 +52,40 @@ impl Default for EditorState {
         }
     }
 }
+
+impl EditorState {
+    pub fn save_scene(&mut self) {
+        if let Ok(data) = crile::SceneSerializer::serialize(&self.scene)
+            .inspect_err(|err| log::error!("Failed to save scene: {err}"))
+        {
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("Scene", &["scene"])
+                .set_file_name("test.scene")
+                .set_directory(std::env::current_dir().unwrap_or("/".into()))
+                .save_file()
+            {
+                std::fs::write(&path, data)
+                    .inspect_err(|err| log::error!("Failed to save {path:?}: {err}"))
+                    .ok();
+            }
+        }
+    }
+
+    pub fn load_scene(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Scene", &["scene"])
+            .set_directory(std::env::current_dir().unwrap_or("/".into()))
+            .pick_file()
+        {
+            if let Ok(source) = std::fs::read_to_string(&path)
+                .inspect_err(|err| log::error!("Failed to load {path:?}: {err}"))
+            {
+                if let Ok(scene) = crile::SceneSerializer::deserialize(source)
+                    .inspect_err(|err| log::error!("Failed to load scene: {err} "))
+                {
+                    self.scene = scene;
+                }
+            }
+        }
+    }
+}
