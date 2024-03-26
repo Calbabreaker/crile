@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 pub mod hierarchy;
 pub mod inspector;
 pub mod viewport;
@@ -10,6 +12,7 @@ pub enum Selection {
 
 pub struct EditorState {
     pub scene: crile::Scene,
+    pub active_scene_path: Option<PathBuf>,
     pub viewport_texture_id: Option<egui::TextureId>,
     pub viewport_size: glam::UVec2,
     pub selection: Selection,
@@ -32,6 +35,7 @@ impl Default for EditorState {
 
         Self {
             scene,
+            active_scene_path: None,
             selection: Selection::None,
             viewport_texture_id: None,
             viewport_size: glam::UVec2::ZERO,
@@ -46,15 +50,11 @@ impl EditorState {
         if let Ok(data) = crile::SceneSerializer::serialize(&self.scene)
             .inspect_err(|err| log::error!("Failed to save scene: {err}"))
         {
-            if let Some(path) = rfd::FileDialog::new()
-                .add_filter("Scene", &["scene"])
-                .set_file_name("test.scene")
-                .set_directory(std::env::current_dir().unwrap_or("/".into()))
-                .save_file()
-            {
+            if let Some(path) = self.active_scene_path.clone().or_else(pick_scene_path) {
                 std::fs::write(&path, data)
                     .inspect_err(|err| log::error!("Failed to save {path:?}: {err}"))
                     .ok();
+                self.active_scene_path = Some(path);
             }
         }
     }
@@ -72,8 +72,17 @@ impl EditorState {
                     .inspect_err(|err| log::error!("Failed to load scene: {err} "))
                 {
                     self.scene = scene;
+                    self.active_scene_path = Some(path);
                 }
             }
         }
     }
+}
+
+fn pick_scene_path() -> Option<PathBuf> {
+    rfd::FileDialog::new()
+        .add_filter("Scene", &["scene"])
+        .set_file_name("test.scene")
+        .set_directory(std::env::current_dir().unwrap_or("/".into()))
+        .save_file()
 }

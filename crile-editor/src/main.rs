@@ -45,7 +45,13 @@ impl crile::Application for CrileEditorApp {
                         engine.request_exit();
                     }
 
+                    if ui.button("Save").clicked() {
+                        self.state.save_scene();
+                        ui.close_menu();
+                    }
+
                     if ui.button("Save As").clicked() {
+                        self.state.active_scene_path = None;
                         self.state.save_scene();
                         ui.close_menu();
                     }
