@@ -53,55 +53,46 @@ pub enum ProjectionKind {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CameraComponent {
-    aspect_ratio: f32,
+    #[serde(skip)]
+    pub viewport_size: glam::Vec2,
     pub near: f32,
     pub far: f32,
-    pub ortho_size: f32,
+    pub orthographic_zoom: f32,
     /// Vertical field-of-view of the camera
-    pub fov: f32,
+    pub perspective_fov: f32,
     pub projection_kind: ProjectionKind,
 }
 
 impl Default for CameraComponent {
     fn default() -> Self {
         Self {
-            aspect_ratio: 0.0,
+            viewport_size: Default::default(),
             near: -1.0,
             far: 1.0,
-            ortho_size: 5.0,
-            fov: 45.,
+            perspective_fov: 45.,
+            orthographic_zoom: 1.,
             projection_kind: ProjectionKind::default(),
         }
     }
 }
 
 impl CameraComponent {
-    pub fn new(viewport_size: glam::Vec2) -> Self {
-        Self {
-            aspect_ratio: viewport_size.x / viewport_size.y,
-            ..Default::default()
-        }
-    }
-
-    pub fn set_viewport(&mut self, viewport_size: glam::Vec2) {
-        self.aspect_ratio = viewport_size.x / viewport_size.y;
-    }
-
     pub fn projection(&self) -> glam::Mat4 {
         match self.projection_kind {
             ProjectionKind::Perspective => glam::Mat4::perspective_rh(
-                self.fov.to_radians(),
-                self.aspect_ratio,
+                self.perspective_fov.to_radians(),
+                self.viewport_size.x / self.viewport_size.y,
                 self.near.max(0.001),
                 self.far,
             ),
-            ProjectionKind::Orthographic => {
-                let left = -self.ortho_size * self.aspect_ratio;
-                let right = self.ortho_size * self.aspect_ratio;
-                let bottom = -self.ortho_size;
-                let top = self.ortho_size;
-                glam::Mat4::orthographic_rh(left, right, bottom, top, self.near, self.far)
-            }
+            ProjectionKind::Orthographic => glam::Mat4::orthographic_rh(
+                0.,
+                self.viewport_size.x / self.orthographic_zoom,
+                self.viewport_size.y / self.orthographic_zoom,
+                0.,
+                self.near,
+                self.far,
+            ),
         }
     }
 }

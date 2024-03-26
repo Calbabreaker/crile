@@ -59,10 +59,10 @@ impl EguiInspectable for crile::CameraComponent {
         ui.end_row();
         match self.projection_kind {
             crile::ProjectionKind::Orthographic => {
-                inspect_with_label(ui, "Size", &mut self.ortho_size);
+                inspect_with_label(ui, "Zoom", &mut self.orthographic_zoom);
             }
             crile::ProjectionKind::Perspective => {
-                inspect_with_label(ui, "FOV", &mut self.fov);
+                inspect_with_label(ui, "FOV", &mut self.perspective_fov);
             }
         }
         ui.end_row();

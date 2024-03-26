@@ -52,6 +52,7 @@ impl crile::Application for CrileEditorApp {
 
                     if ui.button("Load").clicked() {
                         self.state.load_scene();
+                        self.state.scene.set_viewport(self.state.viewport_size);
                         ui.close_menu();
                     }
 

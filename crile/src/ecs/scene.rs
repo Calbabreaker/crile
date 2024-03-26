@@ -64,8 +64,10 @@ impl Scene {
                     .as_ref()
                     .unwrap_or(&render_pass.data.white_texture);
                 let instances = self.render_instances_map.entry_ref(texture).or_default();
+
                 instances.push(RenderInstance {
-                    transform: global_transform,
+                    transform: global_transform
+                        * glam::Mat4::from_scale(texture.view().size().as_vec2().extend(1.)),
                     color: sprite.color,
                 })
             }
@@ -101,7 +103,7 @@ impl Scene {
 
     pub fn set_viewport(&mut self, viewport_size: glam::UVec2) {
         for (_, (camera,)) in self.world.query_mut::<(CameraComponent,)>() {
-            camera.set_viewport(viewport_size.as_vec2());
+            camera.viewport_size = viewport_size.as_vec2();
         }
     }
 

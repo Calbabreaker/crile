@@ -1,4 +1,4 @@
-// Instanced (one draw call per mesh) shader
+// Instanced (one draw call per mesh and texture) shader
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,

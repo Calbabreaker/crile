@@ -30,18 +30,6 @@ impl Default for EditorState {
             None,
         );
 
-        scene.spawn(
-            "Sprite",
-            (
-                crile::TransformComponent::default(),
-                crile::SpriteComponent {
-                    color: crile::Color::from_rgb(99, 123, 255),
-                    ..Default::default()
-                },
-            ),
-            None,
-        );
-
         Self {
             scene,
             selection: Selection::None,
