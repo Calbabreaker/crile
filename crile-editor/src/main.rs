@@ -1,8 +1,6 @@
 mod options;
 mod tabs;
 
-use std::fs::File;
-
 pub use crate::{
     options::Options,
     tabs::{EditorState, Selection},

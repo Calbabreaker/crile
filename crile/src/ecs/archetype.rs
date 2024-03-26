@@ -47,7 +47,6 @@ impl Archetype {
     }
 
     /// # Safety
-    /// - Index must be less than count
     /// - Component real pointer type must match id
     pub(crate) unsafe fn put_component(
         &mut self,
@@ -55,7 +54,7 @@ impl Archetype {
         component_ptr: *const u8,
         id: TypeId,
     ) {
-        debug_assert!(index < self.count);
+        assert!(index < self.count);
 
         let array = self
             .get_array(&id)
@@ -64,11 +63,12 @@ impl Archetype {
         std::ptr::copy_nonoverlapping(component_ptr, array.ptr.add(index * size), size);
     }
 
-    pub(crate) unsafe fn borrow_component<T: 'static>(&self, index: usize) -> Option<&mut T> {
-        debug_assert!(index < self.count);
+    // TODO: add borrow checking probably unsafe right now
+    pub(crate) fn borrow_component<T: 'static>(&self, index: usize) -> Option<&mut T> {
+        assert!(index < self.count);
 
         let array = self.get_array(&TypeId::of::<T>())?;
-        Some(&mut *array.ptr.cast::<T>().add(index))
+        unsafe { Some(&mut *array.ptr.cast::<T>().add(index)) }
     }
 
     pub(crate) fn has_component<T: 'static>(&self) -> bool {
@@ -76,14 +76,14 @@ impl Archetype {
     }
 
     /// Returns the entity index inside this archetype
-    pub(crate) fn new_entity(&mut self, entity: EntityId) -> usize {
+    pub(crate) fn new_entity(&mut self, id: EntityId) -> usize {
         if self.count >= self.entities.len() {
             // Grow by double or at least 32
             self.grow(self.entities.len().max(32))
         }
 
         let index = self.count;
-        self.entities[index] = entity;
+        self.entities[index] = id;
         self.count += 1;
         index
     }
@@ -95,7 +95,11 @@ impl Archetype {
         let last_index = self.count - 1;
         for array in self.component_arrays.iter_mut() {
             unsafe {
-                array.swap_remove(index, last_index, should_drop);
+                if should_drop {
+                    array.drop_component(index);
+                }
+
+                array.swap_remove(index, last_index);
             }
         }
 
@@ -162,7 +166,7 @@ pub(crate) struct ComponentArray {
 
 impl ComponentArray {
     unsafe fn grow(&mut self, old_cap: usize, new_cap: usize, count: usize) {
-        // We need to allocate new space manually since we don't have access the generic component type here
+        // We need to allocate new space manually since we don't have access the component type here
         let data = std::alloc::alloc(std::alloc::Layout::from_size_align_unchecked(
             self.type_info.layout.size() * new_cap,
             self.type_info.layout.align(),
@@ -182,11 +186,8 @@ impl ComponentArray {
         self.ptr = data.cast();
     }
 
-    unsafe fn swap_remove(&mut self, index: usize, last_index: usize, should_drop: bool) {
-        if should_drop {
-            self.drop_component(index);
-        }
-
+    // Removes a entity component by swapping with the last element for a O(1) operation
+    unsafe fn swap_remove(&mut self, index: usize, last_index: usize) {
         if index != last_index {
             let size = self.type_info.layout.size();
             let to_remove = self.ptr.add(index * size);

@@ -44,18 +44,24 @@ impl Ord for TypeInfo {
     }
 }
 
+impl std::hash::Hash for TypeInfo {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 /// Represents a tuple of components of any type
 /// It is automatically implemented for every tuple type (maximum 8 elements in a tuple)
 pub trait ComponentTuple {
     /// Fixed sized array of type T with the length being the number of components inside this tuple
     type FixedArray<T>;
 
+    /// Gets the array of sorted type infos for this tuple
+    // TODO: remove heap allocation
     fn type_infos() -> Box<[TypeInfo]>;
-    fn type_ids() -> Box<[TypeId]>;
-    fn id() -> TypeId;
 
-    /// Moves every component from the tuple to whatever put_func does and consumes self
-    fn take_all(self, put_func: impl FnMut(*const u8, TypeId));
+    /// Moves every component from the tuple into the archetype
+    fn take_all(self, index: usize, archetype: &mut Archetype);
 
     /// Gets an array of component arrays from the archetype that matches this component tuple
     /// We use a static sized tuple to prevent unnecessary heap allocation
@@ -66,7 +72,7 @@ pub trait ComponentTuple {
     /// The tuple but every component as a mut ref
     type MutTuple<'a>;
 
-    /// Gets the component tuple (self) as a reference to each component from component array pointers
+    /// Gets the component tuple as a reference to each component from the component array pointer
     /// obtained from [Self::get_array_ptrs]
     ///
     /// # Safety
@@ -106,22 +112,14 @@ macro_rules! tuple_impl {
                 Box::new(infos)
             }
 
-            fn type_ids() -> Box<[TypeId]> {
-                let mut ids = [$(TypeId::of::<$type>()),*];
-                ids.sort_unstable();
-                Box::new(ids)
-            }
-
-            fn id() -> TypeId {
-                TypeId::of::<($($type,)*)>()
-            }
-
             #[allow(non_snake_case, unused_variables, unused_mut)]
-            fn take_all(self, mut put_func: impl FnMut(*const u8, TypeId)) {
+            fn take_all(self, index: usize, archetype: &mut Archetype) {
                 let ($($type,)*) = self;
                 $(
-                    put_func(&$type as *const $type as *const u8, TypeId::of::<$type>());
-                    std::mem::forget($type);
+                    unsafe {
+                        archetype.put_component(index, &$type as *const $type as *const u8, TypeId::of::<$type>());
+                        std::mem::forget($type);
+                    }
                 )*
             }
 
@@ -171,4 +169,4 @@ macro_rules! recursive_impl {
 }
 
 // Expands to tuple_impl!(T1), tuple_impl!(T1, T2), tuple_impl!(T1, T2, T3), etc.
-recursive_impl!(T1, T2, T3, T4, T5, T6, T7, T8);
+recursive_impl!(T1, T2, T3, T4, T5);

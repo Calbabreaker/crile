@@ -1,7 +1,7 @@
 use std::any::TypeId;
 
 use super::{Archetype, ComponentTuple, QueryIter, QueryIterMut, TypeInfo};
-use crate::{index_mut_twice, NoHashHashMap};
+use crate::index_mut_twice;
 
 pub type EntityId = usize;
 
@@ -22,8 +22,6 @@ struct EntityLocation {
 #[derive(Default)]
 pub struct World {
     pub(crate) archetype_set: ArchetypeSet,
-    /// Maps to the archetype index inside the archetype set from a component tuple id which is faster to compute
-    tuple_id_index_map: NoHashHashMap<TypeId, usize>,
 
     free_entity_ids: Vec<EntityId>,
     next_free_id: EntityId,
@@ -33,28 +31,35 @@ pub struct World {
 impl World {
     pub fn spawn<T: ComponentTuple>(&mut self, components: T) -> EntityId {
         let id = self.free_entity_ids.pop().unwrap_or(self.next_free_id);
-        self.spawn_with_id(components, id);
+        self.spawn_with_id(id, components);
+
         id
     }
 
-    pub fn spawn_with_id<T: ComponentTuple>(&mut self, components: T, id: EntityId) {
+    pub fn spawn_with_id<T: ComponentTuple>(&mut self, id: EntityId, components: T) {
+        self.spawn_raw(id, &T::type_infos(), |index, put_func| {
+            components.take_all(index, put_func)
+        });
+    }
+
+    /// Spawns a entity with component by directly dropping into archetype
+    /// take_func expects a closure that will call archetype.put_component with the provided entity index
+    pub fn spawn_raw(
+        &mut self,
+        id: EntityId,
+        type_infos: &[TypeInfo],
+        take_func: impl FnOnce(usize, &mut Archetype),
+    ) {
         assert!(
             self.entity_locations.get(id).map_or(true, |l| !l.valid),
             "id {id} already in use"
         );
 
-        // First use the index the map with the comopnent tuple id since that's faster to compute with
-        let archetype_index = *self.tuple_id_index_map.entry(T::id()).or_insert_with(|| {
-            // Then try with the (sorted) type ids
-            self.archetype_set
-                .index_from_ids(&T::type_ids(), &T::type_infos())
-        });
-
+        let archetype_index = self.archetype_set.index_from_infos(type_infos);
         let archetype = &mut self.archetype_set.archetypes[archetype_index];
+
         let entity_index = archetype.new_entity(id);
-        components.take_all(|ptr, id| unsafe {
-            archetype.put_component(entity_index, ptr, id);
-        });
+        take_func(entity_index, archetype);
 
         if id >= self.entity_locations.len() {
             self.entity_locations
@@ -101,7 +106,7 @@ impl World {
     pub fn get<T: 'static>(&self, id: EntityId) -> Option<&mut T> {
         let location = self.location(id)?;
         let archetype = &self.archetype_set.archetypes[location.archetype_index];
-        unsafe { archetype.borrow_component(location.entity_index) }
+        archetype.borrow_component(location.entity_index)
     }
 
     fn location(&self, id: EntityId) -> Option<EntityLocation> {
@@ -118,13 +123,13 @@ impl World {
 pub struct ArchetypeSet {
     pub(crate) archetypes: Vec<Archetype>,
     /// Maps to the archetype index inside self.archetypes from a array of component type ids
-    type_ids_index_map: hashbrown::HashMap<Box<[TypeId]>, usize>,
+    type_ids_index_map: hashbrown::HashMap<Box<[TypeInfo]>, usize>,
 }
 
 impl ArchetypeSet {
-    fn index_from_ids(&mut self, ids: &[TypeId], infos: &[TypeInfo]) -> usize {
+    fn index_from_infos(&mut self, infos: &[TypeInfo]) -> usize {
         // Returns the archetype with the ids or creates a new one
-        *self.type_ids_index_map.entry_ref(ids).or_insert_with(|| {
+        *self.type_ids_index_map.entry_ref(infos).or_insert_with(|| {
             let archetype = Archetype::new(infos);
             self.archetypes.push(archetype);
             self.archetypes.len() - 1
@@ -141,8 +146,6 @@ pub struct EntityRef<'a> {
 
 impl<'a> EntityRef<'a> {
     fn new(world: &'a World, location: EntityLocation, id: EntityId) -> Self {
-        // Safety:
-        // This archetype reference is never accessed after world is modified so it is safe to use
         let archetype = &world.archetype_set.archetypes[location.archetype_index];
 
         Self {
@@ -152,9 +155,8 @@ impl<'a> EntityRef<'a> {
         }
     }
 
-    // TODO: add borrow checking probably unsafe right now
     pub fn get<T: 'static>(&self) -> Option<&mut T> {
-        unsafe { self.archetype.borrow_component(self.location.entity_index) }
+        self.archetype.borrow_component(self.location.entity_index)
     }
 
     pub fn has<T: 'static>(&self) -> bool {
@@ -193,7 +195,7 @@ impl<'a> EntityMut<'a> {
 
     // TODO: add borrow checking probably unsafe right now
     pub fn get<T: 'static>(&self) -> Option<&mut T> {
-        unsafe { self.archetype.borrow_component(self.location.entity_index) }
+        self.archetype.borrow_component(self.location.entity_index)
     }
 
     pub fn has<T: 'static>(&self) -> bool {
@@ -241,6 +243,7 @@ impl<'a> EntityMut<'a> {
             .filter(|info| info.id != TypeId::of::<T>())
             .collect::<Box<_>>();
 
+        let entity_index = self.location.entity_index;
         self.modify_components(
             &type_infos,
             |source_arch, target_arch, source_index, target_index| unsafe {
@@ -248,10 +251,15 @@ impl<'a> EntityMut<'a> {
                 for array in source_arch.component_arrays.iter_mut() {
                     if array.type_info.id == TypeId::of::<T>() {
                         // Call drop on removed component
-                        array.drop_component(source_index)
+                        array.drop_component(source_index);
                     } else {
                         // Put the component into the new archetype
-                        target_arch.put_component(target_index, array.ptr, array.type_info.id);
+                        let offset = array.type_info.layout.size() * entity_index;
+                        target_arch.put_component(
+                            target_index,
+                            array.ptr.add(offset),
+                            array.type_info.id,
+                        );
                     }
                 }
             },
@@ -263,14 +271,7 @@ impl<'a> EntityMut<'a> {
         new_type_infos: &[TypeInfo],
         modify_func: impl Fn(&mut Archetype, &mut Archetype, usize, usize),
     ) {
-        let new_type_ids = new_type_infos
-            .iter()
-            .map(|info| info.id)
-            .collect::<Box<_>>();
-        let target_arch_index = self
-            .world
-            .archetype_set
-            .index_from_ids(&new_type_ids, new_type_infos);
+        let target_arch_index = self.world.archetype_set.index_from_infos(new_type_infos);
 
         if self.location.archetype_index == target_arch_index {
             return;

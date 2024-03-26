@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::{CameraComponent, SpriteComponent, TransformComponent, World};
 use crate::{
     ComponentTuple, DrawUniform, Engine, EntityId, EntityRef, MetaDataComponent, RefId,
@@ -8,18 +6,21 @@ use crate::{
 
 pub struct Scene {
     pub world: World,
-    root_entity_id: EntityId,
     render_instances_map: hashbrown::HashMap<RefId<Texture>, Vec<RenderInstance>>,
 }
 
 impl Default for Scene {
     fn default() -> Self {
         let mut world = World::default();
-        Self {
-            root_entity_id: world.spawn((MetaDataComponent {
+        world.spawn_with_id(
+            Self::ROOT_ID,
+            (MetaDataComponent {
                 name: "Root".to_owned(),
                 ..Default::default()
-            },)),
+            },),
+        );
+
+        Self {
             world,
             render_instances_map: Default::default(),
         }
@@ -27,6 +28,17 @@ impl Default for Scene {
 }
 
 impl Scene {
+    pub const ROOT_ID: EntityId = 0;
+
+    /// Creates a completely empty scene with no root entity
+    /// Normally you would use Scene::default()
+    pub fn empty() -> Self {
+        Self {
+            world: World::default(),
+            render_instances_map: Default::default(),
+        }
+    }
+
     pub fn render(&mut self, render_pass: &mut RenderPass) {
         if let Some((_, (camera_transform, camera))) = self
             .world
@@ -74,11 +86,15 @@ impl Scene {
     pub fn update(&mut self, engine: &mut Engine) {
         for (_, (sprite,)) in self.world.query_mut::<(SpriteComponent,)>() {
             if let Some(path) = &sprite.texture_path {
-                log::info!("Loading {:?}", path);
-                let texture = engine.asset_library.load_texture(&engine.gfx.wgpu, path);
-
-                sprite.texture = texture;
-                sprite.texture_path = None;
+                if sprite.texture.is_none() {
+                    log::info!("Loading {:?}", path);
+                    let texture = engine.asset_library.load_texture(&engine.gfx.wgpu, path);
+                    if texture.is_none() {
+                        sprite.texture_path = None;
+                    } else {
+                        sprite.texture = texture;
+                    }
+                }
             }
         }
     }
@@ -98,7 +114,7 @@ impl Scene {
     ) -> EntityId {
         let id = self.world.spawn(components);
 
-        let parent_id = parent_id.unwrap_or(self.root_entity_id);
+        let parent_id = parent_id.unwrap_or(Self::ROOT_ID);
         let meta = self
             .world
             .get::<MetaDataComponent>(parent_id)
@@ -150,7 +166,7 @@ impl Scene {
 
     pub fn for_each_parent(&self, id: EntityId, func: &mut impl FnMut(EntityId)) {
         if let Some(meta) = self.world.get::<MetaDataComponent>(id) {
-            if meta.parent != self.root_entity_id {
+            if meta.parent != Self::ROOT_ID {
                 self.for_each_parent(meta.parent, func);
                 func(meta.parent);
             }
@@ -159,13 +175,13 @@ impl Scene {
 
     pub fn root_entity(&self) -> EntityRef {
         self.world
-            .entity(self.root_entity_id)
+            .entity(Self::ROOT_ID)
             .expect("root entity somehow does not exist")
     }
 
     pub fn root_meta(&self) -> &mut MetaDataComponent {
         self.world
-            .get(self.root_entity_id)
+            .get(Self::ROOT_ID)
             .expect("root entity somehow has no meta")
     }
 }

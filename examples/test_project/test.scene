@@ -1,51 +1,58 @@
 entities:
+- id: 0
+  MetaDataComponent:
+    name: Root
+    children:
+    - 1
+    - 2
+    parent: 0
 - id: 1
-  camera:
-    aspect_ratio: 0.5625
+  MetaDataComponent:
+    name: Camera
+    children: []
+    parent: 0
+  TransformComponent:
+    translation:
+    - 0.0
+    - 0.0
+    - 0.0
+    rotation:
+    - 0.0
+    - 0.0
+    - 0.0
+    scale:
+    - 1.0
+    - 1.0
+    - 1.0
+  CameraComponent:
+    aspect_ratio: 0.5572916865348816
     near: -1.0
     far: 1.0
     ortho_size: 5.0
     fov: 45.0
     projection_kind: Orthographic
-  transform:
-    translation:
-    - 0.0
-    - 0.0
-    - 0.0
-    rotation:
-    - 0.0
-    - 0.0
-    - 0.0
-    scale:
-    - 1.0
-    - 1.0
-    - 1.0
-  meta:
-    name: Camera
-    children: []
-    parent: 0
 - id: 2
-  sprite:
-    color:
-      r: 0.3882353
-      g: 0.48235294
-      b: 1.0
-      a: 1.0
-    texture_path: null
-  transform:
-    translation:
-    - 0.0
-    - 0.0
-    - 0.0
-    rotation:
-    - 0.0
-    - 0.0
-    - 0.0
-    scale:
-    - 1.0
-    - 1.0
-    - 1.0
-  meta:
+  MetaDataComponent:
     name: Sprite
     children: []
     parent: 0
+  TransformComponent:
+    translation:
+    - 0.0
+    - 0.0
+    - 0.0
+    rotation:
+    - 0.0
+    - 0.0
+    - 0.0
+    scale:
+    - 1.0
+    - 1.0
+    - 1.0
+  SpriteComponent:
+    color:
+      r: 0.38823533058166504
+      g: 0.4823529124259949
+      b: 1.0
+      a: 1.0
+    texture_path: examples/test_project/test.png
