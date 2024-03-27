@@ -9,7 +9,10 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(wgpu: &WGPUContext, event_loop: &winit::event_loop::EventLoop<()>) -> Self {
+    pub fn new(
+        wgpu: &WGPUContext,
+        event_loop: &winit::event_loop::EventLoopWindowTarget<()>,
+    ) -> Self {
         let winit = Arc::new(
             winit::window::WindowBuilder::new()
                 .with_title("Crile")

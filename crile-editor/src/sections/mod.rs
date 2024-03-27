@@ -61,7 +61,7 @@ impl EditorState {
             .inspect_err(|err| log::error!("Failed to save scene: {err}"))
         {
             if let Some(path) =
-                scene_path.or_else(|| self.project.pick_save_relative("Scene", &["scene"]))
+                scene_path.or_else(|| self.project.pick_save_relative("scene.scene"))
             {
                 crile::write_file(&self.project.make_absolute(&path), &data);
                 self.active_scene_path = Some(path);

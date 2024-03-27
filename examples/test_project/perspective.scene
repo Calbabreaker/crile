@@ -1,0 +1,49 @@
+[[entities]]
+id = 0
+
+[entities.MetaDataComponent]
+children = [1, 2]
+name = "Root"
+parent = 0
+
+[[entities]]
+id = 1
+
+[entities.CameraComponent]
+far = 1.0
+near = -1.0
+orthographic_zoom = 1.0
+perspective_fov = 45.0
+projection_kind = "Orthographic"
+
+[entities.MetaDataComponent]
+children = []
+name = "Camera"
+parent = 0
+
+[entities.TransformComponent]
+rotation = [0.0, 0.0, 0.0]
+scale = [1.0, 1.0, 1.0]
+translation = [0.0, 0.0, 0.0]
+
+[[entities]]
+id = 2
+
+[entities.MetaDataComponent]
+children = []
+name = "Sprite"
+parent = 0
+
+[entities.SpriteComponent.color]
+a = 1.0
+b = 1.0
+g = 1.0
+r = 1.0
+
+[entities.SpriteComponent.texture_path]
+path = "blobfish.png"
+
+[entities.TransformComponent]
+rotation = [0.0, 0.0, 0.0]
+scale = [1.0, 1.0, 1.0]
+translation = [0.0, 0.0, 0.0]

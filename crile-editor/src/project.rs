@@ -72,10 +72,10 @@ impl Project {
             .and_then(|path| pathdiff::diff_paths(path, &self.directory))
     }
 
-    pub fn pick_save_relative(&self, filter_name: &str, extensions: &[&str]) -> Option<PathBuf> {
+    pub fn pick_save_relative(&self, file_name: &str) -> Option<PathBuf> {
         rfd::FileDialog::new()
             .set_directory(&self.directory)
-            .add_filter(filter_name, extensions)
+            .set_file_name(file_name)
             .save_file()
             .and_then(|path| pathdiff::diff_paths(path, &self.directory))
     }

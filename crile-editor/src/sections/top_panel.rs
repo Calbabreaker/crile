@@ -5,27 +5,28 @@ use crate::{project::Project, sections::WindowKind, EditorState};
 pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
     egui::menu::bar(ui, |ui| {
         ui.menu_button("File", |ui| {
-            if ui.button("Open Project...").clicked() {
+            ui.set_width(200.);
+            if crile_egui::button_shorcut(ui, "Open Project...", "Ctrl+O").clicked() {
                 open_project(state);
                 ui.close_menu();
             }
 
-            if ui.button("New Scene").clicked() {
+            if crile_egui::button_shorcut(ui, "New Scene", "Ctrl+N").clicked() {
                 new_scene(state);
                 ui.close_menu();
             }
 
-            if ui.button("Save Scene").clicked() {
+            if crile_egui::button_shorcut(ui, "Save Scene", "Ctrl+S").clicked() {
                 save_scene(state);
                 ui.close_menu();
             }
 
-            if ui.button("Save Scene As...").clicked() {
+            if crile_egui::button_shorcut(ui, "Save Scene As...", "Ctrl+Shift+S").clicked() {
                 save_scene_as(state);
                 ui.close_menu();
             }
 
-            if ui.button("Load Scene...").clicked() {
+            if crile_egui::button_shorcut(ui, "Load Scene", "Ctrl+L").clicked() {
                 load_scene(state);
                 ui.close_menu();
             }
