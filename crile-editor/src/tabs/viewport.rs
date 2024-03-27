@@ -9,9 +9,9 @@ pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
                 id,
                 ui.available_size(),
             )))
-            .interact(egui::Sense::click());
+            .interact(egui::Sense::click_and_drag());
 
-        if response.contains_pointer() {
+        if response.hovered() {
             ui.input(|i| state.editor_camera.process_input(i));
         }
     }

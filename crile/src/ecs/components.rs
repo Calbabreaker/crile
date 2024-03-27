@@ -91,7 +91,7 @@ impl CameraComponent {
                     -size_half.x,
                     size_half.x,
                     size_half.y,
-                    -size_half.x,
+                    -size_half.y,
                     self.near,
                     self.far,
                 )
