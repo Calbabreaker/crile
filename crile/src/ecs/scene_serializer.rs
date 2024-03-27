@@ -6,49 +6,43 @@ use crate::{with_components, Archetype, EntityRef, MetaDataComponent, Scene, Typ
 
 #[derive(Default, Deserialize, Serialize)]
 struct SerializedScene {
-    entities: Vec<serde_yaml::Mapping>,
+    entities: Vec<toml::Table>,
 }
 
 pub struct SceneSerializer;
 
 impl SceneSerializer {
-    pub fn serialize(scene: &Scene) -> serde_yaml::Result<String> {
+    pub fn serialize(scene: &Scene) -> Result<String, toml::ser::Error> {
         let mut output = SerializedScene::default();
 
         for (id, (meta,)) in scene.world.query::<(MetaDataComponent,)>() {
-            let mut mapping = serde_yaml::Mapping::new();
+            let mut table = toml::Table::new();
 
-            mapping.insert(
-                serde_yaml::Value::String("id".into()),
-                serde_yaml::Value::Number(id.into()),
-            );
+            table.insert("id".into(), (id as i64).into());
 
-            mapping.insert(
-                serde_yaml::Value::String("MetaDataComponent".into()),
-                serde_yaml::to_value(meta)?,
-            );
+            table.insert("MetaDataComponent".into(), toml::Value::try_from(meta)?);
 
             let entity = scene.world.entity(id).unwrap();
             macro_rules! serialize_components {
                 ( [$($component: ty),*]) => {{
-                    $( serialize_component::<$component>(&mut mapping, entity)?; )*
+                    $( serialize_component::<$component>(&mut table, entity)?; )*
                 }};
             }
 
             with_components!(serialize_components);
-            output.entities.push(mapping);
+            output.entities.push(table);
         }
 
-        serde_yaml::to_string(&output)
+        toml::to_string(&output)
     }
 
-    pub fn deserialize(source: String) -> serde_yaml::Result<Scene> {
+    pub fn deserialize(source: String) -> Result<Scene, toml::de::Error> {
         let mut scene = Scene::empty();
-        let output = serde_yaml::from_str::<SerializedScene>(&source)?;
+        let output = toml::from_str::<SerializedScene>(&source)?;
 
         for entity in output.entities {
             if !entity.contains_key("MetaDataComponent") {
-                return Err(serde_yaml::Error::custom(
+                return Err(toml::de::Error::custom(
                     "Entity found with no metadata component",
                 ));
             }
@@ -66,8 +60,13 @@ impl SceneSerializer {
                 deserialize_component_types!([MetaDataComponent]);
             }
 
+            let id = entity
+                .get("id")
+                .ok_or(toml::de::Error::missing_field("id"))
+                .and_then(|v| v.clone().try_into())?;
+
             type_infos.sort_unstable();
-            let id = get_with_key(&entity, "id")?;
+
             scene.world.spawn_raw(id, &type_infos, |index, archetype| {
                 for (key, value) in &entity {
                     macro_rules! deserialize_components {
@@ -83,7 +82,7 @@ impl SceneSerializer {
         }
 
         if scene.world.entity(Scene::ROOT_ID).is_none() {
-            return Err(serde_yaml::Error::custom("No root entity found"));
+            return Err(toml::de::Error::custom("No root entity found"));
         }
 
         Ok(scene)
@@ -91,34 +90,36 @@ impl SceneSerializer {
 }
 
 fn serialize_component<T: 'static + serde::Serialize>(
-    mapping: &mut serde_yaml::Mapping,
+    table: &mut toml::Table,
     entity: EntityRef,
-) -> serde_yaml::Result<()> {
+) -> Result<(), toml::ser::Error> {
     let type_name = last_type_name::<T>();
     if let Some(component) = entity.get::<T>() {
-        let serialized = serde_yaml::to_value(component)?;
-        mapping.insert(serde_yaml::Value::String(type_name.into()), serialized);
+        let serialized = toml::Value::try_from(component)?;
+        table.insert(type_name.into(), serialized);
     }
 
     Ok(())
 }
 
-fn deserialize_component_type<T: 'static>(type_infos: &mut Vec<TypeInfo>, key: &serde_yaml::Value) {
+fn deserialize_component_type<T: 'static>(type_infos: &mut Vec<TypeInfo>, key: &str) {
     let type_name = last_type_name::<T>();
-    if key.as_str() == Some(type_name) {
+    if key == type_name {
         type_infos.push(TypeInfo::of::<T>());
     }
 }
 
 fn deserialize_component<T: 'static + for<'a> serde::Deserialize<'a> + Default>(
-    key: &serde_yaml::Value,
-    value: &serde_yaml::Value,
+    key: &str,
+    value: &toml::Value,
     archetype: &mut Archetype,
     index: usize,
 ) {
     let type_name = last_type_name::<T>();
-    if key.as_str() == Some(type_name) {
-        let component = serde_yaml::from_value::<T>(value.clone())
+    if key == type_name {
+        let component = value
+            .clone()
+            .try_into()
             .inspect_err(|err| log::error!("Failed to deserialize component {type_name}: {err}"))
             .unwrap_or_default();
 
@@ -131,15 +132,6 @@ fn deserialize_component<T: 'static + for<'a> serde::Deserialize<'a> + Default>(
             std::mem::forget(component);
         }
     }
-}
-
-fn get_with_key<T: for<'a> serde::Deserialize<'a>>(
-    map: &serde_yaml::Mapping,
-    key: &'static str,
-) -> serde_yaml::Result<T> {
-    map.get(key)
-        .ok_or(serde_yaml::Error::missing_field(key))
-        .and_then(|value| serde_yaml::from_value::<T>(value.clone()))
 }
 
 fn last_type_name<T: 'static>() -> &'static str {
