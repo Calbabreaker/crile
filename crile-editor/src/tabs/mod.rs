@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crate::editor_camera::EditorCamera2D;
+
 pub mod hierarchy;
 pub mod inspector;
 pub mod viewport;
@@ -13,11 +15,13 @@ pub enum Selection {
 pub struct EditorState {
     pub scene: crile::Scene,
     pub active_scene_path: Option<PathBuf>,
+    pub selection: Selection,
+    pub depth_texture: Option<crile::Texture>,
+    pub editor_camera: EditorCamera2D,
+
     pub viewport_texture_id: Option<egui::TextureId>,
     pub viewport_size: glam::UVec2,
-    pub selection: Selection,
     pub viewport_texture: Option<crile::RefId<crile::Texture>>,
-    pub depth_texture: Option<crile::Texture>,
 }
 
 impl Default for EditorState {
@@ -37,10 +41,12 @@ impl Default for EditorState {
             scene,
             active_scene_path: None,
             selection: Selection::None,
+            depth_texture: None,
+            editor_camera: EditorCamera2D::default(),
+
             viewport_texture_id: None,
             viewport_size: glam::UVec2::ZERO,
             viewport_texture: None,
-            depth_texture: None,
         }
     }
 }

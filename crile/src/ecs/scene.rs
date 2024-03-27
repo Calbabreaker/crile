@@ -39,49 +39,55 @@ impl Scene {
         }
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass) {
+    pub fn render_runtime(&mut self, render_pass: &mut RenderPass) {
         if let Some((_, (camera_transform, camera))) = self
             .world
             .query::<(TransformComponent, CameraComponent)>()
             .next()
         {
-            self.render_instances_map.clear();
+            self.render(
+                render_pass,
+                camera.projection() * camera_transform.matrix().inverse(),
+            );
+        }
+    }
 
-            for (id, (transform, sprite)) in
-                self.world.query::<(TransformComponent, SpriteComponent)>()
-            {
-                // Go through each parent and multiple by their transforms
-                // TODO: a bit inefficient think about caching?
-                let mut global_transform = transform.get_matrix();
-                self.for_each_parent(id, &mut |parent_id| {
-                    if let Some(transform) = self.world.get::<TransformComponent>(parent_id) {
-                        global_transform = transform.get_matrix() * global_transform;
-                    }
-                });
+    pub fn render(&mut self, render_pass: &mut RenderPass, view_projection: glam::Mat4) {
+        for instances in self.render_instances_map.values_mut() {
+            instances.clear()
+        }
 
-                let texture = sprite
-                    .texture
-                    .as_ref()
-                    .unwrap_or(&render_pass.data.white_texture);
-                let instances = self.render_instances_map.entry_ref(texture).or_default();
-
-                instances.push(RenderInstance {
-                    transform: global_transform
-                        * glam::Mat4::from_scale(texture.view().size().as_vec2().extend(1.)),
-                    color: sprite.color,
-                })
-            }
-
-            let view_matrix = camera_transform.get_matrix().inverse();
-
-            render_pass.set_uniform(DrawUniform {
-                transform: camera.projection() * view_matrix,
+        for (id, (transform, sprite)) in self.world.query::<(TransformComponent, SpriteComponent)>()
+        {
+            // Go through each parent and multiply by their transforms
+            // TODO: a bit inefficient think about caching?
+            let mut global_transform = transform.matrix();
+            self.for_each_parent(id, &mut |parent_id| {
+                if let Some(transform) = self.world.get::<TransformComponent>(parent_id) {
+                    global_transform = transform.matrix() * global_transform;
+                }
             });
-            render_pass.set_shader(render_pass.data.instanced_shader.clone());
-            for (texture, instances) in &self.render_instances_map {
-                render_pass.set_texture(texture);
-                render_pass.draw_mesh_instanced(render_pass.data.square_mesh.view(), instances);
-            }
+
+            let texture = sprite
+                .texture
+                .as_ref()
+                .unwrap_or(&render_pass.data.white_texture);
+            let instances = self.render_instances_map.entry_ref(texture).or_default();
+
+            instances.push(RenderInstance {
+                transform: global_transform
+                    * glam::Mat4::from_scale(texture.view().size().as_vec2().extend(1.)),
+                color: sprite.color,
+            })
+        }
+
+        render_pass.set_uniform(DrawUniform {
+            transform: view_projection,
+        });
+        render_pass.set_shader(render_pass.data.instanced_shader.clone());
+        for (texture, instances) in &self.render_instances_map {
+            render_pass.set_texture(texture);
+            render_pass.draw_mesh_instanced(render_pass.data.square_mesh.view(), instances);
         }
     }
 

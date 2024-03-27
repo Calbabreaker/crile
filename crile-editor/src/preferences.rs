@@ -1,14 +1,14 @@
-pub struct Options {
+pub struct Preferences {
     pub ui_scale: f32,
 }
 
-impl Default for Options {
+impl Default for Preferences {
     fn default() -> Self {
         Self { ui_scale: 1. }
     }
 }
 
-impl Options {
+impl Preferences {
     /// Returns whether or not apply has been clicked
     pub fn show(&mut self, ui: &mut egui::Ui) -> bool {
         egui::Grid::new("Options grid")

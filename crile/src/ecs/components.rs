@@ -27,7 +27,7 @@ impl Default for TransformComponent {
 }
 
 impl TransformComponent {
-    pub fn get_matrix(&self) -> glam::Mat4 {
+    pub fn matrix(&self) -> glam::Mat4 {
         glam::Mat4::from_scale_rotation_translation(
             self.scale,
             glam::Quat::from_scaled_axis(self.rotation),
@@ -85,19 +85,22 @@ impl CameraComponent {
                 self.near.max(0.001),
                 self.far,
             ),
-            ProjectionKind::Orthographic => glam::Mat4::orthographic_rh(
-                0.,
-                self.viewport_size.x / self.orthographic_zoom,
-                self.viewport_size.y / self.orthographic_zoom,
-                0.,
-                self.near,
-                self.far,
-            ),
+            ProjectionKind::Orthographic => {
+                let size_half = self.viewport_size / self.orthographic_zoom / 2.;
+                glam::Mat4::orthographic_rh(
+                    -size_half.x,
+                    size_half.x,
+                    size_half.y,
+                    -size_half.x,
+                    self.near,
+                    self.far,
+                )
+            }
         }
     }
 }
 
-/// Calls a macro with all the components crile has
+/// Calls a macro with all the components crile has excluding MetaDataComponent
 #[macro_export]
 macro_rules! with_components {
     ($macro: ident) => {{

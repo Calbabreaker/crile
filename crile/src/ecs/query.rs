@@ -77,11 +77,11 @@ struct ArchetypeIter<T: ComponentTuple> {
 impl<T: ComponentTuple> ArchetypeIter<T> {
     fn new(archetype: &Archetype) -> Self {
         match T::get_array_ptrs(archetype) {
-            Some(array_ptr_tuple) => Self {
+            Some(array_ptr_array) => Self {
                 index: 0,
                 count: archetype.count(),
                 entity_array: archetype.entities.as_ptr(),
-                array_ptr_array: Some(array_ptr_tuple),
+                array_ptr_array: Some(array_ptr_array),
             },
             None => Self::empty(),
         }

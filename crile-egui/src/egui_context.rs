@@ -1,3 +1,5 @@
+use crate::to_egui_pos;
+
 #[derive(Debug)]
 struct PaintJob {
     texture_id: egui::TextureId,
@@ -277,10 +279,6 @@ impl EguiContext {
             egui::vec2(size.x as f32, size.y as f32) / self.scale_factor,
         ));
     }
-}
-
-fn to_egui_pos(vec: glam::Vec2) -> egui::Pos2 {
-    egui::pos2(vec.x, vec.y)
 }
 
 fn to_egui_modifiers(modifiers: crile::KeyModifiers) -> egui::Modifiers {

@@ -1,16 +1,17 @@
-mod options;
+mod editor_camera;
+mod preferences;
 mod tabs;
 
 pub use crate::{
-    options::Options,
+    preferences::Preferences,
     tabs::{EditorState, Selection},
 };
 
 pub struct CrileEditorApp {
     egui: crile_egui::EguiContext,
     state: EditorState,
-    options: Options,
-    options_open: bool,
+    options: Preferences,
+    preferences_open: bool,
 }
 
 impl crile::Application for CrileEditorApp {
@@ -18,8 +19,8 @@ impl crile::Application for CrileEditorApp {
         Self {
             egui: crile_egui::EguiContext::new(engine),
             state: EditorState::default(),
-            options: Options::default(),
-            options_open: false,
+            options: Preferences::default(),
+            preferences_open: false,
         }
     }
 
@@ -30,7 +31,7 @@ impl crile::Application for CrileEditorApp {
 
         egui::Window::new("Options")
             .default_pos(self.egui.actual_size().to_pos2() / 2.)
-            .open(&mut self.options_open)
+            .open(&mut self.preferences_open)
             .show(&ctx, |ui| {
                 if self.options.show(ui) {
                     self.egui
@@ -62,8 +63,8 @@ impl crile::Application for CrileEditorApp {
                         ui.close_menu();
                     }
 
-                    if ui.button("Options").clicked() {
-                        self.options_open = true;
+                    if ui.button("Preferences").clicked() {
+                        self.preferences_open = true;
                         ui.close_menu();
                     }
                 });
@@ -103,7 +104,10 @@ impl crile::Application for CrileEditorApp {
                 Some(texture.view()),
             );
 
-            self.state.scene.render(&mut scene_render_pass);
+            self.state.scene.render(
+                &mut scene_render_pass,
+                self.state.editor_camera.view_projection(),
+            );
         }
 
         // Now render onto the window

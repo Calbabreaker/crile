@@ -4,10 +4,16 @@ pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
     state.viewport_size = glam::uvec2(ui.available_width() as u32, ui.available_height() as u32);
 
     if let Some(id) = state.viewport_texture_id {
-        ui.image(egui::ImageSource::Texture(egui::load::SizedTexture::new(
-            id,
-            ui.available_size(),
-        )));
+        let response = ui
+            .image(egui::ImageSource::Texture(egui::load::SizedTexture::new(
+                id,
+                ui.available_size(),
+            )))
+            .interact(egui::Sense::click());
+
+        if response.contains_pointer() {
+            ui.input(|i| state.editor_camera.process_input(i));
+        }
     }
 }
 
@@ -37,6 +43,9 @@ pub fn check_texture(
         state.viewport_texture = Some(texture);
         state.scene.set_viewport(state.viewport_size);
 
-        state.depth_texture = Some(crile::Texture::new_depth(wgpu, state.viewport_size))
+        state.depth_texture = Some(crile::Texture::new_depth(wgpu, state.viewport_size));
+        state
+            .editor_camera
+            .set_viewport(state.viewport_size.as_vec2());
     }
 }

@@ -13,23 +13,23 @@ entities:
     parent: 0
   TransformComponent:
     translation:
-    - 0.0
-    - 0.0
-    - 0.0
+    - 1.059999942779541
+    - 1.0499999523162842
+    - 7.760000228881836
     rotation:
     - 0.0
     - 0.0
     - 0.0
     scale:
-    - 1.0
-    - 1.0
+    - 1.0800000429153442
+    - -1.0
     - 1.0
   CameraComponent:
-    near: -1.0
-    far: 1.0
+    near: 0.00009999999747378752
+    far: 10000.0
     orthographic_zoom: 1.0
     perspective_fov: 45.0
-    projection_kind: Orthographic
+    projection_kind: Perspective
 - id: 2
   MetaDataComponent:
     name: Sprite
@@ -37,16 +37,16 @@ entities:
     parent: 0
   TransformComponent:
     translation:
-    - 0.0
-    - 0.0
-    - 0.0
+    - 1.0
+    - 1.0
+    - 0.8700000047683716
     rotation:
     - 0.0
     - 0.0
     - 0.0
     scale:
-    - 1.0
-    - 1.0
+    - 0.009999999776482582
+    - 0.009999999776482582
     - 1.0
   SpriteComponent:
     color:
