@@ -1,8 +1,8 @@
 mod egui_context;
-mod egui_inspectable;
+mod inspect;
 
 pub use egui_context::*;
-pub use egui_inspectable::*;
+pub use inspect::*;
 
 pub fn to_egui_pos(vec: glam::Vec2) -> egui::Pos2 {
     egui::pos2(vec.x, vec.y)

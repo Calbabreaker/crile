@@ -11,6 +11,7 @@ impl AssetLibrary {
         wgpu: &WGPUContext,
         path: &std::path::Path,
     ) -> Option<RefId<Texture>> {
+        log::info!("Loading {path:?}");
         if let Some(texture) = self.textures.get(path) {
             return Some(texture.clone());
         }

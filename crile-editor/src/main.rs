@@ -1,97 +1,82 @@
 mod editor_camera;
 mod preferences;
-mod tabs;
+mod project;
+mod sections;
 
 pub use crate::{
     preferences::Preferences,
-    tabs::{EditorState, Selection},
+    sections::{EditorState, Selection, WindowKind},
 };
 
 pub struct CrileEditorApp {
     egui: crile_egui::EguiContext,
     state: EditorState,
-    options: Preferences,
-    preferences_open: bool,
 }
 
 impl crile::Application for CrileEditorApp {
     fn new(engine: &mut crile::Engine) -> Self {
-        Self {
+        let mut app = Self {
             egui: crile_egui::EguiContext::new(engine),
             state: EditorState::default(),
-            options: Preferences::default(),
-            preferences_open: false,
-        }
+        };
+
+        app.apply_preferences(engine);
+
+        app
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
-        tabs::viewport::check_texture(&mut self.state, &engine.gfx.wgpu, &mut self.egui);
+        sections::viewport::check_texture(&mut self.state, &engine.gfx.wgpu, &mut self.egui);
 
         let ctx = self.egui.begin_frame(engine);
+        let default_bg = ctx.style().visuals.noninteractive().bg_fill;
 
-        egui::Window::new("Options")
-            .default_pos(self.egui.actual_size().to_pos2() / 2.)
-            .open(&mut self.preferences_open)
+        let mut open = true;
+        match self.state.window_open {
+            WindowKind::Preferences => {
+                egui::Window::new("Preferences")
+                    .default_pos(ctx.screen_rect().size().to_pos2() / 2.)
+                    .open(&mut open)
+                    .show(&ctx, |ui| {
+                        if self.state.preferences.show(ui) {
+                            self.apply_preferences(engine);
+                        }
+                    });
+            }
+            WindowKind::None => (),
+        }
+
+        if !open {
+            self.state.window_open = WindowKind::None;
+        }
+
+        egui::TopBottomPanel::top("top_panel")
+            .frame(egui::Frame::default().fill(default_bg).inner_margin(8.0))
             .show(&ctx, |ui| {
-                if self.options.show(ui) {
-                    self.egui
-                        .set_ui_scale(self.options.ui_scale, engine.window.size())
-                }
+                sections::top_panel::show(&mut self.state, ui);
             });
-
-        egui::TopBottomPanel::top("top_panel").show(&ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("Quit").clicked() {
-                        engine.request_exit();
-                    }
-
-                    if ui.button("Save").clicked() {
-                        self.state.save_scene();
-                        ui.close_menu();
-                    }
-
-                    if ui.button("Save As").clicked() {
-                        self.state.active_scene_path = None;
-                        self.state.save_scene();
-                        ui.close_menu();
-                    }
-
-                    if ui.button("Load").clicked() {
-                        self.state.load_scene();
-                        self.state.scene.set_viewport(self.state.viewport_size);
-                        ui.close_menu();
-                    }
-
-                    if ui.button("Preferences").clicked() {
-                        self.preferences_open = true;
-                        ui.close_menu();
-                    }
-                });
-            });
-        });
 
         egui::SidePanel::left("Hierachy")
             .width_range(150.0..=400.0)
             .show(&ctx, |ui| {
-                tabs::hierarchy::show(&mut self.state, ui);
+                sections::hierarchy::show(&mut self.state, ui);
             });
 
         egui::SidePanel::right("Inspector")
             .width_range(260.0..=500.0)
             .show(&ctx, |ui| {
-                tabs::inspector::show(&mut self.state, ui);
+                sections::inspector::show(&mut self.state, ui);
             });
 
         egui::CentralPanel::default()
             .frame(egui::Frame::none())
             .show(&ctx, |ui| {
-                tabs::viewport::show(&mut self.state, ui);
+                sections::viewport::show(&mut self.state, ui);
             });
 
         self.egui.end_frame(engine, ctx);
 
-        self.state.scene.update(engine);
+        sections::inspector::update_assets(&mut self.state, engine);
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
@@ -124,6 +109,13 @@ impl crile::Application for CrileEditorApp {
         if event.window_id == Some(engine.window.id()) {
             self.egui.process_event(engine, &event.kind);
         }
+    }
+}
+
+impl CrileEditorApp {
+    pub fn apply_preferences(&mut self, engine: &mut crile::Engine) {
+        self.egui
+            .set_ui_scale(self.state.preferences.ui_scale, engine.window.size())
     }
 }
 

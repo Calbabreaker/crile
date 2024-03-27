@@ -2,7 +2,6 @@ use crate::EditorState;
 
 pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
     state.viewport_size = glam::uvec2(ui.available_width() as u32, ui.available_height() as u32);
-
     if let Some(id) = state.viewport_texture_id {
         let response = ui
             .image(egui::ImageSource::Texture(egui::load::SizedTexture::new(
@@ -22,7 +21,11 @@ pub fn check_texture(
     wgpu: &crile::WGPUContext,
     egui: &mut crile_egui::EguiContext,
 ) {
-    if state.viewport_size.x == 0 || state.viewport_size.y == 0 {
+    if state.viewport_size.x == 0
+        || state.viewport_size.y == 0
+        || state.viewport_size.x >= wgpu.limits.max_texture_dimension_2d
+        || state.viewport_size.y >= wgpu.limits.max_texture_dimension_2d
+    {
         return;
     }
 

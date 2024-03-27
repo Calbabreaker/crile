@@ -50,8 +50,9 @@ entities:
     - 1.0
   SpriteComponent:
     color:
-      r: 0.38823533058166504
-      g: 0.4823529124259949
+      r: 1.0
+      g: 1.0
       b: 1.0
       a: 1.0
-    texture_path: examples/test_project/blobfish.png
+    texture_path:
+      path: blobfish.png

@@ -1,7 +1,7 @@
 use super::{CameraComponent, SpriteComponent, TransformComponent, World};
 use crate::{
-    ComponentTuple, DrawUniform, Engine, EntityId, EntityRef, MetaDataComponent, RefId,
-    RenderInstance, RenderPass, Texture,
+    ComponentTuple, DrawUniform, EntityId, EntityRef, MetaDataComponent, RefId, RenderInstance,
+    RenderPass, Texture,
 };
 
 pub struct Scene {
@@ -86,23 +86,9 @@ impl Scene {
         });
         render_pass.set_shader(render_pass.data.instanced_shader.clone());
         for (texture, instances) in &self.render_instances_map {
-            render_pass.set_texture(texture);
-            render_pass.draw_mesh_instanced(render_pass.data.square_mesh.view(), instances);
-        }
-    }
-
-    pub fn update(&mut self, engine: &mut Engine) {
-        for (_, (sprite,)) in self.world.query_mut::<(SpriteComponent,)>() {
-            if let Some(path) = &sprite.texture_path {
-                if sprite.texture.is_none() {
-                    log::info!("Loading {:?}", path);
-                    let texture = engine.asset_library.load_texture(&engine.gfx.wgpu, path);
-                    if texture.is_none() {
-                        sprite.texture_path = None;
-                    } else {
-                        sprite.texture = texture;
-                    }
-                }
+            if !instances.is_empty() {
+                render_pass.set_texture(texture);
+                render_pass.draw_mesh_instanced(render_pass.data.square_mesh.view(), instances);
             }
         }
     }

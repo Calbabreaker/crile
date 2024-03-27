@@ -25,7 +25,7 @@ impl EguiContext {
         let mut egui = Self {
             ctx: Some(egui::Context::default()),
             window_scale: engine.window.scale_factor() as f32,
-            scale_factor: 1.,
+            scale_factor: 0.,
             raw_input: egui::RawInput {
                 max_texture_side: Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize),
                 ..Default::default()
@@ -43,7 +43,8 @@ impl EguiContext {
         self.paint_jobs.clear();
 
         self.raw_input.time = Some(engine.time.since_start() as f64);
-        if to_egui_modifiers(engine.input.key_modifiers()).command {
+        let modifiers = to_egui_modifiers(engine.input.key_modifiers());
+        if modifiers.command {
             if engine.input.key_just_pressed(crile::KeyCode::KeyC) {
                 self.push_event(egui::Event::Copy);
             } else if engine.input.key_just_pressed(crile::KeyCode::KeyX) {
@@ -53,10 +54,12 @@ impl EguiContext {
             }
         }
 
+        self.raw_input.modifiers = modifiers;
+
         let ctx = self
             .ctx
             .take()
-            .expect("tried to call egui begin frame before end frame or context is unintialized");
+            .expect("tried to call egui begin frame before end frame or multiple times");
         ctx.set_pixels_per_point(self.scale_factor);
         ctx.begin_frame(self.raw_input.clone());
         ctx
@@ -259,11 +262,6 @@ impl EguiContext {
         id
     }
 
-    /// Returns the viewport size of the egui context with the scale factor applied
-    pub fn actual_size(&self) -> egui::Vec2 {
-        self.raw_input.screen_rect.unwrap().size()
-    }
-
     pub fn unregister_texture(&mut self, texture: &crile::RefId<crile::Texture>) {
         let id = egui::TextureId::User(texture.id());
         self.textures.remove(&id);
@@ -321,6 +319,11 @@ fn to_egui_key(keycode: crile::KeyCode) -> Option<egui::Key> {
         crile::KeyCode::KeyU => egui::Key::U,
         crile::KeyCode::KeyW => egui::Key::W,
         crile::KeyCode::KeyZ => egui::Key::Z,
+        crile::KeyCode::KeyS => egui::Key::S,
+        crile::KeyCode::KeyN => egui::Key::N,
+        crile::KeyCode::KeyL => egui::Key::L,
+        crile::KeyCode::KeyV => egui::Key::V,
+        crile::KeyCode::KeyO => egui::Key::O,
         _ => return None,
     })
 }

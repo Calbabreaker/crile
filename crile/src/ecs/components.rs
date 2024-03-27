@@ -37,11 +37,18 @@ impl TransformComponent {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct AssetPath {
+    pub path: Option<std::path::PathBuf>,
+    #[serde(skip)]
+    pub open_picker: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct SpriteComponent {
     pub color: Color,
     #[serde(skip)]
     pub texture: Option<RefId<Texture>>,
-    pub texture_path: Option<std::path::PathBuf>,
+    pub texture_path: AssetPath,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize, Clone)]

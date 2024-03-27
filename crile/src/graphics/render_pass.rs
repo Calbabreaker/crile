@@ -13,7 +13,7 @@ pub struct DrawUniform {
 }
 
 #[repr(C)]
-#[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Debug)]
 pub struct RenderInstance {
     pub transform: glam::Mat4,
     pub color: Color,

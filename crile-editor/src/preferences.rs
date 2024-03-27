@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize)]
 pub struct Preferences {
     pub ui_scale: f32,
 }
@@ -23,9 +26,31 @@ impl Preferences {
 
         ui.add_space(5.);
         if ui.button("Apply").clicked() {
+            if self.save().is_none() {
+                log::error!("Failed to save preferences");
+            }
+
             return true;
         }
 
         false
+    }
+
+    pub fn save(&self) -> Option<()> {
+        let mut data_path = crile::get_data_path()?;
+        data_path.push("preferences.toml");
+
+        let data = toml::to_string(self).ok()?;
+        crile::write_file(&data_path, &data)
+    }
+
+    pub fn load() -> Option<Self> {
+        let mut data_path = crile::get_data_path()?;
+        data_path.push("preferences.toml");
+
+        let source = crile::read_file(&data_path)?;
+        toml::from_str(&source)
+            .inspect_err(|err| log::error!("Failed to load {data_path:?}: {err}"))
+            .ok()?
     }
 }
