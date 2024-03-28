@@ -1,11 +1,12 @@
 use std::path::PathBuf;
 
-use crate::{editor_camera::EditorCamera2D, project::Project, Preferences};
-
 pub mod hierarchy;
 pub mod inspector;
 pub mod top_panel;
 pub mod viewport;
+
+use crate::{editor_camera::EditorCamera2D, project::Project, Preferences};
+pub use viewport::SceneViewport;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Selection {
@@ -32,13 +33,9 @@ pub struct EditorState {
     pub backup_scene: Option<crile::Scene>,
 
     pub selection: Selection,
-    pub depth_texture: Option<crile::Texture>,
     pub editor_camera: EditorCamera2D,
     pub project: Project,
-
-    pub viewport_texture_id: Option<egui::TextureId>,
-    pub viewport_size: glam::UVec2,
-    pub viewport_texture: Option<crile::RefId<crile::Texture>>,
+    pub editor_view: SceneViewport,
 
     pub window_open: WindowKind,
     pub preferences: Preferences,
@@ -53,13 +50,9 @@ impl Default for EditorState {
             backup_scene: None,
 
             selection: Selection::None,
-            depth_texture: None,
             editor_camera: EditorCamera2D::default(),
             project: Project::default(),
-
-            viewport_texture_id: None,
-            viewport_size: glam::UVec2::ZERO,
-            viewport_texture: None,
+            editor_view: SceneViewport::default(),
 
             window_open: WindowKind::None,
             preferences: Preferences::load().unwrap_or_default(),
@@ -118,7 +111,6 @@ impl EditorState {
                     self.stop_scene();
                     self.scene = scene;
                     self.editor_scene_path = Some(path);
-                    self.scene.set_viewport(self.viewport_size);
                 }
             }
         }

@@ -27,7 +27,9 @@ impl crile::Application for CrileEditorApp {
     }
 
     fn update(&mut self, engine: &mut crile::Engine) {
-        sections::viewport::check_texture(&mut self.state, &engine.gfx.wgpu, &mut self.egui);
+        self.state
+            .editor_view
+            .check_texture(&engine.gfx.wgpu, &mut self.egui);
 
         let ctx = self.egui.begin_frame(engine);
         let default_bg = ctx.style().visuals.noninteractive().bg_fill;
@@ -72,7 +74,12 @@ impl crile::Application for CrileEditorApp {
         egui::CentralPanel::default()
             .frame(egui::Frame::none())
             .show(&ctx, |ui| {
-                sections::viewport::show(&mut self.state, ui);
+                // TODO: have seperate game and editor view
+                if let Some(response) = self.state.editor_view.show(ui) {
+                    if response.hovered() && self.state.scene_state == SceneState::Editing {
+                        ui.input(|i| self.state.editor_camera.process_input(i));
+                    }
+                }
             });
 
         self.egui.end_frame(engine, ctx);
@@ -81,22 +88,17 @@ impl crile::Application for CrileEditorApp {
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
-        // Render to the viewport texture to be displayed in the viewport panel
-        if let Some(texture) = &self.state.viewport_texture {
-            let mut scene_render_pass = crile::RenderPass::new(
-                &mut engine.gfx,
-                Some(crile::Color::BLACK),
-                self.state.depth_texture.as_ref(),
-                Some(texture.view()),
-            );
+        if let Some(mut render_pass) = self.state.editor_view.get_render_pass(engine) {
+            let size = self.state.editor_view.size;
+            self.state.scene.set_viewport(self.state.editor_view.size);
+            self.state.editor_camera.set_viewport(size.as_vec2());
 
             if self.state.scene_state == SceneState::Editing {
-                self.state.scene.render(
-                    &mut scene_render_pass,
-                    self.state.editor_camera.view_projection(),
-                );
+                self.state
+                    .scene
+                    .render(&mut render_pass, self.state.editor_camera.view_projection());
             } else {
-                self.state.scene.render_runtime(&mut scene_render_pass);
+                self.state.scene.render_runtime(&mut render_pass);
             }
         }
 

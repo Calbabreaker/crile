@@ -155,11 +155,11 @@ impl<'a> EntityRef<'a> {
         }
     }
 
-    pub fn get<T: 'static>(&self) -> Option<&mut T> {
+    pub fn get<T: Component>(&self) -> Option<&mut T> {
         self.archetype.borrow_component(self.location.entity_index)
     }
 
-    pub fn has<T: 'static>(&self) -> bool {
+    pub fn has<T: Component>(&self) -> bool {
         self.archetype.has_component::<T>()
     }
 

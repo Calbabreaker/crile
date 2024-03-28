@@ -5,7 +5,7 @@ pub use winit::window::CursorIcon;
 
 pub struct Window {
     pub(crate) winit: Arc<winit::window::Window>,
-    pub viewport: Viewport,
+    pub viewport: WindowViewport,
 }
 
 impl Window {
@@ -21,7 +21,7 @@ impl Window {
         );
 
         Self {
-            viewport: Viewport::new(wgpu, winit.clone()),
+            viewport: WindowViewport::new(wgpu, winit.clone()),
             winit,
         }
     }
@@ -76,12 +76,12 @@ impl Window {
     }
 }
 
-pub struct Viewport {
+pub struct WindowViewport {
     pub(crate) surface: wgpu::Surface<'static>,
     pub(crate) surface_config: wgpu::SurfaceConfiguration,
 }
 
-impl Viewport {
+impl WindowViewport {
     pub fn new_surface(wgpu: &WGPUContext, winit: Arc<winit::window::Window>) -> wgpu::Surface {
         wgpu.instance
             .create_surface(winit.clone())

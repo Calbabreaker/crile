@@ -89,7 +89,7 @@ impl SceneSerializer {
     }
 }
 
-fn serialize_component<T: 'static + serde::Serialize>(
+fn serialize_component<T: Component + serde::Serialize>(
     table: &mut toml::Table,
     entity: EntityRef,
 ) -> Result<(), toml::ser::Error> {

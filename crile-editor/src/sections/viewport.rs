@@ -1,54 +1,64 @@
-use crate::{sections::SceneState, EditorState};
+#[derive(Default)]
+pub struct SceneViewport {
+    pub depth_texture: Option<crile::Texture>,
+    pub texture_id: Option<egui::TextureId>,
+    pub texture: Option<crile::RefId<crile::Texture>>,
+    pub size: glam::UVec2,
+}
 
-pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
-    state.viewport_size = glam::uvec2(ui.available_width() as u32, ui.available_height() as u32);
-    if let Some(id) = state.viewport_texture_id {
-        let response = ui
-            .image(egui::ImageSource::Texture(egui::load::SizedTexture::new(
+impl SceneViewport {
+    pub fn check_texture(&mut self, wgpu: &crile::WGPUContext, egui: &mut crile_egui::EguiContext) {
+        if self.size.x == 0
+            || self.size.y == 0
+            || self.size.x >= wgpu.limits.max_texture_dimension_2d
+            || self.size.y >= wgpu.limits.max_texture_dimension_2d
+        {
+            return;
+        }
+
+        // If the viewport size is different from the texture output
+        let resized = match self.texture {
+            None => true,
+            Some(ref texture) => texture.view().size() != self.size,
+        };
+
+        if resized {
+            if let Some(texture) = self.texture.take() {
+                egui.unregister_texture(&texture);
+            }
+
+            let texture = crile::Texture::new_render_attach(wgpu, self.size).into();
+
+            self.texture_id = Some(egui.register_texture(&texture));
+            self.texture = Some(texture);
+
+            self.depth_texture = Some(crile::Texture::new_depth(wgpu, self.size));
+        }
+    }
+
+    pub fn show(&mut self, ui: &mut egui::Ui) -> Option<egui::Response> {
+        self.size = glam::uvec2(ui.available_width() as u32, ui.available_height() as u32);
+        self.texture_id.map(|id| {
+            ui.image(egui::ImageSource::Texture(egui::load::SizedTexture::new(
                 id,
                 ui.available_size(),
             )))
-            .interact(egui::Sense::click_and_drag());
-
-        if state.scene_state == SceneState::Editing && response.hovered() {
-            ui.input(|i| state.editor_camera.process_input(i));
-        }
-    }
-}
-
-pub fn check_texture(
-    state: &mut EditorState,
-    wgpu: &crile::WGPUContext,
-    egui: &mut crile_egui::EguiContext,
-) {
-    if state.viewport_size.x == 0
-        || state.viewport_size.y == 0
-        || state.viewport_size.x >= wgpu.limits.max_texture_dimension_2d
-        || state.viewport_size.y >= wgpu.limits.max_texture_dimension_2d
-    {
-        return;
+            .interact(egui::Sense::click_and_drag())
+        })
     }
 
-    // If the viewport size is different from the texture output
-    let resized = match state.viewport_texture {
-        None => true,
-        Some(ref texture) => texture.view().size() != state.viewport_size,
-    };
-
-    if resized {
-        if let Some(texture) = state.viewport_texture.take() {
-            egui.unregister_texture(&texture);
-        }
-
-        let texture = crile::Texture::new_render_attach(wgpu, state.viewport_size).into();
-
-        state.viewport_texture_id = Some(egui.register_texture(&texture));
-        state.viewport_texture = Some(texture);
-        state.scene.set_viewport(state.viewport_size);
-
-        state.depth_texture = Some(crile::Texture::new_depth(wgpu, state.viewport_size));
-        state
-            .editor_camera
-            .set_viewport(state.viewport_size.as_vec2());
+    pub fn get_render_pass<'a>(
+        &'a self,
+        engine: &'a mut crile::Engine,
+    ) -> Option<crile::RenderPass> {
+        // Render to the viewport texture to be displayed in the viewport panel
+        self.texture.as_ref().map(|texture| {
+            crile::RenderPass::new(
+                &mut engine.gfx,
+                Some(crile::Color::BLACK),
+                self.depth_texture.as_ref(),
+                Some(texture.view()),
+            )
+        })
     }
 }
