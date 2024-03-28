@@ -3,6 +3,7 @@ mod preferences;
 mod project;
 mod sections;
 
+use crate::sections::SceneState;
 pub use crate::{
     preferences::Preferences,
     sections::{EditorState, Selection, WindowKind},
@@ -89,10 +90,14 @@ impl crile::Application for CrileEditorApp {
                 Some(texture.view()),
             );
 
-            self.state.scene.render(
-                &mut scene_render_pass,
-                self.state.editor_camera.view_projection(),
-            );
+            if self.state.scene_state == SceneState::Editing {
+                self.state.scene.render(
+                    &mut scene_render_pass,
+                    self.state.editor_camera.view_projection(),
+                );
+            } else {
+                self.state.scene.render_runtime(&mut scene_render_pass);
+            }
         }
 
         // Now render onto the window

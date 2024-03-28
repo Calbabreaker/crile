@@ -70,7 +70,10 @@ fn inspect_entity(ui: &mut egui::Ui, entity: &mut crile::EntityMut) {
     });
 }
 
-fn inspect_component<T: Inspectable + 'static>(ui: &mut egui::Ui, entity: &mut crile::EntityMut) {
+fn inspect_component<T: Inspectable + crile::Component>(
+    ui: &mut egui::Ui,
+    entity: &mut crile::EntityMut,
+) {
     if let Some(component) = entity.get::<T>() {
         // TODO: figure out how to make header fill available width
         let response = egui::CollapsingHeader::new(T::pretty_name())
@@ -97,7 +100,7 @@ fn inspect_component<T: Inspectable + 'static>(ui: &mut egui::Ui, entity: &mut c
     }
 }
 
-fn add_component_button<T: Inspectable + Default + 'static>(
+fn add_component_button<T: Inspectable + crile::Component>(
     ui: &mut egui::Ui,
     entity: &mut crile::EntityMut,
 ) {

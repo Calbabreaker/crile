@@ -19,9 +19,18 @@ pub enum WindowKind {
     None,
 }
 
+#[derive(Eq, PartialEq)]
+pub enum SceneState {
+    Editing,
+    Running,
+}
+
 pub struct EditorState {
     pub scene: crile::Scene,
-    pub active_scene_path: Option<PathBuf>,
+    pub scene_state: SceneState,
+    pub editor_scene_path: Option<PathBuf>,
+    pub backup_scene: Option<crile::Scene>,
+
     pub selection: Selection,
     pub depth_texture: Option<crile::Texture>,
     pub editor_camera: EditorCamera2D,
@@ -39,7 +48,10 @@ impl Default for EditorState {
     fn default() -> Self {
         Self {
             scene: Default::default(),
-            active_scene_path: None,
+            scene_state: SceneState::Editing,
+            editor_scene_path: None,
+            backup_scene: None,
+
             selection: Selection::None,
             depth_texture: None,
             editor_camera: EditorCamera2D::default(),
@@ -56,7 +68,26 @@ impl Default for EditorState {
 }
 
 impl EditorState {
+    pub fn play_scene(&mut self) {
+        log::info!("Playing scene...");
+        self.backup_scene = Some(self.scene.clone());
+        self.scene.start_runtime();
+        self.scene_state = SceneState::Running;
+    }
+
+    pub fn stop_scene(&mut self) {
+        if self.scene_state != SceneState::Running {
+            return;
+        }
+
+        log::info!("Stopping scene...");
+        self.scene = self.backup_scene.take().expect("Backup scene not found");
+        self.scene_state = SceneState::Editing;
+    }
+
     pub fn save_scene(&mut self, scene_path: Option<PathBuf>) {
+        self.stop_scene();
+
         if let Ok(data) = crile::SceneSerializer::serialize(&self.scene)
             .inspect_err(|err| log::error!("Failed to save scene: {err}"))
         {
@@ -64,12 +95,12 @@ impl EditorState {
                 scene_path.or_else(|| self.project.pick_save_relative("scene.scene"))
             {
                 crile::write_file(&self.project.make_absolute(&path), &data);
-                self.active_scene_path = Some(path);
+                self.editor_scene_path = Some(path);
 
                 // Save project when first save scene
                 // TODO: option to choose specific main scene
                 if self.project.main_scene.is_none() {
-                    self.project.main_scene.clone_from(&self.active_scene_path);
+                    self.project.main_scene.clone_from(&self.editor_scene_path);
                     self.project.save();
                 }
             }
@@ -84,8 +115,10 @@ impl EditorState {
                 if let Ok(scene) = crile::SceneSerializer::deserialize(source)
                     .inspect_err(|err| log::error!("Failed to load scene: {err} "))
                 {
+                    self.stop_scene();
                     self.scene = scene;
-                    self.active_scene_path = Some(path);
+                    self.editor_scene_path = Some(path);
+                    self.scene.set_viewport(self.viewport_size);
                 }
             }
         }

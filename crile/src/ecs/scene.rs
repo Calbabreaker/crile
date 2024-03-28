@@ -4,9 +4,11 @@ use crate::{
     RenderPass, Texture,
 };
 
+#[derive(Clone)]
 pub struct Scene {
     pub world: World,
     render_instances_map: hashbrown::HashMap<RefId<Texture>, Vec<RenderInstance>>,
+    pub running: bool,
 }
 
 impl Default for Scene {
@@ -23,6 +25,7 @@ impl Default for Scene {
         Self {
             world,
             render_instances_map: Default::default(),
+            running: false,
         }
     }
 }
@@ -34,9 +37,14 @@ impl Scene {
     /// Normally you would use Scene::default()
     pub fn empty() -> Self {
         Self {
+            running: false,
             world: World::default(),
             render_instances_map: Default::default(),
         }
+    }
+
+    pub fn start_runtime(&mut self) {
+        self.running = true;
     }
 
     pub fn render_runtime(&mut self, render_pass: &mut RenderPass) {

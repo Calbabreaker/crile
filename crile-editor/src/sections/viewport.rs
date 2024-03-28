@@ -1,4 +1,4 @@
-use crate::EditorState;
+use crate::{sections::SceneState, EditorState};
 
 pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
     state.viewport_size = glam::uvec2(ui.available_width() as u32, ui.available_height() as u32);
@@ -10,7 +10,7 @@ pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
             )))
             .interact(egui::Sense::click_and_drag());
 
-        if response.hovered() {
+        if state.scene_state == SceneState::Editing && response.hovered() {
             ui.input(|i| state.editor_camera.process_input(i));
         }
     }

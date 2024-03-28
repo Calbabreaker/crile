@@ -3,24 +3,37 @@ use std::any::TypeId;
 use super::Archetype;
 
 /// Stores information about a component type to be used inside component arrays
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct TypeInfo {
     pub id: TypeId,
     pub layout: std::alloc::Layout,
     pub drop: unsafe fn(*mut u8),
-    #[cfg(debug_assertions)]
+    pub clone: unsafe fn(*mut u8) -> *mut u8,
     pub typename: &'static str,
 }
 
 impl TypeInfo {
-    pub fn of<T: 'static>() -> Self {
+    pub fn of<T: Component>() -> Self {
         Self {
+            clone: |ptr| unsafe {
+                let mut cloned = (*ptr.cast::<T>()).clone();
+                let ptr = &mut cloned as *mut T as *mut u8;
+                std::mem::forget(cloned);
+                ptr
+            },
             drop: |ptr| unsafe { ptr.cast::<T>().drop_in_place() },
             id: TypeId::of::<T>(),
             layout: std::alloc::Layout::new::<T>(),
-            #[cfg(debug_assertions)]
             typename: std::any::type_name::<T>(),
         }
+    }
+}
+
+impl std::fmt::Debug for TypeInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TypeInfo")
+            .field("type_name", &self.typename)
+            .finish()
     }
 }
 
@@ -49,6 +62,10 @@ impl std::hash::Hash for TypeInfo {
         self.id.hash(state);
     }
 }
+
+/// Represents a usable component type
+pub trait Component: 'static + Clone + Default {}
+impl<T: 'static + Clone + Default> Component for T {}
 
 /// Represents a tuple of components of any type
 /// It is automatically implemented for every tuple type (maximum 8 elements in a tuple)
@@ -103,7 +120,7 @@ macro_rules! count_idents {
 /// Macro to automatically impl ComponentTuple for the specified tuple type
 macro_rules! tuple_impl {
     ($($type: ident),*) => {
-        impl<$($type: 'static),*> ComponentTuple for ($($type,)*) {
+        impl<$($type: Component),*> ComponentTuple for ($($type,)*) {
             type FixedArray<T> = [T; count_idents!($($type),*)];
 
             fn type_infos() -> Box<[TypeInfo]> {

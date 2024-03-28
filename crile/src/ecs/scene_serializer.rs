@@ -2,7 +2,7 @@ use std::any::TypeId;
 
 use serde::{de::Error, Deserialize, Serialize};
 
-use crate::{with_components, Archetype, EntityRef, MetaDataComponent, Scene, TypeInfo};
+use crate::{with_components, Archetype, Component, EntityRef, MetaDataComponent, Scene, TypeInfo};
 
 #[derive(Default, Deserialize, Serialize)]
 struct SerializedScene {
@@ -102,14 +102,14 @@ fn serialize_component<T: 'static + serde::Serialize>(
     Ok(())
 }
 
-fn deserialize_component_type<T: 'static>(type_infos: &mut Vec<TypeInfo>, key: &str) {
+fn deserialize_component_type<T: Component>(type_infos: &mut Vec<TypeInfo>, key: &str) {
     let type_name = last_type_name::<T>();
     if key == type_name {
         type_infos.push(TypeInfo::of::<T>());
     }
 }
 
-fn deserialize_component<T: 'static + for<'a> serde::Deserialize<'a> + Default>(
+fn deserialize_component<T: Component + for<'a> serde::Deserialize<'a>>(
     key: &str,
     value: &toml::Value,
     archetype: &mut Archetype,

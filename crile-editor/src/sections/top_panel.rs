@@ -1,74 +1,84 @@
 use crile::Scene;
 
-use crate::{project::Project, sections::WindowKind, EditorState};
+use crate::{
+    project::Project,
+    sections::{SceneState, WindowKind},
+    EditorState,
+};
 
 pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
     egui::menu::bar(ui, |ui| {
-        ui.menu_button("File", |ui| {
-            ui.set_width(200.);
-            if crile_egui::button_shorcut(ui, "Open Project...", "Ctrl+O").clicked() {
-                open_project(state);
-                ui.close_menu();
-            }
+        ui.columns(3, |ui| {
+            ui[0].horizontal(|ui| {
+                left_menus(state, ui);
+            });
 
-            if crile_egui::button_shorcut(ui, "New Scene", "Ctrl+N").clicked() {
-                new_scene(state);
-                ui.close_menu();
-            }
-
-            if crile_egui::button_shorcut(ui, "Save Scene", "Ctrl+S").clicked() {
-                save_scene(state);
-                ui.close_menu();
-            }
-
-            if crile_egui::button_shorcut(ui, "Save Scene As...", "Ctrl+Shift+S").clicked() {
-                save_scene_as(state);
-                ui.close_menu();
-            }
-
-            if crile_egui::button_shorcut(ui, "Load Scene", "Ctrl+L").clicked() {
-                load_scene(state);
-                ui.close_menu();
-            }
+            ui[1].vertical_centered(|ui| {
+                if state.scene_state == SceneState::Running {
+                    if ui.button("⏹").clicked() {
+                        state.stop_scene();
+                    }
+                } else if ui.button("▶").clicked() {
+                    state.play_scene();
+                }
+            });
         });
 
-        ui.menu_button("Edit", |ui| {
-            if ui.button("Preferences...").clicked() {
-                open_preferences(state);
-                ui.close_menu();
+        ui.input(|input| {
+            if input.modifiers.command {
+                if input.key_pressed(egui::Key::S) {
+                    if input.modifiers.shift {
+                        state.save_scene(None);
+                    } else {
+                        state.save_scene(state.editor_scene_path.clone());
+                    }
+                } else if input.key_pressed(egui::Key::O) {
+                    open_project(state);
+                } else if input.key_pressed(egui::Key::L) {
+                    state.load_scene(None);
+                } else if input.key_pressed(egui::Key::N) {
+                    new_scene(state);
+                }
             }
         })
+    });
+}
 
-        // ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        //     egui::Frame::default()
-        //         .fill(egui::Color32::from_white_alpha(4))
-        //         .inner_margin(4.)
-        //         .rounding(4.)
-        //         .show(ui, |ui| {
-        //             if ui.small_button("▶").clicked() {
-        //                 log::info!("Playing");
-        //             }
-        //         })
-        // });
+fn left_menus(state: &mut EditorState, ui: &mut egui::Ui) {
+    ui.menu_button("File", |ui| {
+        ui.set_width(200.);
+        if crile_egui::button_shorcut(ui, "Open Project...", "Ctrl+O").clicked() {
+            open_project(state);
+            ui.close_menu();
+        }
+
+        if crile_egui::button_shorcut(ui, "New Scene", "Ctrl+N").clicked() {
+            new_scene(state);
+            ui.close_menu();
+        }
+
+        if crile_egui::button_shorcut(ui, "Save Scene", "Ctrl+S").clicked() {
+            state.save_scene(state.editor_scene_path.clone());
+            ui.close_menu();
+        }
+
+        if crile_egui::button_shorcut(ui, "Save Scene As...", "Ctrl+Shift+S").clicked() {
+            state.save_scene(None);
+            ui.close_menu();
+        }
+
+        if crile_egui::button_shorcut(ui, "Load Scene", "Ctrl+L").clicked() {
+            state.load_scene(None);
+            ui.close_menu();
+        }
     });
 
-    ui.input(|input| {
-        if input.modifiers.command {
-            if input.key_pressed(egui::Key::S) {
-                if input.modifiers.shift {
-                    save_scene_as(state);
-                } else {
-                    save_scene(state);
-                }
-            } else if input.key_pressed(egui::Key::O) {
-                open_project(state);
-            } else if input.key_pressed(egui::Key::L) {
-                load_scene(state);
-            } else if input.key_pressed(egui::Key::N) {
-                new_scene(state);
-            }
+    ui.menu_button("Edit", |ui| {
+        if ui.button("Preferences...").clicked() {
+            state.window_open = WindowKind::Preferences;
+            ui.close_menu();
         }
-    })
+    });
 }
 
 fn open_project(state: &mut EditorState) {
@@ -89,23 +99,7 @@ fn open_project(state: &mut EditorState) {
 }
 
 fn new_scene(state: &mut EditorState) {
+    state.stop_scene();
     state.scene = Scene::default();
-    state.active_scene_path = None;
-}
-
-fn save_scene(state: &mut EditorState) {
-    state.save_scene(state.active_scene_path.clone());
-}
-
-fn save_scene_as(state: &mut EditorState) {
-    state.save_scene(None);
-}
-
-fn load_scene(state: &mut EditorState) {
-    state.load_scene(None);
-    state.scene.set_viewport(state.viewport_size);
-}
-
-fn open_preferences(state: &mut EditorState) {
-    state.window_open = WindowKind::Preferences;
+    state.editor_scene_path = None;
 }

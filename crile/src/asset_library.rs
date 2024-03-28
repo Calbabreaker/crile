@@ -11,11 +11,11 @@ impl AssetLibrary {
         wgpu: &WGPUContext,
         path: &std::path::Path,
     ) -> Option<RefId<Texture>> {
-        log::info!("Loading {path:?}");
         if let Some(texture) = self.textures.get(path) {
             return Some(texture.clone());
         }
 
+        log::info!("Loading {path:?}");
         match image::open(path) {
             Ok(image) => {
                 let texture = RefId::new(Texture::from_image(wgpu, image));

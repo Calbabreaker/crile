@@ -1,7 +1,7 @@
 use std::any::TypeId;
 
 use super::{Archetype, ComponentTuple, QueryIter, QueryIterMut, TypeInfo};
-use crate::index_mut_twice;
+use crate::{index_mut_twice, Component};
 
 pub type EntityId = usize;
 
@@ -19,7 +19,7 @@ struct EntityLocation {
 /// if that archetype contains the components in the query.
 /// This means that it is more optimized for querying components rather than adding/removing components
 /// and having few different archetypes.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct World {
     pub(crate) archetype_set: ArchetypeSet,
 
@@ -119,7 +119,7 @@ impl World {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ArchetypeSet {
     pub(crate) archetypes: Vec<Archetype>,
     /// Maps to the archetype index inside self.archetypes from a array of component type ids
@@ -130,7 +130,7 @@ impl ArchetypeSet {
     fn index_from_infos(&mut self, infos: &[TypeInfo]) -> usize {
         // Returns the archetype with the ids or creates a new one
         *self.type_ids_index_map.entry_ref(infos).or_insert_with(|| {
-            let archetype = Archetype::new(infos);
+            let archetype = Archetype::new(infos.iter().cloned().collect());
             self.archetypes.push(archetype);
             self.archetypes.len() - 1
         })
@@ -194,17 +194,17 @@ impl<'a> EntityMut<'a> {
     }
 
     // TODO: add borrow checking probably unsafe right now
-    pub fn get<T: 'static>(&self) -> Option<&mut T> {
+    pub fn get<T: Component>(&self) -> Option<&mut T> {
         self.archetype.borrow_component(self.location.entity_index)
     }
 
-    pub fn has<T: 'static>(&self) -> bool {
+    pub fn has<T: Component>(&self) -> bool {
         self.archetype.has_component::<T>()
     }
 
-    pub fn add<T: 'static>(&mut self, component: T) {
+    pub fn add<T: Component>(&mut self, component: T) {
         // Get the new archetype that the entity belongs in with component added
-        let mut type_infos = self.archetype.type_info_iter().collect::<Vec<_>>();
+        let mut type_infos = self.archetype.type_infos().to_vec();
         let pos = type_infos.binary_search(&TypeInfo::of::<T>()).unwrap_err();
         type_infos.insert(pos, TypeInfo::of::<T>());
 
@@ -235,11 +235,13 @@ impl<'a> EntityMut<'a> {
         std::mem::forget(component);
     }
 
-    pub fn remove<T: 'static>(&mut self) {
+    pub fn remove<T: Component>(&mut self) {
         // Get the new archetype that the entity belongs in with component removed
         let type_infos = self
             .archetype
-            .type_info_iter()
+            .type_infos()
+            .iter()
+            .copied()
             .filter(|info| info.id != TypeId::of::<T>())
             .collect::<Box<_>>();
 

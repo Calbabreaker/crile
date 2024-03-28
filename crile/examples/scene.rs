@@ -30,7 +30,7 @@ impl crile::Application for SceneApp {
     fn render(&mut self, engine: &mut crile::Engine) {
         let mut render_pass =
             crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK), None, None);
-        self.scene.render(&mut render_pass, None);
+        self.scene.render_runtime(&mut render_pass);
     }
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {

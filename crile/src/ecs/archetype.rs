@@ -8,12 +8,13 @@ pub struct Archetype {
     pub(crate) component_arrays: Box<[ComponentArray]>,
     /// Maps a component type id to its index inside self.component
     index_map: NoHashHashMap<TypeId, usize>,
+    type_infos: Box<[TypeInfo]>,
     pub(crate) entities: Box<[EntityId]>,
     count: usize,
 }
 
 impl Archetype {
-    pub(crate) fn new(type_infos: &[TypeInfo]) -> Self {
+    pub(crate) fn new(type_infos: Box<[TypeInfo]>) -> Self {
         for w in type_infos.windows(2) {
             match w[0].cmp(&w[1]) {
                 std::cmp::Ordering::Less => (),
@@ -39,6 +40,7 @@ impl Archetype {
             .collect();
 
         Self {
+            type_infos,
             index_map,
             entities: Box::new([]),
             count: 0,
@@ -110,20 +112,20 @@ impl Archetype {
     }
 
     fn grow(&mut self, amount: usize) {
-        let old_cap = self.entities.len();
-        let new_cap = old_cap + amount;
+        let old_capacity = self.entities.len();
+        let new_capacity = old_capacity + amount;
 
-        if new_cap == old_cap {
+        if new_capacity == old_capacity {
             return;
         }
 
-        let mut new_entites = vec![0; new_cap].into_boxed_slice();
+        let mut new_entites = vec![0; new_capacity].into_boxed_slice();
         new_entites[0..self.count].copy_from_slice(&self.entities[0..self.count]);
         self.entities = new_entites;
 
         for array in self.component_arrays.iter_mut() {
             unsafe {
-                array.grow(old_cap, new_cap, self.count);
+                array.grow(old_capacity, new_capacity, self.count);
             }
         }
     }
@@ -133,8 +135,8 @@ impl Archetype {
         Some(unsafe { self.component_arrays.get_unchecked(*index) })
     }
 
-    pub(crate) fn type_info_iter(&self) -> impl Iterator<Item = TypeInfo> + '_ {
-        self.component_arrays.iter().map(|array| array.type_info)
+    pub(crate) fn type_infos(&self) -> &[TypeInfo] {
+        &self.type_infos
     }
 
     pub fn count(&self) -> usize {
@@ -156,6 +158,24 @@ impl Drop for Archetype {
     }
 }
 
+impl Clone for Archetype {
+    fn clone(&self) -> Self {
+        let component_arrays = self
+            .component_arrays
+            .iter()
+            .map(|array| unsafe { array.clone(self.count, self.entities.len()) })
+            .collect::<Box<_>>();
+
+        Self {
+            count: self.count,
+            index_map: self.index_map.clone(),
+            entities: self.entities.clone(),
+            component_arrays,
+            type_infos: self.type_infos.clone(),
+        }
+    }
+}
+
 pub(crate) struct ComponentArray {
     /// Pointer to the allocated array
     /// We need to store the array as a raw ptr to allow for multiple types (can't use generics)
@@ -165,25 +185,29 @@ pub(crate) struct ComponentArray {
 }
 
 impl ComponentArray {
-    unsafe fn grow(&mut self, old_cap: usize, new_cap: usize, count: usize) {
+    // We don't store the capcity or count inside the ComponentArray to make sure every
+    // ComponentArray is the same size
+    unsafe fn grow(&mut self, old_capacity: usize, new_capacity: usize, count: usize) {
+        let size = self.type_info.layout.size();
+
         // We need to allocate new space manually since we don't have access the component type here
-        let data = std::alloc::alloc(std::alloc::Layout::from_size_align_unchecked(
-            self.type_info.layout.size() * new_cap,
+        let new_ptr = std::alloc::alloc(std::alloc::Layout::from_size_align_unchecked(
+            size * new_capacity,
             self.type_info.layout.align(),
         ));
 
-        if old_cap > 0 {
-            std::ptr::copy_nonoverlapping(self.ptr, data.cast(), count);
+        if old_capacity > 0 {
+            std::ptr::copy_nonoverlapping(self.ptr, new_ptr, count * size);
             std::alloc::dealloc(
                 self.ptr.cast(),
                 std::alloc::Layout::from_size_align_unchecked(
-                    self.type_info.layout.size() * old_cap,
+                    self.type_info.layout.size() * old_capacity,
                     self.type_info.layout.align(),
                 ),
             );
         }
 
-        self.ptr = data.cast();
+        self.ptr = new_ptr.cast();
     }
 
     // Removes a entity component by swapping with the last element for a O(1) operation
@@ -211,6 +235,25 @@ impl ComponentArray {
                 self.type_info.layout.align(),
             ),
         );
+    }
+
+    unsafe fn clone(&self, count: usize, capacity: usize) -> Self {
+        let size = self.type_info.layout.size();
+        let new_ptr = std::alloc::alloc(std::alloc::Layout::from_size_align_unchecked(
+            size * capacity,
+            self.type_info.layout.align(),
+        ));
+
+        for i in 0..count {
+            // Call clone on each component
+            let cloned = (self.type_info.clone)(self.ptr.add(size * i));
+            std::ptr::copy_nonoverlapping(cloned, new_ptr.add(size * i), size);
+        }
+
+        Self {
+            ptr: new_ptr,
+            type_info: self.type_info,
+        }
     }
 
     pub(crate) unsafe fn drop_component(&mut self, index: usize) {
