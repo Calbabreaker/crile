@@ -203,6 +203,9 @@ impl<'a> EntityMut<'a> {
     }
 
     pub fn add<T: Component>(&mut self, component: T) {
+        // Make sure component doesn't have it's destructor called
+        let component = std::mem::ManuallyDrop::new(component);
+
         // Get the new archetype that the entity belongs in with component added
         let mut type_infos = self.archetype.type_infos().to_vec();
         let pos = type_infos.binary_search(&TypeInfo::of::<T>()).unwrap_err();
@@ -225,14 +228,11 @@ impl<'a> EntityMut<'a> {
                 // Add the requested component into the new archetype
                 target_arch.put_component(
                     target_index,
-                    &component as *const T as *const u8,
+                    &*component as *const T as *const u8,
                     TypeId::of::<T>(),
                 );
             },
         );
-
-        // Make sure component doesn't have it's destructor called
-        std::mem::forget(component);
     }
 
     pub fn remove<T: Component>(&mut self) {

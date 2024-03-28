@@ -25,7 +25,5 @@ pub fn inspect_vec3(ui: &mut egui::Ui, value: &mut glam::Vec3) {
 }
 
 pub fn inspect_color(ui: &mut egui::Ui, value: &mut crile::Color) {
-    let mut array = value.to_array();
-    ui.color_edit_button_rgba_premultiplied(&mut array);
-    *value = crile::Color::new(array[0], array[1], array[2], array[3])
+    ui.color_edit_button_rgba_premultiplied(&mut value.0);
 }

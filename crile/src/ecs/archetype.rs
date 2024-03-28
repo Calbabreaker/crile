@@ -246,8 +246,7 @@ impl ComponentArray {
 
         for i in 0..count {
             // Call clone on each component
-            let cloned = (self.type_info.clone)(self.ptr.add(size * i));
-            std::ptr::copy_nonoverlapping(cloned, new_ptr.add(size * i), size);
+            (self.type_info.clone_to)(self.ptr.add(size * i), new_ptr.add(size * i));
         }
 
         Self {

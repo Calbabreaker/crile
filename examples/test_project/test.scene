@@ -14,11 +14,8 @@ children = []
 name = "Sprite"
 parent = 0
 
-[entities.SpriteComponent.color]
-a = 1.0
-b = 1.0
-g = 1.0
-r = 1.0
+[entities.SpriteComponent]
+color = [1.0, 1.0, 1.0, 1.0]
 
 [entities.SpriteComponent.texture_path]
 path = "blobfish.png"

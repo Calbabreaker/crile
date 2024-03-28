@@ -122,14 +122,14 @@ fn deserialize_component<T: Component + for<'a> serde::Deserialize<'a>>(
             .try_into()
             .inspect_err(|err| log::error!("Failed to deserialize component {type_name}: {err}"))
             .unwrap_or_default();
+        let component = std::mem::ManuallyDrop::new(component);
 
         unsafe {
             archetype.put_component(
                 index,
-                &component as *const T as *const u8,
+                &*component as *const T as *const u8,
                 TypeId::of::<T>(),
             );
-            std::mem::forget(component);
         }
     }
 }

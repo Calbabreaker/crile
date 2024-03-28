@@ -1,4 +1,4 @@
-use std::any::TypeId;
+use std::{alloc::Layout, any::TypeId};
 
 use super::Archetype;
 
@@ -6,24 +6,23 @@ use super::Archetype;
 #[derive(Clone, Copy)]
 pub struct TypeInfo {
     pub id: TypeId,
-    pub layout: std::alloc::Layout,
+    pub layout: Layout,
     pub drop: unsafe fn(*mut u8),
-    pub clone: unsafe fn(*mut u8) -> *mut u8,
+    pub clone_to: unsafe fn(*mut u8, *mut u8),
     pub typename: &'static str,
 }
 
 impl TypeInfo {
     pub fn of<T: Component>() -> Self {
         Self {
-            clone: |ptr| unsafe {
-                let mut cloned = (*ptr.cast::<T>()).clone();
-                let ptr = &mut cloned as *mut T as *mut u8;
-                std::mem::forget(cloned);
-                ptr
+            clone_to: |src, dst| unsafe {
+                let mut cloned = std::mem::ManuallyDrop::new((*src.cast::<T>()).clone());
+                let cloned_ptr = &mut *cloned as *mut T as *mut u8;
+                std::ptr::copy_nonoverlapping(cloned_ptr, dst, Layout::new::<T>().size());
             },
             drop: |ptr| unsafe { ptr.cast::<T>().drop_in_place() },
             id: TypeId::of::<T>(),
-            layout: std::alloc::Layout::new::<T>(),
+            layout: Layout::new::<T>(),
             typename: std::any::type_name::<T>(),
         }
     }
@@ -64,8 +63,8 @@ impl std::hash::Hash for TypeInfo {
 }
 
 /// Represents a usable component type
-pub trait Component: 'static + Clone + Default {}
-impl<T: 'static + Clone + Default> Component for T {}
+pub trait Component: 'static + Clone + Default + std::fmt::Debug {}
+impl<T: 'static + Clone + Default + std::fmt::Debug> Component for T {}
 
 /// Represents a tuple of components of any type
 /// It is automatically implemented for every tuple type (maximum 8 elements in a tuple)

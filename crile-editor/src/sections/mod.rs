@@ -64,6 +64,7 @@ impl EditorState {
     pub fn play_scene(&mut self) {
         log::info!("Playing scene...");
         self.backup_scene = Some(self.scene.clone());
+
         self.scene.start_runtime();
         self.scene_state = SceneState::Running;
     }

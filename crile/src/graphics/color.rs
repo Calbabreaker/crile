@@ -3,13 +3,8 @@ use serde::{Deserialize, Serialize};
 
 /// Color with rgba values from 0 to 1 in SRGB color space
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Pod, Zeroable, Deserialize, Serialize)]
-pub struct Color {
-    pub r: f32,
-    pub g: f32,
-    pub b: f32,
-    pub a: f32,
-}
+#[derive(Copy, Clone, Debug, Pod, Zeroable, Serialize, Deserialize)]
+pub struct Color(pub [f32; 4]);
 
 impl Default for Color {
     fn default() -> Self {
@@ -20,50 +15,42 @@ impl Default for Color {
 impl From<Color> for wgpu::Color {
     fn from(value: Color) -> Self {
         wgpu::Color {
-            r: value.r as f64,
-            g: value.g as f64,
-            b: value.b as f64,
-            a: value.a as f64,
+            r: value.0[0] as f64,
+            g: value.0[1] as f64,
+            b: value.0[2] as f64,
+            a: value.0[3] as f64,
         }
     }
 }
 
 impl Color {
-    pub const BLACK: Color = Color::new(0., 0., 0., 1.);
-    pub const WHITE: Color = Color::new(1., 1., 1., 1.);
+    pub const BLACK: Color = Color::from_rgba(0., 0., 0., 1.);
+    pub const WHITE: Color = Color::from_rgba(1., 1., 1., 1.);
 
-    pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
-        Self { r, g, b, a }
+    pub const fn from_rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Self([r, g, b, a])
     }
 
-    pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self {
-            r: r as f32 / 255.,
-            g: g as f32 / 255.,
-            b: b as f32 / 255.,
-            a: 1.,
-        }
-    }
-
-    pub fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
-        Self {
-            r: r as f32 / 255.,
-            g: g as f32 / 255.,
-            b: b as f32 / 255.,
-            a: a as f32 / 255.,
-        }
+    pub fn from_srgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self([
+            r as f32 / 255.,
+            g as f32 / 255.,
+            b as f32 / 255.,
+            a as f32 / 255.,
+        ])
     }
 
     /// Converts a hexidecimal number rgb or rgba to a color struct.
     pub fn from_hex(hex: u32) -> Self {
         if hex <= 0xffffff {
-            Color::from_rgb(
+            Color::from_srgba(
                 ((hex >> 16) & 0xff) as u8,
                 ((hex >> 8) & 0xff) as u8,
                 (hex & 0xff) as u8,
+                255,
             )
         } else {
-            Color::from_rgba(
+            Color::from_srgba(
                 ((hex >> 24) & 0xff) as u8,
                 ((hex >> 16) & 0xff) as u8,
                 ((hex >> 8) & 0xff) as u8,
@@ -72,7 +59,19 @@ impl Color {
         }
     }
 
-    pub fn to_array(&self) -> [f32; 4] {
-        [self.r, self.g, self.b, self.a]
+    pub const fn r(&self) -> f32 {
+        self.0[0]
+    }
+
+    pub const fn g(&self) -> f32 {
+        self.0[1]
+    }
+
+    pub const fn b(&self) -> f32 {
+        self.0[2]
+    }
+
+    pub const fn a(&self) -> f32 {
+        self.0[3]
     }
 }
