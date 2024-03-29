@@ -14,43 +14,9 @@ impl GraphicsContext {
     pub fn new() -> Self {
         let wgpu = pollster::block_on(WGPUContext::new());
 
-        let single_draw_shader = Shader::new(
-            &wgpu,
-            wgpu::include_wgsl!("./shaders/single_draw.wgsl"),
-            ShaderKind::DrawSingle,
-        );
-
-        let instanced_shader = Shader::new(
-            &wgpu,
-            wgpu::include_wgsl!("./shaders/instanced.wgsl"),
-            ShaderKind::Instanced,
-        );
-
-        let white_texture = Texture::from_pixels(&wgpu, glam::UVec2::ONE, &[255, 255, 255, 255]);
-        let uniform_buffer_allocator =
-            DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::UNIFORM);
-        let storage_buffer_allocator =
-            DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::STORAGE);
-        let vertex_buffer_allocator =
-            DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::VERTEX);
-        let index_buffer_allocator = DynamicBufferAllocator::new(&wgpu, wgpu::BufferUsages::INDEX);
-
         Self {
-            data: GraphicsData {
-                square_mesh: Mesh::new_square(&wgpu),
-                white_texture: RefId::new(white_texture),
-                instanced_shader: RefId::new(instanced_shader),
-                single_draw_shader: RefId::new(single_draw_shader),
-            },
-            caches: GraphicsCaches {
-                bind_group_holder: Vec::new(),
-                render_pipeline: RenderPipelineCache::default(),
-                sampler: SamplerCache::default(),
-                uniform_buffer_allocator,
-                storage_buffer_allocator,
-                vertex_buffer_allocator,
-                index_buffer_allocator,
-            },
+            data: GraphicsData::new(&wgpu),
+            caches: GraphicsCaches::new(&wgpu),
             wgpu,
             frame: None,
         }
@@ -112,11 +78,51 @@ pub struct GraphicsCaches {
     pub sampler: SamplerCache,
 }
 
+impl GraphicsCaches {
+    pub fn new(wgpu: &WGPUContext) -> Self {
+        Self {
+            bind_group_holder: Vec::new(),
+            render_pipeline: RenderPipelineCache::default(),
+            sampler: SamplerCache::default(),
+            uniform_buffer_allocator: DynamicBufferAllocator::new(
+                wgpu,
+                wgpu::BufferUsages::UNIFORM,
+            ),
+            storage_buffer_allocator: DynamicBufferAllocator::new(
+                wgpu,
+                wgpu::BufferUsages::STORAGE,
+            ),
+            vertex_buffer_allocator: DynamicBufferAllocator::new(wgpu, wgpu::BufferUsages::VERTEX),
+            index_buffer_allocator: DynamicBufferAllocator::new(wgpu, wgpu::BufferUsages::INDEX),
+        }
+    }
+}
+
 pub struct GraphicsData {
     pub white_texture: RefId<Texture>,
     pub square_mesh: Mesh,
     pub single_draw_shader: RefId<Shader>,
     pub instanced_shader: RefId<Shader>,
+}
+
+impl GraphicsData {
+    pub fn new(wgpu: &WGPUContext) -> Self {
+        Self {
+            square_mesh: Mesh::new_square(wgpu),
+            white_texture: Texture::from_pixels(wgpu, glam::UVec2::ONE, &[255, 255, 255, 255])
+                .into(),
+            instanced_shader: RefId::new(Shader::new(
+                wgpu,
+                wgpu::include_wgsl!("./shaders/instanced.wgsl"),
+                ShaderKind::Instanced,
+            )),
+            single_draw_shader: RefId::new(Shader::new(
+                wgpu,
+                wgpu::include_wgsl!("./shaders/single_draw.wgsl"),
+                ShaderKind::DrawSingle,
+            )),
+        }
+    }
 }
 
 pub struct WGPUContext {

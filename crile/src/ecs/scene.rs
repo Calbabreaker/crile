@@ -60,6 +60,7 @@ impl Scene {
         }
     }
 
+    // TODO: Render back to front to support transparency
     pub fn render(&mut self, render_pass: &mut RenderPass, view_projection: glam::Mat4) {
         for instances in self.render_instances_map.values_mut() {
             instances.clear()

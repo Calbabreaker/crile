@@ -120,8 +120,8 @@ impl World {
 }
 
 #[derive(Default, Clone)]
-pub struct ArchetypeSet {
-    pub(crate) archetypes: Vec<Archetype>,
+pub(crate) struct ArchetypeSet {
+    pub archetypes: Vec<Archetype>,
     /// Maps to the archetype index inside self.archetypes from a array of component type ids
     type_ids_index_map: hashbrown::HashMap<Box<[TypeInfo]>, usize>,
 }
@@ -193,7 +193,6 @@ impl<'a> EntityMut<'a> {
         }
     }
 
-    // TODO: add borrow checking probably unsafe right now
     pub fn get<T: Component>(&self) -> Option<&mut T> {
         self.archetype.borrow_component(self.location.entity_index)
     }

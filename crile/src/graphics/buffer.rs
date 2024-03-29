@@ -75,7 +75,6 @@ impl DynamicBufferAllocator {
     ) -> BufferAllocation {
         let size = std::mem::size_of_val(data) as u64;
 
-        // TODO: use size.div_ceil once https://github.com/rust-lang/rust/issues/88581 is stablized
         // Aligns size to alignment since gpus require the buffer to have a certain alignment
         let size_aligned = self.align(size);
         assert!(

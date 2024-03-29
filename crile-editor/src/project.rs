@@ -54,14 +54,12 @@ impl Project {
     }
 
     pub fn make_relative(&self, path: &Path) -> Option<PathBuf> {
-        pathdiff::diff_paths(path, &self.directory).and_then(|path| {
-            if path.starts_with("../") {
-                log::error!("Tried to get file outside of project directory");
-                None
-            } else {
-                Some(path)
-            }
-        })
+        if !path.starts_with(&self.directory) {
+            log::error!("Tried to get file outside of project directory");
+            return None;
+        }
+
+        pathdiff::diff_paths(path, &self.directory)
     }
 
     pub fn pick_file_relative(&self, filter_name: &str, extensions: &[&str]) -> Option<PathBuf> {
@@ -69,7 +67,7 @@ impl Project {
             .set_directory(&self.directory)
             .add_filter(filter_name, extensions)
             .pick_file()
-            .and_then(|path| pathdiff::diff_paths(path, &self.directory))
+            .and_then(|path| self.make_relative(&path))
     }
 
     pub fn pick_save_relative(&self, file_name: &str) -> Option<PathBuf> {
@@ -77,6 +75,6 @@ impl Project {
             .set_directory(&self.directory)
             .set_file_name(file_name)
             .save_file()
-            .and_then(|path| pathdiff::diff_paths(path, &self.directory))
+            .and_then(|path| self.make_relative(&path))
     }
 }

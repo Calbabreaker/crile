@@ -28,7 +28,7 @@ impl Rect {
     }
 
     pub fn matrix(&self) -> glam::Mat4 {
-        glam::Mat4::orthographic_lh(
+        glam::Mat4::orthographic_rh(
             self.left(),
             self.right(),
             self.bottom(),

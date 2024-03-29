@@ -10,7 +10,7 @@ parent = 0
 id = 1
 
 [entities.MetaDataComponent]
-children = []
+children = [3]
 name = "Sprite"
 parent = 0
 
@@ -22,8 +22,26 @@ path = "blobfish.png"
 
 [entities.TransformComponent]
 rotation = [0.0, 0.0, 0.0]
-scale = [1.0, 1.0, 1.0]
-translation = [0.0, 0.0, 0.0]
+scale = [1.0, 1.0, 1.149999976158142]
+translation = [0.0, 0.0, 0.4699999988079071]
+
+[[entities]]
+id = 3
+
+[entities.MetaDataComponent]
+children = []
+name = "Empty"
+parent = 1
+
+[entities.SpriteComponent]
+color = [0.35105618834495544, 0.35105618834495544, 0.35105618834495544, 1.0]
+
+[entities.SpriteComponent.texture_path]
+
+[entities.TransformComponent]
+rotation = [0.0, 0.0, 0.0]
+scale = [1000.0, 1000.0, 1.0]
+translation = [-37.650001525878906, 0.0, -0.27000001072883606]
 
 [[entities]]
 id = 2
