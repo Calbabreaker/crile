@@ -10,11 +10,11 @@ parent = 0
 id = 1
 
 [entities.CameraComponent]
-far = 1.0
+far = 10000.0
 near = -1.0
 orthographic_zoom = 1.0
 perspective_fov = 45.0
-projection_kind = "Orthographic"
+projection = "Perspective"
 
 [entities.MetaDataComponent]
 children = []
@@ -24,7 +24,7 @@ parent = 0
 [entities.TransformComponent]
 rotation = [0.0, 0.0, 0.0]
 scale = [1.0, 1.0, 1.0]
-translation = [0.0, 0.0, 0.0]
+translation = [0.0, 0.0, 1000.0]
 
 [[entities]]
 id = 2

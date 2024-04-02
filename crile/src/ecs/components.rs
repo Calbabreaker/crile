@@ -68,7 +68,7 @@ pub struct CameraComponent {
     pub orthographic_zoom: f32,
     /// Vertical field-of-view of the camera
     pub perspective_fov: f32,
-    pub projection_kind: ProjectionKind,
+    pub projection: ProjectionKind,
 }
 
 impl Default for CameraComponent {
@@ -79,14 +79,14 @@ impl Default for CameraComponent {
             far: 1.0,
             perspective_fov: 45.,
             orthographic_zoom: 1.,
-            projection_kind: ProjectionKind::default(),
+            projection: ProjectionKind::default(),
         }
     }
 }
 
 impl CameraComponent {
     pub fn projection(&self) -> glam::Mat4 {
-        match self.projection_kind {
+        match self.projection {
             ProjectionKind::Perspective => glam::Mat4::perspective_rh(
                 self.perspective_fov.to_radians(),
                 self.viewport_size.x / self.viewport_size.y,

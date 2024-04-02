@@ -166,7 +166,7 @@ impl Inspectable for crile::CameraComponent {
         crile_egui::inspect_f32(ui, &mut self.far);
         ui.end_row();
 
-        match self.projection_kind {
+        match self.projection {
             crile::ProjectionKind::Orthographic => {
                 ui.label("Zoom");
                 crile_egui::inspect_f32(ui, &mut self.orthographic_zoom);
@@ -180,16 +180,16 @@ impl Inspectable for crile::CameraComponent {
 
         ui.label("Projection");
         egui::ComboBox::from_id_source("Projection")
-            .selected_text(format!("{:?}", self.projection_kind))
+            .selected_text(format!("{:?}", self.projection))
             .width(ui.available_width())
             .show_ui(ui, |ui| {
                 ui.selectable_value(
-                    &mut self.projection_kind,
+                    &mut self.projection,
                     crile::ProjectionKind::Perspective,
                     "Perspective",
                 );
                 ui.selectable_value(
-                    &mut self.projection_kind,
+                    &mut self.projection,
                     crile::ProjectionKind::Orthographic,
                     "Orthographic",
                 );

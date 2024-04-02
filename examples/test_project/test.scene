@@ -51,7 +51,7 @@ far = 1.0
 near = -1.0
 orthographic_zoom = 1.0
 perspective_fov = 45.0
-projection_kind = "Orthographic"
+projection = "Orthographic"
 
 [entities.MetaDataComponent]
 children = []
