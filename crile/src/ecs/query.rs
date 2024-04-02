@@ -3,33 +3,31 @@ use super::{Archetype, ComponentTuple, EntityId, World};
 pub struct QueryIter<'a, T: ComponentTuple> {
     world: &'a World,
     next_archetype_index: usize,
-    current_iter: ArchetypeIter<T>,
+    current_archetype_iter: ArchetypeIter<T>,
 }
 
 impl<'a, T: ComponentTuple> QueryIter<'a, T> {
     pub(crate) fn new(world: &'a World) -> Self {
         Self {
             next_archetype_index: 0,
-            current_iter: ArchetypeIter::empty(),
+            current_archetype_iter: ArchetypeIter::empty(),
             world,
         }
     }
 
     fn next_archetype(&mut self) -> Option<()> {
-        let archetype = self
-            .world
-            .archetype_set
-            .archetypes
-            .get(self.next_archetype_index)?;
-        self.current_iter = ArchetypeIter::new(archetype);
+        let archetype = self.world.archetypes.get(self.next_archetype_index)?;
+        self.current_archetype_iter = ArchetypeIter::new(archetype);
         self.next_archetype_index += 1;
         Some(())
     }
 
+    // Gets the next entity as part of this query
     unsafe fn next_mut(&mut self) -> Option<(EntityId, T::MutTuple<'a>)> {
-        match self.current_iter.next() {
+        match self.current_archetype_iter.next() {
             Some(tuple) => Some(tuple),
             None => {
+                // We went through all the entities in the archetype so get the next one
                 self.next_archetype()?;
                 self.next_mut()
             }
@@ -45,13 +43,13 @@ impl<'a, T: ComponentTuple> Iterator for QueryIter<'a, T> {
     }
 }
 
-/// This is the same as QueryIter (it uses it internally) but requires mutably borrowing World in order to ensure borrow rules
+/// This is the same as QueryIter (uses it internally) but force mutably borrowing World to
+/// allow a mutable borrow to the components
 pub struct QueryIterMut<'a, T: ComponentTuple> {
     query: QueryIter<'a, T>,
 }
 
 impl<'a, T: ComponentTuple> QueryIterMut<'a, T> {
-    #[allow(clippy::needless_pass_by_ref_mut)]
     pub(crate) fn new(world: &'a mut World) -> Self {
         Self {
             query: QueryIter::new(world),
