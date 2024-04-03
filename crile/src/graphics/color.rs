@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Color with rgba values from 0 to 1 in SRGB color space
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Pod, Zeroable, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Debug, Pod, Zeroable, Serialize, Deserialize)]
 pub struct Color(pub [f32; 4]);
 
 impl Default for Color {

@@ -43,7 +43,7 @@ impl SceneSerializer {
         for entity in output.entities {
             if !entity.contains_key("MetaDataComponent") {
                 return Err(toml::de::Error::custom(
-                    "Entity found with no metadata component",
+                    "Entity found with no MetaDataComponent",
                 ));
             }
 
@@ -120,7 +120,7 @@ fn deserialize_component<T: Component + for<'a> serde::Deserialize<'a>>(
         let component = value
             .clone()
             .try_into()
-            .inspect_err(|err| log::error!("Failed to deserialize component {type_name}: {err}"))
+            .inspect_err(|err| log::error!("Failed to deserialize {type_name}: {err}"))
             .unwrap_or_default();
         let component = std::mem::ManuallyDrop::new(component);
 

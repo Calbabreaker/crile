@@ -4,15 +4,25 @@ use crate::{Color, EntityId, RefId, Texture};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct MetaDataComponent {
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub name: String,
+
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub children: Vec<EntityId>,
+
+    #[serde(skip_serializing_if = "default", default)]
     pub parent: EntityId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransformComponent {
+    #[serde(skip_serializing_if = "default", default)]
     pub translation: glam::Vec3,
+
+    #[serde(skip_serializing_if = "default", default)]
     pub rotation: glam::Vec3,
+
+    #[serde(skip_serializing_if = "default", default)]
     pub scale: glam::Vec3,
 }
 
@@ -38,7 +48,7 @@ impl TransformComponent {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AssetPath {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub path: Option<std::path::PathBuf>,
     #[serde(skip)]
     pub open_picker: bool,
@@ -46,6 +56,7 @@ pub struct AssetPath {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct SpriteComponent {
+    #[serde(skip_serializing_if = "default", default)]
     pub color: Color,
     #[serde(skip)]
     pub texture: Option<RefId<Texture>>,
@@ -63,11 +74,21 @@ pub enum ProjectionKind {
 pub struct CameraComponent {
     #[serde(skip)]
     pub viewport_size: glam::Vec2,
+
+    #[serde(skip_serializing_if = "default", default)]
     pub near: f32,
+
+    #[serde(skip_serializing_if = "default", default)]
     pub far: f32,
+
+    #[serde(skip_serializing_if = "default", default)]
     pub orthographic_zoom: f32,
+
     /// Vertical field-of-view of the camera
+    #[serde(skip_serializing_if = "default", default)]
     pub perspective_fov: f32,
+
+    #[serde(skip_serializing_if = "default", default)]
     pub projection: ProjectionKind,
 }
 
@@ -115,4 +136,8 @@ macro_rules! with_components {
         use $crate::*;
         $macro!([TransformComponent, CameraComponent, SpriteComponent])
     }};
+}
+
+fn default<T: Default + PartialEq>(t: &T) -> bool {
+    *t == Default::default()
 }

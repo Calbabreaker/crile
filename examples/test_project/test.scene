@@ -4,7 +4,6 @@ id = 0
 [entities.MetaDataComponent]
 children = [2, 1]
 name = "Root"
-parent = 0
 
 [[entities]]
 id = 1
@@ -12,16 +11,11 @@ id = 1
 [entities.MetaDataComponent]
 children = [3]
 name = "Sprite"
-parent = 0
-
-[entities.SpriteComponent]
-color = [1.0, 1.0, 1.0, 1.0]
 
 [entities.SpriteComponent.texture_path]
 path = "blobfish.png"
 
 [entities.TransformComponent]
-rotation = [0.0, 0.0, 0.0]
 scale = [1.0, 1.0, 1.149999976158142]
 translation = [0.0, 0.0, 0.4699999988079071]
 
@@ -29,7 +23,6 @@ translation = [0.0, 0.0, 0.4699999988079071]
 id = 3
 
 [entities.MetaDataComponent]
-children = []
 name = "Empty"
 parent = 1
 
@@ -39,7 +32,6 @@ color = [0.35105618834495544, 0.35105618834495544, 0.35105618834495544, 1.0]
 [entities.SpriteComponent.texture_path]
 
 [entities.TransformComponent]
-rotation = [0.0, 0.0, 0.0]
 scale = [1000.0, 1000.0, 1.0]
 translation = [-37.650001525878906, 0.0, -0.27000001072883606]
 
@@ -51,14 +43,9 @@ far = 1.0
 near = -1.0
 orthographic_zoom = 1.0
 perspective_fov = 45.0
-projection = "Orthographic"
 
 [entities.MetaDataComponent]
-children = []
 name = "Camera"
-parent = 0
 
 [entities.TransformComponent]
-rotation = [0.0, 0.0, 0.0]
 scale = [1.0, 1.0, 1.0]
-translation = [0.0, 0.0, 0.0]
