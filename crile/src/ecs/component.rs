@@ -63,8 +63,8 @@ impl std::hash::Hash for TypeInfo {
 }
 
 /// Represents a usable component type
-pub trait Component: 'static + Clone + Default + std::fmt::Debug {}
-impl<T: 'static + Clone + Default + std::fmt::Debug> Component for T {}
+pub trait Component: 'static + Clone + Default {}
+impl<T: 'static + Clone + Default> Component for T {}
 
 /// Represents a tuple of components of any type
 /// It is automatically implemented for every tuple type (maximum 8 elements in a tuple)

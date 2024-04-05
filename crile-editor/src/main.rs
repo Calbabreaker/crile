@@ -1,13 +1,11 @@
 mod editor_camera;
+mod editor_state;
 mod preferences;
 mod project;
 mod sections;
 
-use crate::sections::SceneState;
-pub use crate::{
-    preferences::Preferences,
-    sections::{EditorState, Selection, WindowKind},
-};
+pub use crate::editor_state::*;
+pub use crate::preferences::Preferences;
 
 pub struct CrileEditorApp {
     egui: crile_egui::EguiContext,
@@ -22,6 +20,9 @@ impl crile::Application for CrileEditorApp {
         };
 
         app.apply_preferences(engine);
+        if let Some(last_opened_project) = &app.state.preferences.last_opened_project {
+            app.state.open_project(Some(last_opened_project.clone()));
+        }
 
         app
     }
@@ -56,19 +57,19 @@ impl crile::Application for CrileEditorApp {
         egui::TopBottomPanel::top("top_panel")
             .frame(egui::Frame::default().fill(default_bg).inner_margin(8.0))
             .show(&ctx, |ui| {
-                sections::top_panel::show(&mut self.state, ui);
+                sections::top_panel::show(ui, &mut self.state, engine);
             });
 
         egui::SidePanel::left("Hierachy")
             .width_range(150.0..=400.0)
             .show(&ctx, |ui| {
-                sections::hierarchy::show(&mut self.state, ui);
+                sections::hierarchy::show(ui, &mut self.state);
             });
 
         egui::SidePanel::right("Inspector")
             .width_range(260.0..=500.0)
             .show(&ctx, |ui| {
-                sections::inspector::show(&mut self.state, ui);
+                sections::inspector::show(ui, &mut self.state);
             });
 
         egui::CentralPanel::default()
@@ -85,6 +86,9 @@ impl crile::Application for CrileEditorApp {
         self.egui.end_frame(engine, ctx);
 
         sections::inspector::update_assets(&mut self.state, engine);
+        if self.state.scene_state == SceneState::Running {
+            self.state.scene.update_runtime(engine);
+        }
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
@@ -122,7 +126,7 @@ impl crile::Application for CrileEditorApp {
 impl CrileEditorApp {
     pub fn apply_preferences(&mut self, engine: &mut crile::Engine) {
         self.egui
-            .set_ui_scale(self.state.preferences.ui_scale, engine.window.size())
+            .set_ui_scale(self.state.preferences.ui_scale, engine.window.size());
     }
 }
 

@@ -1,7 +1,7 @@
 use super::{CameraComponent, SpriteComponent, TransformComponent, World};
 use crate::{
-    ComponentTuple, DrawUniform, EntityId, EntityRef, MetaDataComponent, RefId, RenderInstance,
-    RenderPass, Texture,
+    ComponentTuple, DrawUniform, Engine, EntityId, EntityRef, MetaDataComponent, RefId,
+    RenderInstance, RenderPass, ScriptComponent, Texture,
 };
 
 #[derive(Clone)]
@@ -43,8 +43,33 @@ impl Scene {
         }
     }
 
-    pub fn start_runtime(&mut self) {
+    pub fn start_runtime(&mut self, engine: &mut Engine) {
+        for (id, (script,)) in self.world.query_mut::<(ScriptComponent,)>() {
+            if let Some(script) = &script.script {
+                engine
+                    .scripting
+                    .create_instance(id, script)
+                    .inspect_err(|err| log::error!("{err}"))
+                    .ok();
+            }
+        }
+
         self.running = true;
+    }
+
+    pub fn update_runtime(&mut self, engine: &mut Engine) {
+        for (id, _) in self.world.query_mut::<(ScriptComponent,)>() {
+            engine
+                .scripting
+                .update_instance(id)
+                .inspect_err(|err| log::error!("{err}"))
+                .ok();
+        }
+    }
+
+    pub fn stop_runtime(&mut self, engine: &mut Engine) {
+        engine.scripting.clear();
+        self.running = false;
     }
 
     pub fn render_runtime(&mut self, render_pass: &mut RenderPass) {

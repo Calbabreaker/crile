@@ -1,6 +1,6 @@
 use crate::{EditorState, Selection};
 
-pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
+pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     ui.add_space(5.);
     let mut action = HierachyAction::None;
 

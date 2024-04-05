@@ -8,7 +8,7 @@ pub struct RefId<T: ?Sized> {
     id: u64,
 }
 
-impl<T: 'static> RefId<T> {
+impl<T> RefId<T> {
     pub fn new(object: T) -> Self {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         Self {

@@ -1,12 +1,8 @@
-use crile::Scene;
+use crile::{Engine, Scene};
 
-use crate::{
-    project::Project,
-    sections::{SceneState, WindowKind},
-    EditorState,
-};
+use crate::{EditorState, SceneState, WindowKind};
 
-pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
+pub fn show(ui: &mut egui::Ui, state: &mut EditorState, engine: &mut Engine) {
     egui::menu::bar(ui, |ui| {
         ui.columns(3, |ui| {
             ui[0].horizontal(|ui| {
@@ -16,10 +12,10 @@ pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
             ui[1].vertical_centered(|ui| {
                 if state.scene_state == SceneState::Running {
                     if ui.button("⏹").clicked() {
-                        state.stop_scene();
+                        state.stop_scene(engine);
                     }
                 } else if ui.button("▶").clicked() {
-                    state.play_scene();
+                    state.play_scene(engine);
                 }
             });
         });
@@ -33,7 +29,7 @@ pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
                         state.save_scene(state.editor_scene_path.clone());
                     }
                 } else if input.key_pressed(egui::Key::O) {
-                    open_project(state);
+                    state.open_project(None);
                 } else if input.key_pressed(egui::Key::L) {
                     state.load_scene(None);
                 } else if input.key_pressed(egui::Key::N) {
@@ -48,7 +44,7 @@ fn left_menus(state: &mut EditorState, ui: &mut egui::Ui) {
     ui.menu_button("File", |ui| {
         ui.set_width(200.);
         if crile_egui::button_shorcut(ui, "Open Project...", "Ctrl+O").clicked() {
-            open_project(state);
+            state.open_project(None);
             ui.close_menu();
         }
 
@@ -81,25 +77,11 @@ fn left_menus(state: &mut EditorState, ui: &mut egui::Ui) {
     });
 }
 
-fn open_project(state: &mut EditorState) {
-    if let Some(path) = rfd::FileDialog::new()
-        .add_filter("Crile project", &["crile"])
-        .set_file_name("project.crile")
-        .set_directory(std::env::current_dir().unwrap_or_default())
-        .pick_file()
-    {
-        if let Some(project) = Project::load(path) {
-            state.project = project;
-        }
-
-        if let Some(main_scene) = &state.project.main_scene {
-            state.load_scene(Some(main_scene.clone()));
-        }
-    }
-}
-
 fn new_scene(state: &mut EditorState) {
-    state.stop_scene();
+    if state.scene_state == SceneState::Running {
+        return;
+    }
+
     state.scene = Scene::default();
     state.editor_scene_path = None;
 }

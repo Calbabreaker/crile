@@ -27,3 +27,18 @@ pub fn inspect_vec3(ui: &mut egui::Ui, value: &mut glam::Vec3) {
 pub fn inspect_color(ui: &mut egui::Ui, value: &mut crile::Color) {
     ui.color_edit_button_rgba_premultiplied(&mut value.0);
 }
+
+pub fn inspect_asset_path(ui: &mut egui::Ui, asset_path: &mut crile::AssetPath) {
+    let text = asset_path
+        .path
+        .as_ref()
+        .and_then(|path| path.to_str())
+        .unwrap_or("Choose file");
+
+    if ui
+        .add_sized(ui.available_size(), egui::Button::new(text))
+        .clicked()
+    {
+        asset_path.open_picker = true;
+    }
+}

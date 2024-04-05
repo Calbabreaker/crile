@@ -45,15 +45,20 @@ pub fn get_data_path() -> Option<std::path::PathBuf> {
 }
 
 pub fn write_file(path: &std::path::Path, str: &str) -> Option<()> {
-    log::info!("Saving to {path:?}");
+    log::trace!("Saving to {path:?}");
     std::fs::write(path, str)
         .inspect_err(|err| log::error!("Failed to save {path:?}: {err}"))
         .ok()
 }
 
 pub fn read_file(path: &std::path::Path) -> Option<String> {
-    log::info!("Reading from {path:?}");
+    log::trace!("Reading from {path:?}");
     std::fs::read_to_string(path)
         .inspect_err(|err| log::error!("Failed to load {path:?}: {err}"))
         .ok()
+}
+
+pub fn last_type_name<T: 'static>() -> &'static str {
+    let name = std::any::type_name::<T>();
+    name.split("::").last().unwrap_or(name)
 }

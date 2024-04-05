@@ -1,4 +1,9 @@
-use crate::{AssetLibrary, Event, EventKind, GraphicsContext, Input, Time, Window};
+use std::path::Path;
+
+use crate::{
+    Asset, AssetManager, Event, EventKind, GraphicsContext, Input, RefId, ScriptingEngine, Time,
+    Window,
+};
 use copypasta::ClipboardProvider;
 
 /// For applications to implement in order to run
@@ -14,8 +19,9 @@ pub struct Engine {
     pub window: Window,
     pub time: Time,
     pub input: Input,
-    pub clipboard: copypasta::ClipboardContext,
-    pub asset_library: AssetLibrary,
+    pub scripting: ScriptingEngine,
+    clipboard: copypasta::ClipboardContext,
+    asset_manager: AssetManager,
     should_exit: bool,
 }
 
@@ -23,11 +29,13 @@ impl Engine {
     fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
         let gfx = GraphicsContext::new();
         let window = Window::new(&gfx.wgpu, event_loop);
+
         Self {
             gfx,
+            asset_manager: Default::default(),
             time: Time::default(),
             input: Input::default(),
-            asset_library: AssetLibrary::default(),
+            scripting: ScriptingEngine::default(),
             window,
             should_exit: false,
             clipboard: copypasta::ClipboardContext::new().unwrap(),
@@ -73,6 +81,10 @@ impl Engine {
 
     pub fn get_clipboard(&mut self) -> String {
         self.clipboard.get_contents().unwrap()
+    }
+
+    pub fn load_asset<A: Asset>(&mut self, path: &Path) -> Option<RefId<A>> {
+        unsafe { self.asset_manager.load(&*(self as *const Engine), path) }
     }
 }
 

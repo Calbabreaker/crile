@@ -1,6 +1,8 @@
-use crate::{EditorState, Selection};
+use crile::AssetPath;
 
-pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
+use crate::{project::Project, EditorState, Selection};
+
+pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     ui.add_space(5.);
 
     ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
@@ -20,27 +22,45 @@ pub fn show(state: &mut EditorState, ui: &mut egui::Ui) {
 
 pub fn update_assets(state: &mut EditorState, engine: &mut crile::Engine) {
     for (_, (sprite,)) in state.scene.world.query_mut::<(crile::SpriteComponent,)>() {
-        // Open file picker when requested
-        if sprite.texture_path.open_picker {
-            sprite.texture_path.path = state
-                .project
-                .pick_file_relative("Image", &["jpeg", "jpg", "png"]);
-            sprite.texture = None;
-            sprite.texture_path.open_picker = false;
-        }
+        update_asset(
+            &mut sprite.texture,
+            &mut sprite.texture_path,
+            engine,
+            &state.project,
+        );
+    }
 
-        if let Some(path) = &sprite.texture_path.path {
-            if sprite.texture.is_none() {
-                let absolute_path = state.project.make_absolute(path);
-                let texture = engine
-                    .asset_library
-                    .load_texture(&engine.gfx.wgpu, &absolute_path);
+    for (_, (script,)) in state.scene.world.query_mut::<(crile::ScriptComponent,)>() {
+        update_asset(
+            &mut script.script,
+            &mut script.script_path,
+            engine,
+            &state.project,
+        );
+    }
+}
 
-                if texture.is_some() {
-                    sprite.texture = texture;
-                } else {
-                    sprite.texture_path.path = None;
-                }
+fn update_asset<A: crile::Asset>(
+    asset: &mut Option<crile::RefId<A>>,
+    asset_path: &mut AssetPath,
+    engine: &mut crile::Engine,
+    project: &Project,
+) {
+    if asset_path.open_picker {
+        asset_path.path = project.pick_file_relative(A::PICKER_NAME, A::FILE_EXTENSIONS);
+        *asset = None;
+        asset_path.open_picker = false;
+    }
+
+    if let Some(path) = &asset_path.path {
+        if asset.is_none() {
+            let absolute_path = project.make_absolute(path);
+            let loaded_asset = engine.load_asset(&absolute_path);
+
+            if loaded_asset.is_some() {
+                *asset = loaded_asset;
+            } else {
+                asset_path.path = None;
             }
         }
     }
@@ -75,16 +95,17 @@ fn inspect_component<T: Inspectable + crile::Component>(
     entity: &mut crile::EntityMut,
 ) {
     if let Some(component) = entity.get::<T>() {
+        let pretty_name = get_pretty_name::<T>();
         // TODO: figure out how to make header fill available width
-        let response = egui::CollapsingHeader::new(T::pretty_name())
+        ui.visuals_mut().collapsing_header_frame = true;
+        let response = egui::CollapsingHeader::new(pretty_name)
             .default_open(true)
-            .show_background(true)
             .show_unindented(ui, |ui| {
                 ui.visuals_mut().widgets.noninteractive.bg_stroke.width = 0.;
                 ui.spacing_mut().indent = 8.;
 
-                ui.indent(T::pretty_name(), |ui| {
-                    egui::Grid::new(T::pretty_name())
+                ui.indent(pretty_name, |ui| {
+                    egui::Grid::new(pretty_name)
                         .num_columns(2)
                         .spacing([30.0, 4.0])
                         .show(ui, |ui| component.inspect(ui));
@@ -104,22 +125,24 @@ fn add_component_button<T: Inspectable + crile::Component>(
     ui: &mut egui::Ui,
     entity: &mut crile::EntityMut,
 ) {
-    if !entity.has::<T>() && ui.button(T::pretty_name()).clicked() {
+    if !entity.has::<T>() && ui.button(get_pretty_name::<T>()).clicked() {
         entity.add(T::default());
         ui.close_menu();
     }
 }
 
+fn get_pretty_name<T: 'static>() -> &'static str {
+    crile::last_type_name::<T>()
+        .split("Component")
+        .next()
+        .unwrap_or_default()
+}
+
 pub trait Inspectable {
     fn inspect(&mut self, ui: &mut egui::Ui);
-    fn pretty_name() -> &'static str;
 }
 
 impl Inspectable for crile::TransformComponent {
-    fn pretty_name() -> &'static str {
-        "Transform Component"
-    }
-
     fn inspect(&mut self, ui: &mut egui::Ui) {
         ui.label("Translation");
         crile_egui::inspect_vec3(ui, &mut self.translation);
@@ -136,27 +159,24 @@ impl Inspectable for crile::TransformComponent {
 }
 
 impl Inspectable for crile::SpriteComponent {
-    fn pretty_name() -> &'static str {
-        "Sprite Component"
-    }
-
     fn inspect(&mut self, ui: &mut egui::Ui) {
         ui.label("Color");
         crile_egui::inspect_color(ui, &mut self.color);
         ui.end_row();
 
         ui.label("Texture");
-        if ui.button("Choose file").clicked() {
-            self.texture_path.open_picker = true;
-        }
+        crile_egui::inspect_asset_path(ui, &mut self.texture_path);
+    }
+}
+
+impl Inspectable for crile::ScriptComponent {
+    fn inspect(&mut self, ui: &mut egui::Ui) {
+        ui.label("Script");
+        crile_egui::inspect_asset_path(ui, &mut self.script_path);
     }
 }
 
 impl Inspectable for crile::CameraComponent {
-    fn pretty_name() -> &'static str {
-        "Camera Component"
-    }
-
     fn inspect(&mut self, ui: &mut egui::Ui) {
         ui.label("Near");
         crile_egui::inspect_f32(ui, &mut self.near);

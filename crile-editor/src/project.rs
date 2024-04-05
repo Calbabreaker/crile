@@ -35,14 +35,9 @@ impl Project {
             .inspect_err(|err| log::error!("Failed to load {path:?}: {err}"))
             .ok()?;
 
+        // Get the actually directory itself
         path.pop();
         project.directory = path;
-        if let Some(main_scene) = &project.main_scene {
-            if main_scene.is_absolute() {
-                project.main_scene = project.make_relative(main_scene);
-                project.save();
-            }
-        }
 
         Some(project)
     }

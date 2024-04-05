@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{Color, EntityId, RefId, Texture};
+use crate::{Color, EntityId, RefId, Script, Texture};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct MetaDataComponent {
@@ -44,14 +44,6 @@ impl TransformComponent {
             self.translation,
         )
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct AssetPath {
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub path: Option<std::path::PathBuf>,
-    #[serde(skip)]
-    pub open_picker: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -129,12 +121,34 @@ impl CameraComponent {
     }
 }
 
+#[derive(Serialize, Default, Deserialize, Clone)]
+pub struct ScriptComponent {
+    #[serde(skip)]
+    pub script: Option<RefId<Script>>,
+
+    pub script_path: AssetPath,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct AssetPath {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub path: Option<std::path::PathBuf>,
+
+    #[serde(skip)]
+    pub open_picker: bool,
+}
+
 /// Calls a macro with all the components crile has excluding MetaDataComponent
 #[macro_export]
 macro_rules! with_components {
     ($macro: ident) => {{
         use $crate::*;
-        $macro!([TransformComponent, CameraComponent, SpriteComponent])
+        $macro!([
+            TransformComponent,
+            CameraComponent,
+            SpriteComponent,
+            ScriptComponent
+        ])
     }};
 }
 

@@ -2,7 +2,10 @@ use std::any::TypeId;
 
 use serde::{de::Error, Deserialize, Serialize};
 
-use crate::{with_components, Archetype, Component, EntityRef, MetaDataComponent, Scene, TypeInfo};
+use crate::{
+    last_type_name, with_components, Archetype, Component, EntityRef, MetaDataComponent, Scene,
+    TypeInfo,
+};
 
 #[derive(Default, Deserialize, Serialize)]
 struct SerializedScene {
@@ -132,9 +135,4 @@ fn deserialize_component<T: Component + for<'a> serde::Deserialize<'a>>(
             );
         }
     }
-}
-
-fn last_type_name<T: 'static>() -> &'static str {
-    let name = std::any::type_name::<T>();
-    name.split("::").last().unwrap_or(name)
 }

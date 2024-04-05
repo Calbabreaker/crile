@@ -1,13 +1,21 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct Preferences {
     pub ui_scale: f32,
+
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub last_opened_project: Option<PathBuf>,
 }
 
 impl Default for Preferences {
     fn default() -> Self {
-        Self { ui_scale: 1. }
+        Self {
+            ui_scale: 1.,
+            last_opened_project: None,
+        }
     }
 }
 

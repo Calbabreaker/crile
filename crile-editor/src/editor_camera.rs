@@ -17,10 +17,11 @@ impl EditorCamera2D {
             self.position += crile_egui::from_egui_vec(input.pointer.delta()) * speed;
         }
 
+        // Change zoom amount based on zoom so zooming close would feel the same
         let zoom_amount =
             input.smooth_scroll_delta.y * Self::ZOOM_SPEED * self.camera.orthographic_zoom;
         self.camera.orthographic_zoom =
-            f32::clamp(self.camera.orthographic_zoom + zoom_amount, 0.01, 100.0);
+            f32::clamp(self.camera.orthographic_zoom + zoom_amount, 0.001, 100.0);
     }
 
     pub fn set_viewport(&mut self, viewport_size: glam::Vec2) {

@@ -6,20 +6,6 @@ children = [2, 1]
 name = "Root"
 
 [[entities]]
-id = 1
-
-[entities.MetaDataComponent]
-children = [3]
-name = "Sprite"
-
-[entities.SpriteComponent.texture_path]
-path = "blobfish.png"
-
-[entities.TransformComponent]
-scale = [1.0, 1.0, 1.149999976158142]
-translation = [0.0, 0.0, 0.4699999988079071]
-
-[[entities]]
 id = 3
 
 [entities.MetaDataComponent]
@@ -30,6 +16,7 @@ parent = 1
 color = [0.35105618834495544, 0.35105618834495544, 0.35105618834495544, 1.0]
 
 [entities.SpriteComponent.texture_path]
+path = "blobfish.png"
 
 [entities.TransformComponent]
 scale = [1000.0, 1000.0, 1.0]
@@ -49,3 +36,20 @@ name = "Camera"
 
 [entities.TransformComponent]
 scale = [1.0, 1.0, 1.0]
+
+[[entities]]
+id = 1
+
+[entities.MetaDataComponent]
+children = [3]
+name = "Sprite"
+
+[entities.ScriptComponent.script_path]
+path = "script.luau"
+
+[entities.SpriteComponent.texture_path]
+path = "blobfish.png"
+
+[entities.TransformComponent]
+scale = [1.0, 1.0, 1.149999976158142]
+translation = [0.0, 0.0, 0.4699999988079071]
