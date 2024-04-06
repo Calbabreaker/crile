@@ -41,10 +41,13 @@ impl crile::Application for CrileEditorApp {
                 egui::Window::new("Preferences")
                     .default_pos(ctx.screen_rect().size().to_pos2() / 2.)
                     .open(&mut open)
+                    .resizable(false)
                     .show(&ctx, |ui| {
-                        if self.state.preferences.show(ui) {
-                            self.apply_preferences(engine);
-                        }
+                        egui::Resize::default().with_stroke(false).show(ui, |ui| {
+                            if self.state.preferences.show(ui) {
+                                self.apply_preferences(engine);
+                            }
+                        });
                     });
             }
             WindowKind::None => (),
@@ -78,7 +81,11 @@ impl crile::Application for CrileEditorApp {
                 // TODO: have seperate game and editor view
                 if let Some(response) = self.state.editor_view.show(ui) {
                     if response.hovered() && self.state.scene_state == SceneState::Editing {
-                        ui.input(|i| self.state.editor_camera.process_input(i));
+                        ui.input(|i| {
+                            self.state
+                                .editor_camera
+                                .process_input(i, &self.state.preferences)
+                        });
                     }
                 }
             });
@@ -92,10 +99,11 @@ impl crile::Application for CrileEditorApp {
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
+        // First render onto the viewport texture
         if let Some(mut render_pass) = self.state.editor_view.get_render_pass(engine) {
-            let size = self.state.editor_view.size;
-            self.state.scene.set_viewport(self.state.editor_view.size);
-            self.state.editor_camera.set_viewport(size.as_vec2());
+            let viewport_size = self.state.editor_view.size.as_vec2();
+            self.state.scene.set_viewport(viewport_size);
+            self.state.editor_camera.set_viewport(viewport_size);
 
             if self.state.scene_state == SceneState::Editing {
                 self.state

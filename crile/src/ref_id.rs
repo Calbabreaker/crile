@@ -1,7 +1,7 @@
 use std::{rc::Rc, sync::atomic::AtomicU64};
 
 /// Wraps the object T in an reference counted smart pointer with a unique id
-/// Allows keeping unique objects and useful for hashing and comparing T
+/// Allows keeping unique objects and useful for hashing and comparing T based on id
 #[derive(Debug)]
 pub struct RefId<T: ?Sized> {
     pub object: Rc<T>,

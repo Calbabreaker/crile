@@ -33,8 +33,8 @@ pub type NoHashHashMap<K, V> =
 
 // File system utilities
 pub fn get_data_path() -> Option<std::path::PathBuf> {
-    let mut config_path = dirs::data_dir()?;
-    config_path.push("Crile");
+    let config_path = dirs::data_dir()?.join("Crile");
+
     if !config_path.is_dir() {
         std::fs::create_dir_all(&config_path)
             .inspect_err(|err| log::error!("Failed to create {config_path:?}: {err}"))
@@ -52,7 +52,7 @@ pub fn write_file(path: &std::path::Path, str: &str) -> Option<()> {
 }
 
 pub fn read_file(path: &std::path::Path) -> Option<String> {
-    log::trace!("Reading from {path:?}");
+    log::trace!("Loading from {path:?}");
     std::fs::read_to_string(path)
         .inspect_err(|err| log::error!("Failed to load {path:?}: {err}"))
         .ok()

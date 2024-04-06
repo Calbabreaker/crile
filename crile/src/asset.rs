@@ -5,7 +5,7 @@ use crate::{Engine, RefId, Script, Texture};
 type AssetMap<A> = hashbrown::HashMap<PathBuf, RefId<A>>;
 
 pub trait Asset {
-    const PICKER_NAME: &'static str;
+    const PRETTY_NAME: &'static str;
     const FILE_EXTENSIONS: &'static [&'static str];
 
     fn load(engine: &Engine, path: &Path) -> Option<Self>
@@ -17,13 +17,15 @@ pub trait Asset {
 }
 
 impl Asset for Texture {
-    const PICKER_NAME: &'static str = "Image";
+    const PRETTY_NAME: &'static str = "Image";
     const FILE_EXTENSIONS: &'static [&'static str] = &["png", "jpeg", "jpg"];
 
     fn load(engine: &Engine, path: &Path) -> Option<Self> {
+        log::trace!("Loading from {path:?}");
         let image = image::open(path)
             .inspect_err(|err| log::error!("Failed to load image {err}"))
             .ok()?;
+
         let texture = Texture::from_image(&engine.gfx.wgpu, image);
         Some(texture)
     }
@@ -34,7 +36,7 @@ impl Asset for Texture {
 }
 
 impl Asset for Script {
-    const PICKER_NAME: &'static str = "Lua Script";
+    const PRETTY_NAME: &'static str = "Lua Script";
     const FILE_EXTENSIONS: &'static [&'static str] = &["lua", "luau"];
 
     fn load(engine: &Engine, path: &Path) -> Option<Self> {
@@ -53,13 +55,12 @@ pub struct AssetManager {
 }
 
 impl AssetManager {
-    pub fn load<A: Asset>(&mut self, engine: &Engine, path: &Path) -> Option<RefId<A>> {
+    pub(crate) fn load<A: Asset>(&mut self, engine: &Engine, path: &Path) -> Option<RefId<A>> {
         let map = A::get_map(self);
         if let Some(asset) = map.get(path) {
             return Some(asset.clone());
         }
 
-        log::info!("Loading {path:?}");
         let asset = RefId::new(A::load(engine, path)?);
         map.insert(path.to_path_buf(), asset.clone());
         Some(asset)

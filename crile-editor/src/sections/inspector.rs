@@ -40,14 +40,14 @@ pub fn update_assets(state: &mut EditorState, engine: &mut crile::Engine) {
     }
 }
 
-fn update_asset<A: crile::Asset>(
-    asset: &mut Option<crile::RefId<A>>,
+fn update_asset<Asset: crile::Asset>(
+    asset: &mut Option<crile::RefId<Asset>>,
     asset_path: &mut AssetPath,
     engine: &mut crile::Engine,
     project: &Project,
 ) {
     if asset_path.open_picker {
-        asset_path.path = project.pick_file_relative(A::PICKER_NAME, A::FILE_EXTENSIONS);
+        asset_path.path = project.pick_file_relative(Asset::PRETTY_NAME, Asset::FILE_EXTENSIONS);
         *asset = None;
         asset_path.open_picker = false;
     }
@@ -75,6 +75,7 @@ fn inspect_entity(ui: &mut egui::Ui, entity: &mut crile::EntityMut) {
 
     crile::with_components!(inspect_components);
 
+    ui.reset_style();
     ui.separator();
 
     ui.vertical_centered(|ui| {
@@ -96,20 +97,16 @@ fn inspect_component<T: Inspectable + crile::Component>(
 ) {
     if let Some(component) = entity.get::<T>() {
         let pretty_name = get_pretty_name::<T>();
-        // TODO: figure out how to make header fill available width
         ui.visuals_mut().collapsing_header_frame = true;
+        ui.visuals_mut().widgets.noninteractive.bg_stroke.width = 0.;
+
         let response = egui::CollapsingHeader::new(pretty_name)
             .default_open(true)
-            .show_unindented(ui, |ui| {
-                ui.visuals_mut().widgets.noninteractive.bg_stroke.width = 0.;
-                ui.spacing_mut().indent = 8.;
-
-                ui.indent(pretty_name, |ui| {
-                    egui::Grid::new(pretty_name)
-                        .num_columns(2)
-                        .spacing([30.0, 4.0])
-                        .show(ui, |ui| component.inspect(ui));
-                });
+            .show(ui, |ui| {
+                egui::Grid::new(pretty_name)
+                    .num_columns(2)
+                    .spacing([30.0, 4.0])
+                    .show(ui, |ui| component.inspect(ui));
             });
 
         response.header_response.context_menu(move |ui| {

@@ -35,7 +35,7 @@ impl Project {
             .inspect_err(|err| log::error!("Failed to load {path:?}: {err}"))
             .ok()?;
 
-        // Get the actually directory itself
+        // Get the actual directory itself
         path.pop();
         project.directory = path;
 

@@ -4,9 +4,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct Preferences {
+    #[serde(default)]
     pub ui_scale: f32,
 
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(default)]
+    pub zoom_speed: f32,
+
+    #[serde(default)]
     pub last_opened_project: Option<PathBuf>,
 }
 
@@ -15,6 +19,7 @@ impl Default for Preferences {
         Self {
             ui_scale: 1.,
             last_opened_project: None,
+            zoom_speed: 2.,
         }
     }
 }
@@ -30,14 +35,15 @@ impl Preferences {
                 ui.label("Ui scale");
                 ui.add(egui::Slider::new(&mut self.ui_scale, 0.5..=2.0).step_by(0.01));
                 ui.end_row();
+
+                ui.label("Zoom speed");
+                ui.add(egui::Slider::new(&mut self.zoom_speed, 0.5..=4.));
+                ui.end_row();
             });
 
         ui.add_space(5.);
         if ui.button("Apply").clicked() {
-            if self.save().is_none() {
-                log::error!("Failed to save preferences");
-            }
-
+            self.save();
             return true;
         }
 
@@ -45,20 +51,19 @@ impl Preferences {
     }
 
     pub fn save(&self) -> Option<()> {
-        let mut data_path = crile::get_data_path()?;
-        data_path.push("preferences.toml");
-
         let data = toml::to_string(self).ok()?;
-        crile::write_file(&data_path, &data)
+        crile::write_file(&Self::file_path()?, &data)
     }
 
     pub fn load() -> Option<Self> {
-        let mut data_path = crile::get_data_path()?;
-        data_path.push("preferences.toml");
-
-        let source = crile::read_file(&data_path)?;
+        let file_path = Self::file_path()?;
+        let source = crile::read_file(&file_path)?;
         toml::from_str(&source)
-            .inspect_err(|err| log::error!("Failed to load {data_path:?}: {err}"))
+            .inspect_err(|err| log::error!("Failed to load {file_path:?}: {err}"))
             .ok()?
+    }
+
+    fn file_path() -> Option<PathBuf> {
+        crile::get_data_path().map(|path| path.join("preferences.toml"))
     }
 }

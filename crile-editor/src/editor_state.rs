@@ -58,7 +58,7 @@ impl Default for EditorState {
 
 impl EditorState {
     pub fn play_scene(&mut self, engine: &mut crile::Engine) {
-        log::info!("Playing scene...");
+        log::trace!("Playing scene...");
         self.backup_scene = Some(self.scene.clone());
 
         self.scene.start_runtime(engine);
@@ -70,7 +70,7 @@ impl EditorState {
             return;
         }
 
-        log::info!("Stopping scene...");
+        log::trace!("Stopping scene...");
         self.scene.stop_runtime(engine);
         self.scene = self.backup_scene.take().expect("Backup scene not found");
         self.scene_state = SceneState::Editing;
