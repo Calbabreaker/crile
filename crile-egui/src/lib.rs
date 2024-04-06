@@ -1,4 +1,5 @@
 mod egui_context;
+mod egui_renderer;
 mod inspect;
 
 pub use egui_context::*;

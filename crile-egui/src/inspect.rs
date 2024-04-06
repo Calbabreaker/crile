@@ -36,7 +36,7 @@ pub fn inspect_asset_path(ui: &mut egui::Ui, asset_path: &mut crile::AssetPath) 
         .unwrap_or("Choose file");
 
     if ui
-        .add_sized(ui.available_size(), egui::Button::new(text))
+        .add_sized(ui.available_size(), egui::Button::new(text).small())
         .clicked()
     {
         asset_path.open_picker = true;

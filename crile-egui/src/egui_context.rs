@@ -1,19 +1,9 @@
-use crate::to_egui_pos;
-
-#[derive(Debug)]
-struct PaintJob {
-    texture_id: egui::TextureId,
-    index_alloc: crile::BufferAllocation,
-    vertex_alloc: crile::BufferAllocation,
-    index_count: u32,
-    rect: crile::Rect,
-}
+use crate::{egui_renderer::EguiRenderer, to_egui_pos};
 
 pub struct EguiContext {
     ctx: Option<egui::Context>,
     raw_input: egui::RawInput,
-    paint_jobs: Vec<PaintJob>,
-    textures: hashbrown::HashMap<egui::TextureId, crile::RefId<crile::Texture>>,
+    renderer: EguiRenderer,
     /// Used to scale the ui by the factor
     scale_factor: f32,
     /// Scale factor of the window so the user requested scale factor would be propertional to it
@@ -30,8 +20,7 @@ impl EguiContext {
                 max_texture_side: Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize),
                 ..Default::default()
             },
-            textures: hashbrown::HashMap::new(),
-            paint_jobs: Vec::new(),
+            renderer: EguiRenderer::default(),
         };
 
         egui.set_ui_scale(1., engine.window.size());
@@ -40,8 +29,6 @@ impl EguiContext {
 
     #[must_use]
     pub fn begin_frame(&mut self, engine: &mut crile::Engine) -> egui::Context {
-        self.paint_jobs.clear();
-
         self.raw_input.time = Some(engine.time.since_start() as f64);
         let modifiers = to_egui_modifiers(engine.input.key_modifiers());
         if modifiers.command {
@@ -66,123 +53,24 @@ impl EguiContext {
     }
 
     pub fn end_frame(&mut self, engine: &mut crile::Engine, ctx: egui::Context) {
-        let mut full_output = ctx.end_frame();
-        let copied_text = full_output.platform_output.copied_text;
+        let full_output = ctx.end_frame();
+        let copied_text = &full_output.platform_output.copied_text;
         if !copied_text.is_empty() {
-            engine.set_clipboard(copied_text);
+            engine.set_clipboard(copied_text.clone());
         }
 
-        let icon = to_engine_cursor_icon(full_output.platform_output.cursor_icon);
-        engine.window.set_cursor_icon(icon);
+        engine.window.set_cursor_icon(to_crile_cursor_icon(
+            full_output.platform_output.cursor_icon,
+        ));
 
-        let wgpu = &engine.gfx.wgpu;
-
-        // Store all the texture egui is using
-        while let Some((id, delta)) = full_output.textures_delta.set.pop() {
-            let (pixels, width, height) = match &delta.image {
-                egui::ImageData::Color(image) => {
-                    let pixels = image
-                        .pixels
-                        .iter()
-                        .flat_map(|pixel| pixel.to_array())
-                        .collect::<Vec<_>>();
-                    (pixels, image.width(), image.height())
-                }
-                egui::ImageData::Font(image) => {
-                    let pixels = image
-                        .srgba_pixels(None)
-                        .flat_map(|pixel| pixel.to_array())
-                        .collect::<Vec<_>>();
-                    (pixels, image.width(), image.height())
-                }
-            };
-
-            let size = glam::uvec2(width as u32, height as u32);
-
-            if let Some(pos) = delta.pos {
-                // Update the existing texture
-                let texture = &self.textures[&id];
-                let origin = glam::uvec2(pos[0] as u32, pos[1] as u32);
-                texture.write_data(wgpu, origin, size, &pixels);
-            } else {
-                // Create new texture
-                let texture = crile::Texture::from_pixels(wgpu, size, &pixels);
-                self.textures.insert(id, texture.into());
-            }
-        }
-
-        while let Some(id) = full_output.textures_delta.free.pop() {
-            self.textures.remove(&id);
-        }
-
-        // Get all the paint jobs
-        let clipped_primitives = ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
-        for egui::ClippedPrimitive {
-            primitive,
-            clip_rect,
-        } in clipped_primitives
-        {
-            match primitive {
-                egui::epaint::Primitive::Mesh(mesh) => {
-                    let vertices = mesh
-                        .vertices
-                        .iter()
-                        .map(|v| crile::MeshVertex {
-                            position: [v.pos.x, v.pos.y],
-                            texture_coords: [v.uv.x, v.uv.y],
-                            color: egui::Rgba::from(v.color).to_array(),
-                        })
-                        .collect::<Vec<_>>();
-
-                    let rect = crile::Rect {
-                        x: clip_rect.min.x,
-                        y: clip_rect.min.y,
-                        w: (clip_rect.max.x - clip_rect.min.x),
-                        h: (clip_rect.max.y - clip_rect.min.y),
-                    };
-
-                    self.paint_jobs.push(PaintJob {
-                        texture_id: mesh.texture_id,
-                        vertex_alloc: engine
-                            .gfx
-                            .caches
-                            .vertex_buffer_allocator
-                            .alloc_write(wgpu, &vertices),
-                        index_alloc: engine
-                            .gfx
-                            .caches
-                            .index_buffer_allocator
-                            .alloc_write(wgpu, &mesh.indices),
-                        index_count: mesh.indices.len() as u32,
-                        rect: rect * self.scale_factor,
-                    })
-                }
-                egui::epaint::Primitive::Callback(_) => unimplemented!(),
-            }
-        }
+        self.renderer.prepare(engine, &ctx, full_output);
 
         self.raw_input.events.clear();
         self.ctx = Some(ctx)
     }
 
     pub fn render<'a>(&'a mut self, render_pass: &mut crile::RenderPass<'a>) {
-        render_pass.set_shader(render_pass.data.single_draw_shader.clone());
-        render_pass.set_uniform(crile::DrawUniform {
-            transform: render_pass.target_rect().matrix()
-                * glam::Mat4::from_scale(glam::Vec3::splat(self.scale_factor)),
-        });
-
-        for job in &self.paint_jobs {
-            render_pass.set_scissor_rect(job.rect);
-            render_pass.set_texture(&self.textures[&job.texture_id]);
-            render_pass.draw_mesh_single(crile::MeshView::new(
-                job.vertex_alloc.as_slice(),
-                job.index_alloc.as_slice(),
-                job.index_count,
-            ));
-        }
-
-        render_pass.reset_scissor_rect();
+        self.renderer.render(render_pass, self.scale_factor);
     }
 
     pub fn process_event(&mut self, engine: &crile::Engine, event: &crile::EventKind) {
@@ -258,13 +146,13 @@ impl EguiContext {
 
     pub fn register_texture(&mut self, texture: &crile::RefId<crile::Texture>) -> egui::TextureId {
         let id = egui::TextureId::User(texture.id());
-        self.textures.insert(id, texture.clone());
+        self.renderer.textures.insert(id, texture.clone());
         id
     }
 
     pub fn unregister_texture(&mut self, texture: &crile::RefId<crile::Texture>) {
         let id = egui::TextureId::User(texture.id());
-        self.textures.remove(&id);
+        self.renderer.textures.remove(&id);
     }
 
     fn push_event(&mut self, event: egui::Event) {
@@ -328,7 +216,7 @@ fn to_egui_key(keycode: crile::KeyCode) -> Option<egui::Key> {
     })
 }
 
-fn to_engine_cursor_icon(icon: egui::CursorIcon) -> Option<crile::CursorIcon> {
+fn to_crile_cursor_icon(icon: egui::CursorIcon) -> Option<crile::CursorIcon> {
     Some(match icon {
         egui::CursorIcon::Default => crile::CursorIcon::Default,
         egui::CursorIcon::None => return None,

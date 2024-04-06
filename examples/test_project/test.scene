@@ -13,7 +13,7 @@ name = "Empty"
 parent = 1
 
 [entities.SpriteComponent]
-color = [0.35105618834495544, 0.35105618834495544, 0.35105618834495544, 1.0]
+color = [0.41861340403556824, 0.41861340403556824, 0.41861340403556824, 1.0]
 
 [entities.SpriteComponent.texture_path]
 path = "blobfish.png"
@@ -21,21 +21,6 @@ path = "blobfish.png"
 [entities.TransformComponent]
 scale = [1000.0, 1000.0, 1.0]
 translation = [-37.650001525878906, 0.0, -0.27000001072883606]
-
-[[entities]]
-id = 2
-
-[entities.CameraComponent]
-far = 1.0
-near = -1.0
-orthographic_zoom = 1.0
-perspective_fov = 45.0
-
-[entities.MetaDataComponent]
-name = "Camera"
-
-[entities.TransformComponent]
-scale = [1.0, 1.0, 1.0]
 
 [[entities]]
 id = 1
@@ -53,3 +38,21 @@ path = "blobfish.png"
 [entities.TransformComponent]
 scale = [1.0, 1.0, 1.149999976158142]
 translation = [0.0, 0.0, 0.4699999988079071]
+
+[[entities]]
+id = 2
+
+[entities.CameraComponent]
+far = 1.0
+near = -1.0
+orthographic_zoom = 1.0
+perspective_fov = 45.0
+
+[entities.MetaDataComponent]
+name = "Camera"
+
+[entities.ScriptComponent.script_path]
+path = "script.luau"
+
+[entities.TransformComponent]
+scale = [1.0, 1.0, 1.0]
