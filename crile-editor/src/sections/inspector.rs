@@ -103,6 +103,7 @@ fn inspect_component<T: Inspectable + crile::Component>(
         let response = egui::CollapsingHeader::new(pretty_name)
             .default_open(true)
             .show(ui, |ui| {
+                // TODO: figure out how to align all component drop downs the same
                 egui::Grid::new(pretty_name)
                     .num_columns(2)
                     .spacing([30.0, 4.0])

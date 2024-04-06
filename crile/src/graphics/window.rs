@@ -82,12 +82,6 @@ pub struct WindowViewport {
 }
 
 impl WindowViewport {
-    pub fn new_surface(wgpu: &WGPUContext, winit: Arc<winit::window::Window>) -> wgpu::Surface {
-        wgpu.instance
-            .create_surface(winit.clone())
-            .expect("Failed to create surface!")
-    }
-
     pub fn new(wgpu: &WGPUContext, winit: Arc<winit::window::Window>) -> Self {
         let size = winit.inner_size();
         let surface = wgpu

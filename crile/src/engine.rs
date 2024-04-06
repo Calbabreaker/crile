@@ -88,7 +88,7 @@ impl Engine {
     }
 }
 
-pub fn run_app<A: Application>() -> Result<(), winit::error::EventLoopError> {
+pub fn run_app<App: Application>() -> Result<(), winit::error::EventLoopError> {
     env_logger::builder()
         .filter_module("crile", log::LevelFilter::Trace)
         .filter_level(log::LevelFilter::Warn)
@@ -97,7 +97,7 @@ pub fn run_app<A: Application>() -> Result<(), winit::error::EventLoopError> {
     let event_loop = winit::event_loop::EventLoop::new()?;
 
     let mut engine = Engine::new(&event_loop);
-    let mut app = A::new(&mut engine);
+    let mut app = App::new(&mut engine);
 
     event_loop.run(move |event, elwt| {
         if let Some(event) = crate::events::convert_event(event) {

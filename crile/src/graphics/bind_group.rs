@@ -14,8 +14,8 @@ impl BindGroupLayoutBuilder {
     pub fn new() -> Self {
         unsafe {
             Self {
-                // Need to start uninitialized the number used could be less than MAX_SIZE
-                // Should be safe since we only get entries up to the length
+                // Need to use uninitialized array as we're using a stack allocated array and the length needs to vary
+                // Should be safe since we only get entries up to self.length
                 entries: [MaybeUninit::zeroed().assume_init(); MAX_SIZE],
                 length: 0,
             }
