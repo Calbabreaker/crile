@@ -99,7 +99,7 @@ impl crile::Application for CrileEditorApp {
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
-        // First render onto the viewport texture
+        // First render onto the viewport texture which will be put in an egui panel
         if let Some(mut render_pass) = self.state.editor_view.get_render_pass(engine) {
             let viewport_size = self.state.editor_view.size.as_vec2();
             self.state.scene.set_viewport(viewport_size);
@@ -115,8 +115,7 @@ impl crile::Application for CrileEditorApp {
         }
 
         // Now render onto the window
-        let mut render_pass =
-            crile::RenderPass::new(&mut engine.gfx, Some(crile::Color::BLACK), None, None);
+        let mut render_pass = crile::RenderPass::new(&mut engine.gfx, None, None, None);
         self.egui.render(&mut render_pass);
     }
 

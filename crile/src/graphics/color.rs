@@ -1,7 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 
-/// Color with rgba values from 0 to 1 in SRGB color space
+/// Color with RGBA values from 0 to 1 in SRGB color space
 #[repr(C)]
 #[derive(PartialEq, Copy, Clone, Debug, Pod, Zeroable, Serialize, Deserialize)]
 pub struct Color(pub [f32; 4]);
@@ -40,7 +40,7 @@ impl Color {
         ])
     }
 
-    /// Converts a hexidecimal number rgb or rgba to a color struct.
+    /// Converts a hexidecimal number RGB or RGBA into the Color
     pub fn from_hex(hex: u32) -> Self {
         if hex <= 0xffffff {
             Color::from_srgba(

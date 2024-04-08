@@ -7,11 +7,11 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+    pub const fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
         Self { x, y, w, h }
     }
 
-    pub fn from_pos_size(pos: glam::Vec2, size: glam::Vec2) -> Self {
+    pub const fn from_pos_size(pos: glam::Vec2, size: glam::Vec2) -> Self {
         Self {
             x: pos.x,
             y: pos.y,
@@ -38,7 +38,7 @@ impl Rect {
         )
     }
 
-    pub fn left(&self) -> f32 {
+    pub const fn left(&self) -> f32 {
         self.x
     }
 
@@ -46,7 +46,7 @@ impl Rect {
         self.x + self.w
     }
 
-    pub fn top(&self) -> f32 {
+    pub const fn top(&self) -> f32 {
         self.y
     }
 

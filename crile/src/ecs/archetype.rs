@@ -191,23 +191,20 @@ impl ComponentArray {
         let size = self.type_info.layout.size();
 
         // We need to allocate new space manually since we don't have access the component type here
-        let new_ptr = std::alloc::alloc(std::alloc::Layout::from_size_align_unchecked(
+        let new_ptr = std::alloc::realloc(
+            self.ptr,
+            std::alloc::Layout::from_size_align_unchecked(
+                size * old_capacity,
+                self.type_info.layout.align(),
+            ),
             size * new_capacity,
-            self.type_info.layout.align(),
-        ));
+        );
 
-        if old_capacity > 0 {
+        if count > 0 {
             std::ptr::copy_nonoverlapping(self.ptr, new_ptr, count * size);
-            std::alloc::dealloc(
-                self.ptr.cast(),
-                std::alloc::Layout::from_size_align_unchecked(
-                    self.type_info.layout.size() * old_capacity,
-                    self.type_info.layout.align(),
-                ),
-            );
         }
 
-        self.ptr = new_ptr.cast();
+        self.ptr = new_ptr;
     }
 
     // Removes a entity component by swapping with the last element for a O(1) operation
@@ -222,7 +219,7 @@ impl ComponentArray {
     }
 
     unsafe fn clean(&mut self, count: usize, capacity: usize) {
-        // Call the destructer on the components
+        // Call the destructor on the components
         for i in 0..count {
             self.drop_component(i);
         }

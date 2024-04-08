@@ -4,6 +4,9 @@ pub struct SceneApp {
     scene: crile::Scene,
 }
 
+#[derive(Clone, Default, Debug)]
+struct TestComponent;
+
 impl crile::Application for SceneApp {
     fn new(engine: &mut crile::Engine) -> Self {
         let mut scene = crile::Scene::default();
@@ -21,7 +24,10 @@ impl crile::Application for SceneApp {
             },
         ));
 
-        scene.set_viewport(engine.window.size());
+        let id = scene.world.spawn((TestComponent,));
+        let component = scene.world.get::<TestComponent>(id);
+
+        scene.set_viewport(engine.window.size().as_vec2());
         Self { scene }
     }
 
@@ -36,7 +42,7 @@ impl crile::Application for SceneApp {
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
         match event.kind {
             crile::EventKind::WindowClose => engine.request_exit(),
-            crile::EventKind::WindowResize { size } => self.scene.set_viewport(size),
+            crile::EventKind::WindowResize { size } => self.scene.set_viewport(size.as_vec2()),
             _ => (),
         }
     }
