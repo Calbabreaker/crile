@@ -44,7 +44,7 @@ impl World {
         });
     }
 
-    /// Spawns a entity with component by directly dropping into archetype
+    /// Spawns a entity with component by directly putting into archetype
     /// take_func expects a closure that will call archetype.put_component with the provided entity index
     pub fn spawn_raw(
         &mut self,

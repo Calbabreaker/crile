@@ -49,13 +49,8 @@ impl Archetype {
     }
 
     /// # Safety
-    /// - Component real pointer type must match id
-    pub(crate) unsafe fn put_component(
-        &mut self,
-        index: usize,
-        component_ptr: *const u8,
-        id: TypeId,
-    ) {
+    /// - Component pointer's real type must match the type id
+    pub unsafe fn put_component(&mut self, index: usize, component_ptr: *const u8, id: TypeId) {
         assert!(index < self.count);
 
         let array = self
@@ -164,7 +159,7 @@ impl Clone for Archetype {
             .component_arrays
             .iter()
             .map(|array| unsafe { array.clone(self.count, self.entities.len()) })
-            .collect::<Box<_>>();
+            .collect();
 
         Self {
             count: self.count,
@@ -243,7 +238,8 @@ impl ComponentArray {
 
         for i in 0..count {
             // Call clone on each component
-            (self.type_info.clone_to)(self.ptr.add(size * i), new_ptr.add(size * i));
+            let offset = size * i;
+            (self.type_info.clone_to)(self.ptr.add(offset), new_ptr.add(offset));
         }
 
         Self {

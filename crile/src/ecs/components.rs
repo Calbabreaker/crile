@@ -3,26 +3,28 @@ use serde::{Deserialize, Serialize};
 use crate::{Color, EntityId, RefId, Script, Texture};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[serde(default)]
 pub struct MetaDataComponent {
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub name: String,
 
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<EntityId>,
 
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub parent: EntityId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(default)]
 pub struct TransformComponent {
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub translation: glam::Vec3,
 
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub rotation: glam::Vec3,
 
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub scale: glam::Vec3,
 }
 
@@ -47,8 +49,9 @@ impl TransformComponent {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[serde(default)]
 pub struct SpriteComponent {
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub color: Color,
     #[serde(skip)]
     pub texture: Option<RefId<Texture>>,
@@ -63,24 +66,25 @@ pub enum ProjectionKind {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct CameraComponent {
     #[serde(skip)]
     pub viewport_size: glam::Vec2,
 
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub near: f32,
 
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub far: f32,
 
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub orthographic_zoom: f32,
 
     /// Vertical field-of-view of the camera
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub perspective_fov: f32,
 
-    #[serde(skip_serializing_if = "default", default)]
+    #[serde(skip_serializing_if = "default")]
     pub projection: ProjectionKind,
 }
 
@@ -125,13 +129,13 @@ impl CameraComponent {
 pub struct ScriptComponent {
     #[serde(skip)]
     pub script: Option<RefId<Script>>,
-
     pub script_path: AssetPath,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[serde(default)]
 pub struct AssetPath {
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<std::path::PathBuf>,
 
     #[serde(skip)]

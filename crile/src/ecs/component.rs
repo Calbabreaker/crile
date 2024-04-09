@@ -1,4 +1,4 @@
-use std::{alloc::Layout, any::TypeId};
+use std::{alloc::Layout, any::TypeId, mem::ManuallyDrop};
 
 use super::Archetype;
 
@@ -16,7 +16,8 @@ impl TypeInfo {
     pub fn of<T: Component>() -> Self {
         Self {
             clone_to: |src, dst| unsafe {
-                let mut cloned = std::mem::ManuallyDrop::new((*src.cast::<T>()).clone());
+                // Call the clone funciton on T and copy T to dst
+                let mut cloned = ManuallyDrop::new((*src.cast::<T>()).clone());
                 let cloned_ptr = &mut *cloned as *mut T as *mut u8;
                 std::ptr::copy_nonoverlapping(cloned_ptr, dst, Layout::new::<T>().size());
             },
@@ -63,6 +64,7 @@ impl std::hash::Hash for TypeInfo {
 }
 
 /// Represents a usable component type
+/// Shorthand for 'static + Clone + Default
 pub trait Component: 'static + Clone + Default {}
 impl<T: 'static + Clone + Default> Component for T {}
 
@@ -105,7 +107,6 @@ pub trait ComponentTuple {
 
 /// Counts the number of identifiers as input
 /// Useful for counting macro repetition
-/// https://danielkeep.github.io/tlborm/book/blk-counting.html
 macro_rules! count_idents {
     ($($idents:ident),*) => {
         {

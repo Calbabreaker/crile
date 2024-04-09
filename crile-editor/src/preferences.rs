@@ -3,14 +3,10 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
+#[serde(default)]
 pub struct Preferences {
-    #[serde(default)]
     pub ui_scale: f32,
-
-    #[serde(default)]
     pub zoom_speed: f32,
-
-    #[serde(default)]
     pub last_opened_project: Option<PathBuf>,
 }
 
