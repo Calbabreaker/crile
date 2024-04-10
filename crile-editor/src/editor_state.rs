@@ -61,8 +61,11 @@ impl EditorState {
         log::trace!("Playing scene...");
         self.backup_scene = Some(self.scene.clone());
 
-        self.scene.start_runtime(engine);
         self.scene_state = SceneState::Running;
+        if let Err(err) = self.scene.start_runtime(engine) {
+            log::error!("{err}");
+            self.stop_scene(engine);
+        }
     }
 
     pub fn stop_scene(&mut self, engine: &mut crile::Engine) {

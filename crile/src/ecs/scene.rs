@@ -43,32 +43,32 @@ impl Scene {
         }
     }
 
-    pub fn start_runtime(&mut self, engine: &mut Engine) {
+    pub fn start_runtime(&mut self, engine: &mut Engine) -> mlua::Result<()> {
+        engine.scripting.setup()?;
+
         for (id, (script,)) in self.world.query_mut::<(ScriptComponent,)>() {
             if let Some(script) = &script.script {
-                engine
-                    .scripting
-                    .create_instance(id, script)
-                    .inspect_err(|err| log::error!("{err}"))
-                    .ok();
+                engine.scripting.run(id, script)?;
             }
         }
 
         self.running = true;
+        Ok(())
     }
 
-    pub fn update_runtime(&mut self, engine: &mut Engine) {
-        for (id, _) in self.world.query_mut::<(ScriptComponent,)>() {
-            engine
-                .scripting
-                .update_instance(id)
-                .inspect_err(|err| log::error!("{err}"))
-                .ok();
-        }
+    pub fn update_runtime(&mut self, engine: &mut Engine) -> mlua::Result<()> {
+        // for (id, _) in self.world.query_mut::<(ScriptComponent,)>() {
+        //     engine
+        //         .scripting
+        //         .update_instance(id)
+        //         .inspect_err(|err| log::error!("{err}"))
+        //         .ok();
+        // }
+        //
+        engine.scripting.call_signal("MainEvents.Update", ())
     }
 
     pub fn stop_runtime(&mut self, engine: &mut Engine) {
-        engine.scripting.clear();
         self.running = false;
     }
 

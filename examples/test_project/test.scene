@@ -51,8 +51,5 @@ perspective_fov = 45.0
 [entities.MetaDataComponent]
 name = "Camera"
 
-[entities.ScriptComponent.script_path]
-path = "script.luau"
-
 [entities.TransformComponent]
 scale = [1.0, 1.0, 1.0]

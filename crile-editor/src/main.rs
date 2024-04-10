@@ -94,7 +94,10 @@ impl crile::Application for CrileEditorApp {
 
         sections::inspector::update_assets(&mut self.state, engine);
         if self.state.scene_state == SceneState::Running {
-            self.state.scene.update_runtime(engine);
+            if let Err(err) = self.state.scene.update_runtime(engine) {
+                log::error!("{err}");
+                self.state.stop_scene(engine);
+            }
         }
     }
 

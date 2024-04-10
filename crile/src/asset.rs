@@ -41,6 +41,9 @@ impl Asset for Script {
 
     fn load(engine: &Engine, path: &Path) -> Option<Self> {
         Some(engine.scripting.compile(&crate::read_file(path)?))
+        // Some(Script {
+        //     source: crate::read_file(path)?,
+        // })
     }
 
     fn get_map(manager: &mut AssetManager) -> &mut AssetMap<Self> {
