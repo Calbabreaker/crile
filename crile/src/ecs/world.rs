@@ -108,7 +108,7 @@ impl World {
     pub fn get<T: 'static>(&self, id: EntityId) -> Option<&mut T> {
         let location = self.location(id)?;
         let archetype = &self.archetypes[location.archetype_index];
-        archetype.borrow_component(location.entity_index)
+        unsafe { archetype.borrow_component(location.entity_index) }
     }
 
     fn location(&self, id: EntityId) -> Option<EntityLocation> {
@@ -148,8 +148,8 @@ impl<'a> EntityRef<'a> {
         }
     }
 
-    pub fn get<T: Component>(&self) -> Option<&mut T> {
-        self.archetype.borrow_component(self.location.entity_index)
+    pub fn get<T: Component>(&'a self) -> Option<&'a mut T> {
+        unsafe { self.archetype.borrow_component(self.location.entity_index) }
     }
 
     pub fn has<T: Component>(&self) -> bool {
@@ -163,7 +163,7 @@ impl<'a> EntityRef<'a> {
 
 // Same as entity ref but with add and remove component functions
 pub struct EntityMut<'a> {
-    archetype: &'a Archetype,
+    archetype: &'a mut Archetype,
     location: EntityLocation,
     id: EntityId,
     world: &'a mut World,
@@ -174,7 +174,7 @@ impl<'a> EntityMut<'a> {
         // Safety:
         // This archetype reference is never accessed after world is modified so it is safe to use
         let archetype = unsafe {
-            &(*(world as *const World)).archetypes[location.archetype_index]
+            &mut (*(world as *mut World)).archetypes[location.archetype_index]
             //
         };
 
@@ -186,8 +186,8 @@ impl<'a> EntityMut<'a> {
         }
     }
 
-    pub fn get<T: Component>(&self) -> Option<&mut T> {
-        self.archetype.borrow_component(self.location.entity_index)
+    pub fn get<T: Component>(&'a self) -> Option<&'a mut T> {
+        unsafe { self.archetype.borrow_component(self.location.entity_index) }
     }
 
     pub fn has<T: Component>(&self) -> bool {
@@ -286,7 +286,7 @@ impl<'a> EntityMut<'a> {
         self.world.entity_locations[moved_id].entity_index = self.location.entity_index;
 
         // Set the new archetype and location
-        self.archetype = unsafe { &*(target_arch as *const Archetype) };
+        self.archetype = unsafe { &mut *(target_arch as *mut Archetype) };
         self.location.entity_index = target_index;
         self.location.archetype_index = target_arch_index;
         self.world.entity_locations[self.id] = self.location;

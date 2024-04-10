@@ -60,12 +60,13 @@ impl Archetype {
         std::ptr::copy_nonoverlapping(component_ptr, array.ptr.add(index * size), size);
     }
 
-    // TODO: add borrow checking probably unsafe right now
-    pub(crate) fn borrow_component<T: 'static>(&self, index: usize) -> Option<&mut T> {
+    // # Safety
+    // - Component reference must follow Rust borrow rules
+    pub(crate) unsafe fn borrow_component<T: 'static>(&self, index: usize) -> Option<&mut T> {
         assert!(index < self.count);
 
         let array = self.get_array(&TypeId::of::<T>())?;
-        unsafe { Some(&mut *array.ptr.cast::<T>().add(index)) }
+        Some(&mut *array.ptr.cast::<T>().add(index))
     }
 
     pub(crate) fn has_component<T: 'static>(&self) -> bool {
