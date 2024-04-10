@@ -2,7 +2,7 @@ use std::num::NonZeroU64;
 
 use super::{
     BindGroupBuilder, Color, GraphicsCaches, GraphicsContext, GraphicsData, MeshVertex, Rect,
-    RenderPipelineConfig, Shader, ShaderKind, Texture, TextureView, WGPUContext,
+    RenderPipelineConfig, Shader, ShaderKind, Texture, TextureView, WgpuContext,
 };
 use crate::{BindGroupLayoutBuilder, MeshView, RefId};
 
@@ -28,7 +28,7 @@ pub struct RenderPass<'a> {
     dirty_pipline: bool,
 
     pub target_texture: TextureView<'a>,
-    wgpu: &'a WGPUContext,
+    wgpu: &'a WgpuContext,
     caches: &'a mut GraphicsCaches,
     pub data: &'a GraphicsData,
 }

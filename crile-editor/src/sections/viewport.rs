@@ -7,7 +7,7 @@ pub struct SceneViewport {
 }
 
 impl SceneViewport {
-    pub fn check_texture(&mut self, wgpu: &crile::WGPUContext, egui: &mut crile_egui::EguiContext) {
+    pub fn check_texture(&mut self, wgpu: &crile::WgpuContext, egui: &mut crile_egui::EguiContext) {
         if self.size.x == 0
             || self.size.y == 0
             || self.size.x >= wgpu.limits.max_texture_dimension_2d

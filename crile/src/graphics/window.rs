@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{EventKind, WGPUContext, WindowId};
+use crate::{EventKind, WgpuContext, WindowId};
 pub use winit::window::CursorIcon;
 
 pub struct Window {
@@ -10,7 +10,7 @@ pub struct Window {
 
 impl Window {
     pub fn new(
-        wgpu: &WGPUContext,
+        wgpu: &WgpuContext,
         event_loop: &winit::event_loop::EventLoopWindowTarget<()>,
     ) -> Self {
         let winit = Arc::new(
@@ -41,7 +41,7 @@ impl Window {
         self.winit.id()
     }
 
-    pub fn process_event(&mut self, event: &EventKind, wgpu: &WGPUContext) {
+    pub fn process_event(&mut self, event: &EventKind, wgpu: &WgpuContext) {
         if let EventKind::WindowResize { size } = event {
             self.viewport.resize(*size, wgpu)
         };
@@ -82,7 +82,7 @@ pub struct WindowViewport {
 }
 
 impl WindowViewport {
-    pub fn new(wgpu: &WGPUContext, winit: Arc<winit::window::Window>) -> Self {
+    pub fn new(wgpu: &WgpuContext, winit: Arc<winit::window::Window>) -> Self {
         let size = winit.inner_size();
         let surface = wgpu
             .instance
@@ -100,14 +100,14 @@ impl WindowViewport {
         }
     }
 
-    pub fn resize(&mut self, size: glam::UVec2, wgpu: &WGPUContext) {
+    pub fn resize(&mut self, size: glam::UVec2, wgpu: &WgpuContext) {
         self.surface_config.width = size.x;
         self.surface_config.height = size.y;
         self.surface.configure(&wgpu.device, &self.surface_config);
     }
 
     /// Tries to enable/disable vsync
-    pub fn set_vsync(&mut self, wgpu: &WGPUContext, enable: bool) {
+    pub fn set_vsync(&mut self, wgpu: &WgpuContext, enable: bool) {
         self.surface_config.present_mode = match enable {
             true => wgpu::PresentMode::AutoVsync,
             false => wgpu::PresentMode::AutoNoVsync,
@@ -123,7 +123,7 @@ impl WindowViewport {
         }
     }
 
-    pub fn get_texture(&self, wgpu: &WGPUContext) -> wgpu::SurfaceTexture {
+    pub fn get_texture(&self, wgpu: &WgpuContext) -> wgpu::SurfaceTexture {
         match self.surface.get_current_texture() {
             Err(_) => {
                 // Surface lost or something so reconfigure and try to reobtain

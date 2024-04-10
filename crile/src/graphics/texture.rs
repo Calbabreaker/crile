@@ -1,4 +1,4 @@
-use super::WGPUContext;
+use super::WgpuContext;
 use crate::RefId;
 
 pub struct TextureConfig {
@@ -28,7 +28,7 @@ pub struct Texture {
 impl Texture {
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    pub fn from_image(wgpu: &WGPUContext, image: image::DynamicImage) -> Self {
+    pub fn from_image(wgpu: &WgpuContext, image: image::DynamicImage) -> Self {
         Self::from_pixels(
             wgpu,
             glam::uvec2(image.width(), image.height()),
@@ -38,7 +38,7 @@ impl Texture {
 
     /// Creats a new texture to be rendrered
     /// Note: only expects rgba8 images
-    pub fn from_pixels(wgpu: &WGPUContext, size: glam::UVec2, pixels: &[u8]) -> Self {
+    pub fn from_pixels(wgpu: &WgpuContext, size: glam::UVec2, pixels: &[u8]) -> Self {
         let texture = Self::new(
             wgpu,
             TextureConfig {
@@ -53,7 +53,7 @@ impl Texture {
         texture
     }
 
-    pub fn new_render_attach(wgpu: &WGPUContext, size: glam::UVec2) -> Self {
+    pub fn new_render_attach(wgpu: &WgpuContext, size: glam::UVec2) -> Self {
         Self::new(
             wgpu,
             TextureConfig {
@@ -64,7 +64,7 @@ impl Texture {
         )
     }
 
-    pub fn new_depth(wgpu: &WGPUContext, size: glam::UVec2) -> Self {
+    pub fn new_depth(wgpu: &WgpuContext, size: glam::UVec2) -> Self {
         Self::new(
             wgpu,
             TextureConfig {
@@ -75,7 +75,7 @@ impl Texture {
         )
     }
 
-    pub fn new(wgpu: &WGPUContext, config: TextureConfig) -> Self {
+    pub fn new(wgpu: &WgpuContext, config: TextureConfig) -> Self {
         let gpu_texture = wgpu.device.create_texture(&wgpu::TextureDescriptor {
             label: None,
             size: wgpu::Extent3d {
@@ -101,7 +101,7 @@ impl Texture {
 
     pub fn write_data(
         &self,
-        wgpu: &WGPUContext,
+        wgpu: &WgpuContext,
         origin: glam::UVec2,
         source_size: glam::UVec2,
         data_bytes: &[u8],
@@ -190,7 +190,7 @@ pub struct SamplerCache {
 }
 
 impl SamplerCache {
-    pub fn get(&mut self, wgpu: &WGPUContext, config: SamplerConfig) -> RefId<wgpu::Sampler> {
+    pub fn get(&mut self, wgpu: &WgpuContext, config: SamplerConfig) -> RefId<wgpu::Sampler> {
         let sampler = self.sampler_cache.entry(config).or_insert_with(|| {
             RefId::new(wgpu.device.create_sampler(&wgpu::SamplerDescriptor {
                 label: None,

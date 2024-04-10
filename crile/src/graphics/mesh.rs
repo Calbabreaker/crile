@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use super::WGPUContext;
+use super::WgpuContext;
 
 #[repr(C)]
 #[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -26,7 +26,7 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(wgpu: &WGPUContext, vertices: &[MeshVertex], indicies: &[u32]) -> Self {
+    pub fn new(wgpu: &WgpuContext, vertices: &[MeshVertex], indicies: &[u32]) -> Self {
         Self {
             vertex_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::VERTEX, vertices),
             index_buffer: Self::create_buffer(wgpu, wgpu::BufferUsages::INDEX, indicies),
@@ -34,7 +34,7 @@ impl Mesh {
         }
     }
 
-    pub fn new_square(wgpu: &WGPUContext) -> Self {
+    pub fn new_square(wgpu: &WgpuContext) -> Self {
         Self::new(
             wgpu,
             &[
@@ -64,7 +64,7 @@ impl Mesh {
     }
 
     fn create_buffer<T: bytemuck::Pod>(
-        wgpu: &WGPUContext,
+        wgpu: &WgpuContext,
         usage: wgpu::BufferUsages,
         data: &[T],
     ) -> wgpu::Buffer {

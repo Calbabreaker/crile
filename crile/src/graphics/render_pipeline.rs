@@ -3,7 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use super::WGPUContext;
+use super::WgpuContext;
 use crate::{BindGroupLayoutBuilder, NoHashHashMap, RefId, Texture};
 
 #[derive(Hash, PartialEq, Eq, Clone)]
@@ -27,7 +27,7 @@ pub struct RenderPipelineCache {
 impl RenderPipelineCache {
     pub fn get_pipeline(
         &mut self,
-        wgpu: &WGPUContext,
+        wgpu: &WgpuContext,
         config: RenderPipelineConfig,
         bind_group_layouts: &[&RefId<wgpu::BindGroupLayout>],
     ) -> &'static wgpu::RenderPipeline {
@@ -43,7 +43,7 @@ impl RenderPipelineCache {
 
     fn get_layout(
         &mut self,
-        wgpu: &WGPUContext,
+        wgpu: &WgpuContext,
         bind_group_layouts: &[&RefId<wgpu::BindGroupLayout>],
     ) -> RefId<wgpu::PipelineLayout> {
         // Calculate hash from bind_group_layouts ids
@@ -70,7 +70,7 @@ impl RenderPipelineCache {
 
     pub fn get_bind_layout(
         &mut self,
-        wgpu: &WGPUContext,
+        wgpu: &WgpuContext,
         builder: BindGroupLayoutBuilder,
     ) -> RefId<wgpu::BindGroupLayout> {
         let layout = self
@@ -82,7 +82,7 @@ impl RenderPipelineCache {
 }
 
 fn create_pipeline(
-    wgpu: &WGPUContext,
+    wgpu: &WgpuContext,
     layout: &wgpu::PipelineLayout,
     config: &RenderPipelineConfig,
 ) -> wgpu::RenderPipeline {
@@ -146,7 +146,7 @@ pub struct Shader {
 
 impl Shader {
     pub fn new(
-        wgpu: &WGPUContext,
+        wgpu: &WgpuContext,
         descriptor: wgpu::ShaderModuleDescriptor,
         kind: ShaderKind,
     ) -> Self {

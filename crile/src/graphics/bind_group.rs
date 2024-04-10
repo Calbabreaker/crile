@@ -1,6 +1,6 @@
 use std::{mem::MaybeUninit, num::NonZeroU64};
 
-use super::WGPUContext;
+use super::WgpuContext;
 use crate::{RefId, Texture};
 
 const MAX_SIZE: usize = 4;
@@ -68,7 +68,7 @@ impl BindGroupLayoutBuilder {
         self
     }
 
-    pub fn build(&self, wgpu: &WGPUContext) -> wgpu::BindGroupLayout {
+    pub fn build(&self, wgpu: &WgpuContext) -> wgpu::BindGroupLayout {
         wgpu.device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: None,
@@ -147,7 +147,7 @@ impl<'a> BindGroupBuilder<'a> {
         self
     }
 
-    pub fn build(&mut self, wgpu: &WGPUContext) -> wgpu::BindGroup {
+    pub fn build(&mut self, wgpu: &WgpuContext) -> wgpu::BindGroup {
         wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: &self.layout_builder.build(wgpu),

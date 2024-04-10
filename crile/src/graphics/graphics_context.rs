@@ -4,7 +4,7 @@ use super::{
 use crate::{RefId, Window};
 
 pub struct GraphicsContext {
-    pub wgpu: WGPUContext,
+    pub wgpu: WgpuContext,
     pub frame: Option<FrameContext>,
     pub data: GraphicsData,
     pub caches: GraphicsCaches,
@@ -12,7 +12,7 @@ pub struct GraphicsContext {
 
 impl GraphicsContext {
     pub fn new() -> Self {
-        let wgpu = pollster::block_on(WGPUContext::new());
+        let wgpu = pollster::block_on(WgpuContext::new());
 
         Self {
             data: GraphicsData::new(&wgpu),
@@ -79,7 +79,7 @@ pub struct GraphicsCaches {
 }
 
 impl GraphicsCaches {
-    pub fn new(wgpu: &WGPUContext) -> Self {
+    pub fn new(wgpu: &WgpuContext) -> Self {
         Self {
             bind_group_holder: Vec::new(),
             render_pipeline: RenderPipelineCache::default(),
@@ -106,7 +106,7 @@ pub struct GraphicsData {
 }
 
 impl GraphicsData {
-    pub fn new(wgpu: &WGPUContext) -> Self {
+    pub fn new(wgpu: &WgpuContext) -> Self {
         Self {
             square_mesh: Mesh::new_square(wgpu),
             white_texture: Texture::from_pixels(wgpu, glam::UVec2::ONE, &[255, 255, 255, 255])
@@ -125,7 +125,7 @@ impl GraphicsData {
     }
 }
 
-pub struct WGPUContext {
+pub struct WgpuContext {
     pub queue: wgpu::Queue,
     pub device: wgpu::Device,
     pub adapter: wgpu::Adapter,
@@ -133,7 +133,7 @@ pub struct WGPUContext {
     pub limits: wgpu::Limits,
 }
 
-impl WGPUContext {
+impl WgpuContext {
     async fn new() -> Self {
         // Init with backends from environment variables or the default
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {

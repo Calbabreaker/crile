@@ -1,4 +1,4 @@
-use super::WGPUContext;
+use super::WgpuContext;
 use crate::RefId;
 
 #[derive(Debug)]
@@ -8,7 +8,7 @@ struct DynamicBufferSpace {
 }
 
 impl DynamicBufferSpace {
-    fn new(wgpu: &WGPUContext, descriptor: &wgpu::BufferDescriptor) -> Self {
+    fn new(wgpu: &WgpuContext, descriptor: &wgpu::BufferDescriptor) -> Self {
         Self {
             buffer: wgpu.device.create_buffer(descriptor).into(),
             cursor: 0,
@@ -39,7 +39,7 @@ pub struct DynamicBufferAllocator {
 }
 
 impl DynamicBufferAllocator {
-    pub fn new(wgpu: &WGPUContext, usage: wgpu::BufferUsages) -> Self {
+    pub fn new(wgpu: &WgpuContext, usage: wgpu::BufferUsages) -> Self {
         let alignment = match usage {
             wgpu::BufferUsages::UNIFORM => wgpu.limits.min_uniform_buffer_offset_alignment as u64,
             wgpu::BufferUsages::STORAGE => wgpu.limits.min_storage_buffer_offset_alignment as u64,
@@ -70,7 +70,7 @@ impl DynamicBufferAllocator {
     /// Finds a space inside one of the buffers where size fits and writes to that space with data
     pub fn alloc_write<T: bytemuck::Pod>(
         &mut self,
-        wgpu: &WGPUContext,
+        wgpu: &WgpuContext,
         data: &[T],
     ) -> BufferAllocation {
         let size = std::mem::size_of_val(data) as u64;
@@ -106,7 +106,7 @@ impl DynamicBufferAllocator {
         self.alloc_write(wgpu, data)
     }
 
-    pub fn grow(&mut self, wgpu: &WGPUContext, required_size: u64) {
+    pub fn grow(&mut self, wgpu: &WgpuContext, required_size: u64) {
         let size_aligned = required_size.next_multiple_of(self.alignment);
         self.descriptor.size = u64::clamp(self.descriptor.size * 2, size_aligned, self.max_size);
         self.buffer_spaces
