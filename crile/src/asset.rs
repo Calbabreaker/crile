@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::{Engine, RefId, Script, Texture};
+use crate::{RefId, Script, Texture, WgpuContext};
 
 type AssetMap<A> = hashbrown::HashMap<PathBuf, RefId<A>>;
 
@@ -8,7 +8,7 @@ pub trait Asset {
     const PRETTY_NAME: &'static str;
     const FILE_EXTENSIONS: &'static [&'static str];
 
-    fn load(engine: &Engine, path: &Path) -> Option<Self>
+    fn load(wgpu: &WgpuContext, path: &Path) -> Option<Self>
     where
         Self: std::marker::Sized;
 
@@ -20,13 +20,13 @@ impl Asset for Texture {
     const PRETTY_NAME: &'static str = "Image";
     const FILE_EXTENSIONS: &'static [&'static str] = &["png", "jpeg", "jpg"];
 
-    fn load(engine: &Engine, path: &Path) -> Option<Self> {
+    fn load(wgpu: &WgpuContext, path: &Path) -> Option<Self> {
         log::trace!("Loading from {path:?}");
         let image = image::open(path)
             .inspect_err(|err| log::error!("Failed to load image {err}"))
             .ok()?;
 
-        let texture = Texture::from_image(&engine.gfx.wgpu, image);
+        let texture = Texture::from_image(wgpu, image);
         Some(texture)
     }
 
@@ -39,8 +39,12 @@ impl Asset for Script {
     const PRETTY_NAME: &'static str = "Lua Script";
     const FILE_EXTENSIONS: &'static [&'static str] = &["lua", "luau"];
 
-    fn load(engine: &Engine, path: &Path) -> Option<Self> {
-        Some(engine.scripting.compile(&crate::read_file(path)?))
+    fn load(_: &WgpuContext, path: &Path) -> Option<Self> {
+        let compiler = mlua::Compiler::default();
+        Some(Script {
+            bytecode: compiler.compile(&crate::read_file(path)?),
+            source: Some(path.to_string_lossy().to_string()),
+        })
         // Some(Script {
         //     source: crate::read_file(path)?,
         // })
@@ -58,13 +62,13 @@ pub struct AssetManager {
 }
 
 impl AssetManager {
-    pub(crate) fn load<A: Asset>(&mut self, engine: &Engine, path: &Path) -> Option<RefId<A>> {
+    pub(crate) fn load<A: Asset>(&mut self, wgpu: &WgpuContext, path: &Path) -> Option<RefId<A>> {
         let map = A::get_map(self);
         if let Some(asset) = map.get(path) {
             return Some(asset.clone());
         }
 
-        let asset = RefId::new(A::load(engine, path)?);
+        let asset = RefId::new(A::load(wgpu, path)?);
         map.insert(path.to_path_buf(), asset.clone());
         Some(asset)
     }

@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Color, EntityId, RefId, Script, Texture};
 
+/// Component to contain meta data about the enitity
+/// Not really a real component but used internally to keep track of metadata
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(default)]
 pub struct MetaDataComponent {

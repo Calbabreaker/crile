@@ -140,7 +140,6 @@ pub struct EntityRef<'a> {
 impl<'a> EntityRef<'a> {
     fn new(world: &'a World, location: EntityLocation, id: EntityId) -> Self {
         let archetype = &world.archetypes[location.archetype_index];
-
         Self {
             archetype,
             location,
@@ -177,7 +176,6 @@ impl<'a> EntityMut<'a> {
             &mut (*(world as *mut World)).archetypes[location.archetype_index]
             //
         };
-
         Self {
             archetype,
             location,

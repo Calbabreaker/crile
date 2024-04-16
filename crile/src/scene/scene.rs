@@ -1,7 +1,9 @@
-use super::{CameraComponent, SpriteComponent, TransformComponent, World};
+use std::{cell::RefCell, ops::Deref, rc::Rc, sync::Arc};
+
 use crate::{
-    ComponentTuple, DrawUniform, Engine, EntityId, EntityRef, MetaDataComponent, RefId,
-    RenderInstance, RenderPass, ScriptComponent, Texture,
+    CameraComponent, ComponentTuple, DrawUniform, Engine, EntityId, EntityRef, MetaDataComponent,
+    RefId, RenderInstance, RenderPass, ScriptComponent, SpriteComponent, Texture,
+    TransformComponent, World,
 };
 
 #[derive(Clone)]
@@ -46,7 +48,7 @@ impl Scene {
     pub fn start_runtime(&mut self, engine: &mut Engine) -> mlua::Result<()> {
         engine.scripting.setup()?;
 
-        for (id, (script,)) in self.world.query_mut::<(ScriptComponent,)>() {
+        for (id, (script,)) in self.world.query::<(ScriptComponent,)>() {
             if let Some(script) = &script.script {
                 engine.scripting.run(id, script)?;
             }
@@ -78,10 +80,8 @@ impl Scene {
             .query::<(TransformComponent, CameraComponent)>()
             .next()
         {
-            self.render(
-                render_pass,
-                camera.projection() * camera_transform.matrix().inverse(),
-            );
+            let view_projection = camera.projection() * camera_transform.matrix().inverse();
+            self.render(render_pass, view_projection);
         }
     }
 
@@ -199,12 +199,6 @@ impl Scene {
                 func(meta.parent);
             }
         }
-    }
-
-    pub fn root_entity(&self) -> EntityRef {
-        self.world
-            .entity(Self::ROOT_ID)
-            .expect("root entity somehow does not exist")
     }
 
     pub fn root_meta(&self) -> &mut MetaDataComponent {

@@ -24,13 +24,5 @@ impl mlua::UserData for TransformComponent {
 }
 
 fn register_component_types(lua: &mlua::Lua) -> mlua::Result<()> {
-    lua.globals().set(
-        "get_component",
-        lua.create_function(|_, ()| {
-            let func = 1;
-            Ok(())
-        })?,
-    )?;
-
     Ok(())
 }

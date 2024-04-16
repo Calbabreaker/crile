@@ -144,6 +144,7 @@ impl EguiContext {
         self.resize_event(&unscaled_size);
     }
 
+    #[must_use]
     pub fn register_texture(&mut self, texture: &crile::RefId<crile::Texture>) -> egui::TextureId {
         let id = egui::TextureId::User(texture.id());
         self.renderer.textures.insert(id, texture.clone());
