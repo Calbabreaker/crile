@@ -1,6 +1,8 @@
+use mlua::IntoLua;
+
 use super::vector::Vector3;
 use crate::{
-    impl_mlua_conversion, scripting::vector::Vector2, EntityId, TransformComponent, World,
+    impl_mlua_conversion, scripting::vector::Vector2, EntityId, Scene, TransformComponent,
 };
 
 pub struct Script {
@@ -10,13 +12,16 @@ pub struct Script {
 
 pub struct ScriptingEngine {
     pub lua: mlua::Lua,
-    pub active_world: World,
+    // We store raw ptr because the scripts need constant access to Scene
+    // Probably better way to do this that is safe
+    scene: *mut Scene,
 }
 
 impl ScriptingEngine {
-    pub fn new() -> Self {
+    pub fn new(scene: &mut Scene) -> Self {
         Self {
             lua: mlua::Lua::default(),
+            scene: scene as *mut Scene,
         }
     }
 
@@ -34,19 +39,28 @@ impl ScriptingEngine {
 
         // Class to access details about the entity like parent children and components
         let entity_class = self.lua.create_table()?;
+        let scene = unsafe { &mut *self.scene };
 
-        entity_class.set(
-            "get_component",
-            self.lua.create_function(|lua, component_name: String| {
-                match component_name.as_str() {
-                    "TransformComponent" => world.get::<TransformComponent>(entity),
+        let get_component_func =
+            self.lua
+                .create_function(|lua: &mlua::Lua, component_name: String| {
+                    let entity: mlua::Table = lua.globals().get("entity")?;
+                    let id = entity.get("id")?;
 
-                    _ => Err(mlua::Error::RuntimeError(format!(
-                        "Component {component_name} does not exist"
-                    ))),
-                }
-            })?,
-        )?;
+                    let value = match component_name.as_str() {
+                        "TransformComponent" => scene
+                            .world
+                            .get::<TransformComponent>(id)
+                            .map(|c| c.into_lua(lua)),
+                        _ => None,
+                    };
+
+                    value.ok_or_else(move || {
+                        mlua::Error::RuntimeError(format!("\"{component_name}\" does not exist"))
+                    })?
+                })?;
+
+        entity_class.set("get_component", get_component_func)?;
         self.lua.globals().set("entity", entity_class)?;
 
         Ok(())
@@ -54,15 +68,11 @@ impl ScriptingEngine {
 
     pub fn run(&mut self, id: EntityId, script: &Script) -> mlua::Result<()> {
         let entity: mlua::Table = self.lua.globals().get("entity")?;
-        entity.set("id", id);
-        let chunk = self
-            .lua
+        entity.set("id", id)?;
+        self.lua
             .load(&script.bytecode)
-            .set_name(script.source.clone().unwrap_or_default());
-
-        chunk.exec();
-
-        Ok(())
+            .set_name(script.source.clone().unwrap_or_default())
+            .exec()
     }
 
     pub fn call_signal<'lua>(
@@ -76,7 +86,7 @@ impl ScriptingEngine {
         let args = args.into_lua_multi(&self.lua)?;
         signal_list.for_each(move |_: usize, signal: Signal| {
             let entity: mlua::Table = self.lua.globals().get("entity")?;
-            entity.set("id", signal.caller_entity_id);
+            entity.set("id", signal.caller_entity_id)?;
 
             signal.callback.call(args.clone())?;
             Ok(())

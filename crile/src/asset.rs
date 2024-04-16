@@ -42,7 +42,7 @@ impl Asset for Script {
     fn load(_: &WgpuContext, path: &Path) -> Option<Self> {
         let compiler = mlua::Compiler::default();
         Some(Script {
-            bytecode: compiler.compile(&crate::read_file(path)?),
+            bytecode: compiler.compile(crate::read_file(path)?),
             source: Some(path.to_string_lossy().to_string()),
         })
         // Some(Script {
@@ -62,7 +62,7 @@ pub struct AssetManager {
 }
 
 impl AssetManager {
-    pub(crate) fn load<A: Asset>(&mut self, wgpu: &WgpuContext, path: &Path) -> Option<RefId<A>> {
+    pub fn load<A: Asset>(&mut self, wgpu: &WgpuContext, path: &Path) -> Option<RefId<A>> {
         let map = A::get_map(self);
         if let Some(asset) = map.get(path) {
             return Some(asset.clone());

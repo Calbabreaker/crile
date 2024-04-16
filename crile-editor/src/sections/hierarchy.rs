@@ -4,14 +4,15 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     ui.add_space(5.);
     let mut action = HierachyAction::None;
 
-    let root_meta = state.scene.root_meta();
+    let scene = state.active_scene();
+    let root_meta = scene.root_meta();
 
     for child_id in &root_meta.children {
         display_entity(
             ui,
             &mut state.selection,
             *child_id,
-            &state.scene.world,
+            &scene.world,
             &mut action,
         );
     }

@@ -4,15 +4,16 @@ mod vector;
 
 pub use script::*;
 
+// Implements mlua::IntoLua and mlua::FromLua for struct with the fields
 macro_rules! impl_mlua_conversion {
     ($struct: ty, [$($field: ident),*]) => {
         impl<'lua> mlua::IntoLua<'lua> for $struct {
             fn into_lua(self, lua: &'lua mlua::Lua) -> mlua::Result<mlua::Value<'lua>> {
                 let table = lua.create_table()?;
                 $(
-                    table.set(stringify!($field), self.$field);
+                    table.set(stringify!($field), self.$field)?;
                 )*
-                Ok(table.into_lua(lua)?)
+                table.into_lua(lua)
             }
         }
 

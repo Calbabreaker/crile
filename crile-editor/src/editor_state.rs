@@ -16,17 +16,10 @@ pub enum WindowKind {
     None,
 }
 
-#[derive(Eq, PartialEq)]
-pub enum SceneState {
-    Editing,
-    Running,
-}
-
 pub struct EditorState {
     pub scene: crile::Scene,
-    pub scene_state: SceneState,
+    pub scene_runtime: Option<crile::SceneRuntime>,
     pub editor_scene_path: Option<PathBuf>,
-    pub backup_scene: Option<crile::Scene>,
 
     pub selection: Selection,
     pub editor_camera: EditorCamera2D,
@@ -41,9 +34,8 @@ impl Default for EditorState {
     fn default() -> Self {
         Self {
             scene: Default::default(),
-            scene_state: SceneState::Editing,
+            scene_runtime: None,
             editor_scene_path: None,
-            backup_scene: None,
 
             selection: Selection::None,
             editor_camera: EditorCamera2D::default(),
@@ -57,30 +49,27 @@ impl Default for EditorState {
 }
 
 impl EditorState {
-    pub fn play_scene(&mut self, engine: &mut crile::Engine) {
+    pub fn play_scene(&mut self) {
         log::trace!("Playing scene...");
-        self.backup_scene = Some(self.scene.clone());
+        let mut scene_runtime = crile::SceneRuntime::new(self.scene.clone());
 
-        self.scene_state = SceneState::Running;
-        if let Err(err) = self.scene.start_runtime(engine) {
+        if let Err(err) = scene_runtime.start() {
             log::error!("{err}");
-            self.stop_scene(engine);
+            scene_runtime.stop();
+        } else {
+            self.scene_runtime = Some(scene_runtime);
         }
     }
 
-    pub fn stop_scene(&mut self, engine: &mut crile::Engine) {
-        if self.scene_state != SceneState::Running {
-            return;
+    pub fn stop_scene(&mut self) {
+        if let Some(mut scene_runtime) = self.scene_runtime.take() {
+            log::trace!("Stopping scene...");
+            scene_runtime.stop();
         }
-
-        log::trace!("Stopping scene...");
-        self.scene.stop_runtime(engine);
-        self.scene = self.backup_scene.take().expect("Backup scene not found");
-        self.scene_state = SceneState::Editing;
     }
 
     pub fn save_scene(&mut self, scene_path: Option<PathBuf>) {
-        if self.scene_state == SceneState::Running {
+        if self.scene_runtime.is_some() {
             return;
         }
 
@@ -104,7 +93,7 @@ impl EditorState {
     }
 
     pub fn load_scene(&mut self, scene_path: Option<PathBuf>) {
-        if self.scene_state == SceneState::Running {
+        if self.scene_runtime.is_some() {
             return;
         }
 
@@ -123,6 +112,10 @@ impl EditorState {
     }
 
     pub fn open_project(&mut self, project_file_path: Option<PathBuf>) {
+        if self.scene_runtime.is_some() {
+            return;
+        }
+
         if let Some(path) = project_file_path.or_else(|| {
             rfd::FileDialog::new()
                 .add_filter("Crile project", &["crile"])
@@ -144,5 +137,14 @@ impl EditorState {
                 }
             }
         }
+    }
+
+    pub fn active_scene<'a>(&mut self) -> &'a mut crile::Scene {
+        let scene = if let Some(scene_runtime) = self.scene_runtime.as_mut() {
+            &mut scene_runtime.scene
+        } else {
+            &mut self.scene
+        };
+        unsafe { &mut *(scene as *mut crile::Scene) }
     }
 }

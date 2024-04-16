@@ -45,46 +45,6 @@ impl Scene {
         }
     }
 
-    pub fn start_runtime(&mut self, engine: &mut Engine) -> mlua::Result<()> {
-        engine.scripting.setup()?;
-
-        for (id, (script,)) in self.world.query::<(ScriptComponent,)>() {
-            if let Some(script) = &script.script {
-                engine.scripting.run(id, script)?;
-            }
-        }
-
-        self.running = true;
-        Ok(())
-    }
-
-    pub fn update_runtime(&mut self, engine: &mut Engine) -> mlua::Result<()> {
-        // for (id, _) in self.world.query_mut::<(ScriptComponent,)>() {
-        //     engine
-        //         .scripting
-        //         .update_instance(id)
-        //         .inspect_err(|err| log::error!("{err}"))
-        //         .ok();
-        // }
-        //
-        engine.scripting.call_signal("MainEvents.Update", ())
-    }
-
-    pub fn stop_runtime(&mut self, engine: &mut Engine) {
-        self.running = false;
-    }
-
-    pub fn render_runtime(&mut self, render_pass: &mut RenderPass) {
-        if let Some((_, (camera_transform, camera))) = self
-            .world
-            .query::<(TransformComponent, CameraComponent)>()
-            .next()
-        {
-            let view_projection = camera.projection() * camera_transform.matrix().inverse();
-            self.render(render_pass, view_projection);
-        }
-    }
-
     // TODO: Render back to front to support transparency
     pub fn render(&mut self, render_pass: &mut RenderPass, view_projection: glam::Mat4) {
         for instances in self.render_instances_map.values_mut() {

@@ -60,7 +60,7 @@ impl crile::Application for CrileEditorApp {
         egui::TopBottomPanel::top("top_panel")
             .frame(egui::Frame::default().fill(default_bg).inner_margin(8.0))
             .show(&ctx, |ui| {
-                sections::top_panel::show(ui, &mut self.state, engine);
+                sections::top_panel::show(ui, &mut self.state);
             });
 
         egui::SidePanel::left("Hierachy")
@@ -80,7 +80,7 @@ impl crile::Application for CrileEditorApp {
             .show(&ctx, |ui| {
                 // TODO: have seperate game and editor view
                 if let Some(response) = self.state.editor_view.show(ui) {
-                    if response.hovered() && self.state.scene_state == SceneState::Editing {
+                    if response.hovered() && self.state.scene_runtime.is_none() {
                         ui.input(|i| {
                             self.state
                                 .editor_camera
@@ -93,27 +93,27 @@ impl crile::Application for CrileEditorApp {
         self.egui.end_frame(engine, ctx);
 
         sections::inspector::update_assets(&mut self.state, engine);
-        if self.state.scene_state == SceneState::Running {
-            if let Err(err) = self.state.scene.update_runtime(engine) {
+        if let Some(scene_runtime) = self.state.scene_runtime.as_mut() {
+            if let Err(err) = scene_runtime.update() {
                 log::error!("{err}");
-                self.state.stop_scene(engine);
+                self.state.stop_scene();
             }
         }
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
         // First render onto the viewport texture which will be put in an egui panel
-        if let Some(mut render_pass) = self.state.editor_view.get_render_pass(engine) {
-            let viewport_size = self.state.editor_view.size.as_vec2();
-            self.state.scene.set_viewport(viewport_size);
-            self.state.editor_camera.set_viewport(viewport_size);
+        let viewport_size = self.state.editor_view.size.as_vec2();
+        self.state.active_scene().set_viewport(viewport_size);
+        self.state.editor_camera.set_viewport(viewport_size);
 
-            if self.state.scene_state == SceneState::Editing {
+        if let Some(mut render_pass) = self.state.editor_view.get_render_pass(engine) {
+            if let Some(scene_runtime) = self.state.scene_runtime.as_mut() {
+                scene_runtime.render(&mut render_pass);
+            } else {
                 self.state
                     .scene
                     .render(&mut render_pass, self.state.editor_camera.view_projection());
-            } else {
-                self.state.scene.render_runtime(&mut render_pass);
             }
         }
 

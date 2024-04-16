@@ -7,11 +7,12 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
 
     ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
         if let Selection::Entity(id) = state.selection {
-            if let Some(meta) = state.scene.world.get::<crile::MetaDataComponent>(id) {
+            let scene = state.active_scene();
+            if let Some(meta) = scene.world.get::<crile::MetaDataComponent>(id) {
                 ui.text_edit_singleline(&mut meta.name);
                 ui.add_space(5.);
 
-                let mut entity = state.scene.world.entity_mut(id).unwrap();
+                let mut entity = scene.world.entity_mut(id).unwrap();
                 inspect_entity(ui, &mut entity)
             } else {
                 state.selection = Selection::None;
@@ -21,7 +22,8 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
 }
 
 pub fn update_assets(state: &mut EditorState, engine: &mut crile::Engine) {
-    for (_, (sprite,)) in state.scene.world.query_mut::<(crile::SpriteComponent,)>() {
+    let scene = state.active_scene();
+    for (_, (sprite,)) in scene.world.query_mut::<(crile::SpriteComponent,)>() {
         update_asset(
             &mut sprite.texture,
             &mut sprite.texture_path,
@@ -30,7 +32,7 @@ pub fn update_assets(state: &mut EditorState, engine: &mut crile::Engine) {
         );
     }
 
-    for (_, (script,)) in state.scene.world.query_mut::<(crile::ScriptComponent,)>() {
+    for (_, (script,)) in scene.world.query_mut::<(crile::ScriptComponent,)>() {
         update_asset(
             &mut script.script,
             &mut script.script_path,
@@ -55,7 +57,7 @@ fn update_asset<Asset: crile::Asset>(
     if let Some(path) = &asset_path.path {
         if asset.is_none() {
             let absolute_path = project.make_absolute(path);
-            let loaded_asset = engine.load_asset(&absolute_path);
+            let loaded_asset = engine.asset_manager.load(&engine.gfx.wgpu, &absolute_path);
 
             if loaded_asset.is_some() {
                 *asset = loaded_asset;

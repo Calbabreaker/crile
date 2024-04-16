@@ -1,8 +1,6 @@
-use crile::{Engine, Scene};
+use crate::{EditorState, WindowKind};
 
-use crate::{EditorState, SceneState, WindowKind};
-
-pub fn show(ui: &mut egui::Ui, state: &mut EditorState, engine: &mut Engine) {
+pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     egui::menu::bar(ui, |ui| {
         ui.columns(3, |ui| {
             ui[0].horizontal(|ui| {
@@ -10,12 +8,12 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState, engine: &mut Engine) {
             });
 
             ui[1].vertical_centered(|ui| {
-                if state.scene_state == SceneState::Running {
+                if state.scene_runtime.is_some() {
                     if ui.button("⏹").clicked() {
-                        state.stop_scene(engine);
+                        state.stop_scene();
                     }
                 } else if ui.button("▶").clicked() {
-                    state.play_scene(engine);
+                    state.play_scene();
                 }
             });
         });
@@ -78,10 +76,10 @@ fn left_menus(state: &mut EditorState, ui: &mut egui::Ui) {
 }
 
 fn new_scene(state: &mut EditorState) {
-    if state.scene_state == SceneState::Running {
+    if state.scene_runtime.is_some() {
         return;
     }
 
-    state.scene = Scene::default();
+    state.scene = crile::Scene::default();
     state.editor_scene_path = None;
 }
