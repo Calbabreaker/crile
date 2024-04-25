@@ -1,5 +1,6 @@
 use crate::{
-    CameraComponent, RenderPass, Scene, ScriptComponent, ScriptingEngine, TransformComponent,
+    CameraComponent, Engine, RenderPass, Scene, ScriptComponent, ScriptingEngine,
+    TransformComponent,
 };
 
 pub struct SceneRuntime {
@@ -8,9 +9,9 @@ pub struct SceneRuntime {
 }
 
 impl SceneRuntime {
-    pub fn new(mut scene: Scene) -> Self {
+    pub fn new(mut scene: Scene, engine: &Engine) -> Self {
         SceneRuntime {
-            scripting: ScriptingEngine::new(&mut scene),
+            scripting: ScriptingEngine::new(&mut scene, engine),
             scene,
         }
     }
@@ -28,21 +29,12 @@ impl SceneRuntime {
     }
 
     pub fn update(&mut self) -> mlua::Result<()> {
-        // for (id, _) in self.world.query_mut::<(ScriptComponent,)>() {
-        //     engine
-        //         .scripting
-        //         .update_instance(id)
-        //         .inspect_err(|err| log::error!("{err}"))
-        //         .ok();
-        // }
-        //
         self.scripting.call_signal("MainEvents.Update", ())
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass) {
-        if let Some((_, (camera_transform, camera))) = self
-            .scene
-            .world
+        let world = &self.scene.world;
+        if let Some((_, (camera_transform, camera))) = world
             .query::<(TransformComponent, CameraComponent)>()
             .next()
         {

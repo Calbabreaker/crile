@@ -1,9 +1,6 @@
-use std::{cell::RefCell, ops::Deref, rc::Rc, sync::Arc};
-
 use crate::{
-    CameraComponent, ComponentTuple, DrawUniform, Engine, EntityId, EntityRef, MetaDataComponent,
-    RefId, RenderInstance, RenderPass, ScriptComponent, SpriteComponent, Texture,
-    TransformComponent, World,
+    CameraComponent, ComponentTuple, DrawUniform, EntityId, MetaDataComponent, RefId,
+    RenderInstance, RenderPass, SpriteComponent, Texture, TransformComponent, World,
 };
 
 #[derive(Clone)]

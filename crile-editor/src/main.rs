@@ -60,7 +60,7 @@ impl crile::Application for CrileEditorApp {
         egui::TopBottomPanel::top("top_panel")
             .frame(egui::Frame::default().fill(default_bg).inner_margin(8.0))
             .show(&ctx, |ui| {
-                sections::top_panel::show(ui, &mut self.state);
+                sections::top_panel::show(ui, &mut self.state, engine);
             });
 
         egui::SidePanel::left("Hierachy")

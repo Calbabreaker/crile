@@ -22,15 +22,15 @@ impl Time {
         self.last_frame = Instant::now();
     }
 
-    pub fn since_start(&self) -> f32 {
-        self.start.elapsed().as_secs_f32()
+    pub fn since_start(&self) -> Duration {
+        self.start.elapsed()
     }
 
-    pub fn delta(&self) -> f32 {
-        self.delta.as_secs_f32()
+    pub fn delta(&self) -> Duration {
+        self.delta
     }
 
     pub fn framerate(&self) -> f32 {
-        1. / self.delta()
+        1. / self.delta().as_secs_f32()
     }
 }

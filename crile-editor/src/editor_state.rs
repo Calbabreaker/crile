@@ -49,9 +49,9 @@ impl Default for EditorState {
 }
 
 impl EditorState {
-    pub fn play_scene(&mut self) {
+    pub fn play_scene(&mut self, engine: &crile::Engine) {
         log::trace!("Playing scene...");
-        let mut scene_runtime = crile::SceneRuntime::new(self.scene.clone());
+        let mut scene_runtime = crile::SceneRuntime::new(self.scene.clone(), engine);
 
         if let Err(err) = scene_runtime.start() {
             log::error!("{err}");

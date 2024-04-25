@@ -22,7 +22,3 @@ impl mlua::UserData for &mut TransformComponent {
         });
     }
 }
-
-fn register_component_types(lua: &mlua::Lua) -> mlua::Result<()> {
-    Ok(())
-}

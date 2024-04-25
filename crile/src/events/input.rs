@@ -96,7 +96,7 @@ impl Input {
         }
     }
 
-    /// Clear one frame only internal state from current frame
+    /// Clear the current frame state
     pub fn clear(&mut self) {
         self.mouse_state.clear();
         self.key_state.clear();

@@ -5,6 +5,7 @@ macro_rules! make_vector_type {
 
 /// Math vector used for lua scripting only
 /// We need to wrap around the glam::Vec* as rust doesn't allow implementing traits onto it outside of the crate
+/// Note: the fields are readonly since setting something like transform.rotation.z += 1 won't do anything
 #[derive(Clone, Copy, Debug)]
 pub struct $wrapper_type(pub $inner_type);
 
@@ -39,10 +40,6 @@ impl mlua::UserData for $wrapper_type {
         $(
             fields.add_field_method_get(stringify!($field), |_, this| {
                 Ok(this.0.$field)
-            });
-            fields.add_field_method_set(stringify!($field), |_, this, val| {
-                this.0.$field = val;
-                Ok(())
             });
         )*
     }

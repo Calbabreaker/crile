@@ -1,9 +1,11 @@
+mod codes;
+mod input;
+
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
-pub use winit::{
-    event::{ElementState as ButtonState, MouseButton},
-    keyboard::{Key, KeyCode, ModifiersState as KeyModifiers},
-    window::WindowId,
-};
+pub use winit::window::WindowId;
+
+pub use codes::*;
+pub use input::*;
 
 // We create our own event enum instead of using winit so we can manage it ourselves.
 #[derive(Debug, PartialEq)]
@@ -25,8 +27,6 @@ pub enum EventKind {
         state: ButtonState,
         /// Whether or not the key is a repeating key
         repeat: bool,
-        /// Represents the localized key in the keyboard layout
-        key: Key,
         /// Represents the physical key on the keyboard not accounting for keyboard layouts
         keycode: KeyCode,
         text: String,
@@ -79,16 +79,15 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
             },
             winit::event::WindowEvent::ModifiersChanged(modifiers) => {
                 EventKind::KeyModifiersChanged {
-                    modifiers: modifiers.state(),
+                    modifiers: KeyModifiers::from_winit(modifiers.state()),
                 }
             }
             winit::event::WindowEvent::KeyboardInput { event, .. } => EventKind::KeyInput {
-                state: event.state,
+                state: ButtonState::from_winit(event.state),
                 text: event.text_with_all_modifiers().unwrap_or("").to_string(),
-                key: event.logical_key,
                 keycode: match event.physical_key {
-                    winit::keyboard::PhysicalKey::Code(c) => c,
-                    winit::keyboard::PhysicalKey::Unidentified(_) => KeyCode::F35,
+                    winit::keyboard::PhysicalKey::Code(c) => KeyCode::from_winit(c),
+                    winit::keyboard::PhysicalKey::Unidentified(_) => KeyCode::Unknown,
                 },
                 repeat: event.repeat,
             },
@@ -97,9 +96,10 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
                     factor: scale_factor,
                 }
             }
-            winit::event::WindowEvent::MouseInput { state, button, .. } => {
-                EventKind::MouseInput { state, button }
-            }
+            winit::event::WindowEvent::MouseInput { state, button, .. } => EventKind::MouseInput {
+                state: ButtonState::from_winit(state),
+                button: MouseButton::from_winit(button),
+            },
             winit::event::WindowEvent::CursorMoved { position, .. } => EventKind::MouseMoved {
                 position: glam::Vec2::new(position.x as f32, position.y as f32),
             },

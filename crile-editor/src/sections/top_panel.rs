@@ -1,6 +1,6 @@
 use crate::{EditorState, WindowKind};
 
-pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
+pub fn show(ui: &mut egui::Ui, state: &mut EditorState, engine: &crile::Engine) {
     egui::menu::bar(ui, |ui| {
         ui.columns(3, |ui| {
             ui[0].horizontal(|ui| {
@@ -13,7 +13,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
                         state.stop_scene();
                     }
                 } else if ui.button("▶").clicked() {
-                    state.play_scene();
+                    state.play_scene(engine);
                 }
             });
         });

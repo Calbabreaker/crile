@@ -38,8 +38,8 @@ impl Engine {
     fn update(&mut self, app: &mut impl Application) {
         self.time.update();
         app.update(self);
-        self.window.winit.request_redraw();
         self.input.clear();
+        self.window.winit.request_redraw();
     }
 
     fn render(&mut self, app: &mut impl Application) {

@@ -1,9 +1,6 @@
+use super::vector::{Vector2, Vector3};
+use crate::{impl_mlua_conversion, Engine, EntityId, KeyCode, Scene, TransformComponent};
 use mlua::IntoLua;
-
-use super::vector::Vector3;
-use crate::{
-    impl_mlua_conversion, scripting::vector::Vector2, EntityId, Scene, TransformComponent,
-};
 
 pub struct Script {
     pub bytecode: Vec<u8>,
@@ -15,53 +12,65 @@ pub struct ScriptingEngine {
     // We store raw ptr because the scripts need constant access to Scene
     // Probably better way to do this that is safe
     scene: *mut Scene,
+    engine: *const Engine,
 }
 
 impl ScriptingEngine {
-    pub fn new(scene: &mut Scene) -> Self {
+    pub(crate) fn new(scene: &mut Scene, engine: &Engine) -> Self {
         Self {
             lua: mlua::Lua::default(),
             scene: scene as *mut Scene,
+            engine: engine as *const Engine,
         }
     }
 
     pub fn setup(&mut self) -> mlua::Result<()> {
-        Vector3::register_lua_type(&self.lua)?;
-        Vector2::register_lua_type(&self.lua)?;
+        let lua = &self.lua;
+        let scene = unsafe { &mut *self.scene };
+        let engine = unsafe { &*self.engine };
 
-        self.lua
-            .globals()
-            .set("__signals_index", self.lua.create_table()?)?;
+        Vector3::register_lua_type(lua)?;
+        Vector2::register_lua_type(lua)?;
 
-        let main_events = self.lua.create_table()?;
+        lua.globals().set("__signals_index", lua.create_table()?)?;
+
+        let main_events = lua.create_table()?;
         main_events.set("Update", self.make_signal("MainEvents.Update")?)?;
         self.lua.globals().set("MainEvents", main_events)?;
 
+        let input_class = lua.create_table()?;
+        // input_class.set(
+        //     "key_pressed",
+        //     lua.create_function(|lua, keycode: String| {
+        //         Ok(engine.input.key_pressed(usize as KeyCode))
+        //     }),
+        // );
+
         // Class to access details about the entity like parent children and components
-        let entity_class = self.lua.create_table()?;
-        let scene = unsafe { &mut *self.scene };
+        let entity_class = lua.create_table()?;
 
-        let get_component_func =
-            self.lua
-                .create_function(|lua: &mlua::Lua, component_name: String| {
-                    let entity: mlua::Table = lua.globals().get("entity")?;
-                    let id = entity.get("id")?;
+        entity_class.set(
+            "get_component",
+            lua.create_function(|lua, component_name: String| {
+                let entity: mlua::Table = lua.globals().get("entity")?;
+                let id = entity.get("id")?;
 
-                    let value = match component_name.as_str() {
-                        "TransformComponent" => scene
-                            .world
-                            .get::<TransformComponent>(id)
-                            .map(|c| c.into_lua(lua)),
-                        _ => None,
-                    };
+                let value = match component_name.as_str() {
+                    "TransformComponent" => scene
+                        .world
+                        .get::<TransformComponent>(id)
+                        .map(|c| c.into_lua(lua)),
+                    _ => None,
+                };
 
-                    value.ok_or_else(move || {
-                        mlua::Error::RuntimeError(format!("\"{component_name}\" does not exist"))
-                    })?
-                })?;
+                value.ok_or_else(move || {
+                    mlua::Error::RuntimeError(format!("\"{component_name}\" does not exist"))
+                })?
+            })?,
+        )?;
 
-        entity_class.set("get_component", get_component_func)?;
-        self.lua.globals().set("entity", entity_class)?;
+        lua.globals().set("Input", input_class)?;
+        lua.globals().set("entity", entity_class)?;
 
         Ok(())
     }
@@ -108,14 +117,11 @@ impl ScriptingEngine {
             let signal_list: mlua::Table = signals_index.get(full_name)?;
 
             let entity: mlua::Table = lua.globals().get("entity")?;
-
             let signal = Signal {
                 callback,
                 caller_entity_id: entity.get("id")?,
             };
-            signal_list.push(signal)?;
-
-            Ok(())
+            signal_list.push(signal)
         };
         signal.set("connect", self.lua.create_function(connect_func)?)?;
 

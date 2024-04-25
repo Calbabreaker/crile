@@ -29,7 +29,7 @@ impl EguiContext {
 
     #[must_use]
     pub fn begin_frame(&mut self, engine: &mut crile::Engine) -> egui::Context {
-        self.raw_input.time = Some(engine.time.since_start() as f64);
+        self.raw_input.time = Some(engine.time.since_start().as_secs_f64());
         let modifiers = to_egui_modifiers(engine.input.key_modifiers());
         if modifiers.command {
             if engine.input.key_just_pressed(crile::KeyCode::KeyC) {
@@ -89,8 +89,8 @@ impl EguiContext {
                         crile::MouseButton::Left => egui::PointerButton::Primary,
                         crile::MouseButton::Right => egui::PointerButton::Secondary,
                         crile::MouseButton::Middle => egui::PointerButton::Middle,
-                        crile::MouseButton::Other(0) => egui::PointerButton::Extra1,
-                        crile::MouseButton::Other(1) => egui::PointerButton::Extra2,
+                        crile::MouseButton::Back => egui::PointerButton::Extra1,
+                        crile::MouseButton::Forward => egui::PointerButton::Extra2,
                         _ => return,
                     },
                     modifiers,
@@ -170,19 +170,15 @@ impl EguiContext {
 
 fn to_egui_modifiers(modifiers: crile::KeyModifiers) -> egui::Modifiers {
     egui::Modifiers {
-        alt: modifiers.alt_key(),
-        ctrl: modifiers.control_key(),
-        shift: modifiers.shift_key(),
+        alt: modifiers.alt_key,
+        ctrl: modifiers.control_key,
+        shift: modifiers.shift_key,
         mac_cmd: if cfg!(target_os = "macos") {
-            modifiers.super_key()
+            modifiers.super_key
         } else {
             false
         },
-        command: if cfg!(target_os = "macos") {
-            modifiers.super_key()
-        } else {
-            modifiers.control_key()
-        },
+        command: modifiers.command_key(),
     }
 }
 
