@@ -1,4 +1,5 @@
 mod asset;
+mod clipboard;
 mod ecs;
 mod engine;
 mod events;
@@ -10,6 +11,7 @@ mod time;
 mod utils;
 
 pub use asset::*;
+pub use clipboard::*;
 pub use ecs::*;
 pub use engine::*;
 pub use events::*;

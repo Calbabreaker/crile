@@ -51,8 +51,6 @@ pub enum EventKind {
     FileHovered {
         path: std::path::PathBuf,
     },
-    AppUpdate,
-    AppRedraw,
 }
 
 #[derive(Debug)]
@@ -61,16 +59,12 @@ pub struct Event {
     pub window_id: Option<WindowId>,
 }
 
-pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
-    let window_id = match event {
-        winit::event::Event::WindowEvent { window_id, .. } => Some(window_id),
-        _ => None,
-    };
-
-    let kind = match event {
-        winit::event::Event::AboutToWait => EventKind::AppUpdate,
-        winit::event::Event::WindowEvent { event, .. } => match event {
-            winit::event::WindowEvent::RedrawRequested => EventKind::AppRedraw,
+impl Event {
+    pub(crate) fn from_winit_window_event(
+        window_id: WindowId,
+        event: winit::event::WindowEvent,
+    ) -> Option<Event> {
+        let kind = match event {
             winit::event::WindowEvent::CloseRequested | winit::event::WindowEvent::Destroyed => {
                 EventKind::WindowClose
             }
@@ -123,9 +117,11 @@ pub(crate) fn convert_event(event: winit::event::Event<()>) -> Option<Event> {
             winit::event::WindowEvent::DroppedFile(path) => EventKind::FileDropped { path },
             winit::event::WindowEvent::HoveredFile(path) => EventKind::FileHovered { path },
             _ => return None,
-        },
-        _ => return None,
-    };
+        };
 
-    Some(Event { kind, window_id })
+        Some(Event {
+            kind,
+            window_id: Some(window_id),
+        })
+    }
 }

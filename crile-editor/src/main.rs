@@ -36,19 +36,20 @@ impl crile::Application for CrileEditorApp {
         let default_bg = ctx.style().visuals.noninteractive().bg_fill;
 
         let mut open = true;
+        let popup = egui::Window::new("Popup")
+            .default_pos(ctx.screen_rect().size().to_pos2() / 2.)
+            .open(&mut open)
+            .resizable(false);
+
         match self.state.window_open {
             WindowKind::Preferences => {
-                egui::Window::new("Preferences")
-                    .default_pos(ctx.screen_rect().size().to_pos2() / 2.)
-                    .open(&mut open)
-                    .resizable(false)
-                    .show(&ctx, |ui| {
-                        egui::Resize::default().with_stroke(false).show(ui, |ui| {
-                            if self.state.preferences.show(ui) {
-                                self.apply_preferences(engine);
-                            }
-                        });
+                popup.show(&ctx, |ui| {
+                    egui::Resize::default().with_stroke(false).show(ui, |ui| {
+                        if self.state.preferences.show(ui) {
+                            self.apply_preferences(engine);
+                        }
                     });
+                });
             }
             WindowKind::None => (),
         }
@@ -122,21 +123,23 @@ impl crile::Application for CrileEditorApp {
         self.egui.render(&mut render_pass);
     }
 
-    fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
+    fn event(&mut self, engine: &mut crile::Engine, event: crile::Event) {
+        if event.window_id != Some(engine.main_window().id()) {
+            return;
+        }
+
         if event.kind == crile::EventKind::WindowClose {
             engine.request_exit();
         }
 
-        if event.window_id == Some(engine.window.id()) {
-            self.egui.process_event(engine, &event.kind);
-        }
+        self.egui.process_event(engine, &event);
     }
 }
 
 impl CrileEditorApp {
     pub fn apply_preferences(&mut self, engine: &mut crile::Engine) {
         self.egui
-            .set_ui_scale(self.state.preferences.ui_scale, engine.window.size());
+            .set_ui_scale(self.state.preferences.ui_scale, engine.main_window().size());
     }
 }
 

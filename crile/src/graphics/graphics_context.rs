@@ -1,7 +1,7 @@
 use super::{
     DynamicBufferAllocator, Mesh, RenderPipelineCache, SamplerCache, Shader, ShaderKind, Texture,
 };
-use crate::{RefId, Window};
+use crate::{RefId, Window, WindowId};
 
 pub struct GraphicsContext {
     pub wgpu: WgpuContext,
@@ -29,6 +29,7 @@ impl GraphicsContext {
         let output = window.viewport.get_texture(wgpu);
 
         self.frame = Some(FrameContext {
+            window_id: window.id(),
             encoder: wgpu
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None }),
@@ -66,6 +67,7 @@ pub struct FrameContext {
     pub encoder: wgpu::CommandEncoder,
     pub output_view: wgpu::TextureView,
     pub output: wgpu::SurfaceTexture,
+    pub window_id: WindowId,
 }
 
 pub struct GraphicsCaches {

@@ -94,6 +94,10 @@ fn create_pipeline(
                 module: &config.shader.module,
                 entry_point: "vs_main",
                 buffers: config.vertex_buffer_layouts,
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    zero_initialize_workgroup_memory: false,
+                    ..Default::default()
+                },
             },
             fragment: Some(wgpu::FragmentState {
                 module: &config.shader.module,
@@ -103,6 +107,10 @@ fn create_pipeline(
                     blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    zero_initialize_workgroup_memory: false,
+                    ..Default::default()
+                },
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,

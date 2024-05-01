@@ -72,9 +72,9 @@ impl Input {
         self.mouse_position
     }
 
-    /// Update an internal state with crile::Event
-    pub fn process_event(&mut self, event: &EventKind) {
-        match event {
+    /// Update an internal state with crile::EventKind
+    pub fn process_event(&mut self, kind: &EventKind) {
+        match kind {
             EventKind::KeyInput {
                 keycode,
                 state,

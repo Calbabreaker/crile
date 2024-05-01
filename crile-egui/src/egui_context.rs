@@ -14,7 +14,7 @@ impl EguiContext {
     pub fn new(engine: &crile::Engine) -> Self {
         let mut egui = Self {
             ctx: Some(egui::Context::default()),
-            window_scale: engine.window.scale_factor() as f32,
+            window_scale: engine.main_window().scale_factor() as f32,
             scale_factor: 0.,
             raw_input: egui::RawInput {
                 max_texture_side: Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize),
@@ -23,21 +23,24 @@ impl EguiContext {
             renderer: EguiRenderer::default(),
         };
 
-        egui.set_ui_scale(1., engine.window.size());
+        egui.set_ui_scale(1., engine.main_window().size());
         egui
     }
 
     #[must_use]
     pub fn begin_frame(&mut self, engine: &mut crile::Engine) -> egui::Context {
         self.raw_input.time = Some(engine.time.since_start().as_secs_f64());
-        let modifiers = to_egui_modifiers(engine.input.key_modifiers());
+        let input = &engine.main_window().input;
+        let modifiers = to_egui_modifiers(input.key_modifiers());
         if modifiers.command {
-            if engine.input.key_just_pressed(crile::KeyCode::KeyC) {
+            if input.key_just_pressed(crile::KeyCode::KeyC) {
                 self.push_event(egui::Event::Copy);
-            } else if engine.input.key_just_pressed(crile::KeyCode::KeyX) {
+            } else if input.key_just_pressed(crile::KeyCode::KeyX) {
                 self.push_event(egui::Event::Cut);
-            } else if engine.input.key_just_pressed(crile::KeyCode::KeyV) {
-                self.push_event(egui::Event::Paste(engine.get_clipboard()));
+            } else if input.key_just_pressed(crile::KeyCode::KeyV) {
+                if let Some(text) = engine.clipboard.get() {
+                    self.push_event(egui::Event::Paste(text));
+                }
             }
         }
 
@@ -56,10 +59,10 @@ impl EguiContext {
         let full_output = ctx.end_frame();
         let copied_text = &full_output.platform_output.copied_text;
         if !copied_text.is_empty() {
-            engine.set_clipboard(copied_text.clone());
+            engine.clipboard.set(copied_text.clone());
         }
 
-        engine.window.set_cursor_icon(to_crile_cursor_icon(
+        engine.main_window().set_cursor_icon(to_crile_cursor_icon(
             full_output.platform_output.cursor_icon,
         ));
 
@@ -73,11 +76,14 @@ impl EguiContext {
         self.renderer.render(render_pass, self.scale_factor);
     }
 
-    pub fn process_event(&mut self, engine: &crile::Engine, event: &crile::EventKind) {
-        let mouse_position = to_egui_pos(engine.input.mouse_position() / self.scale_factor);
-        let modifiers = to_egui_modifiers(engine.input.key_modifiers());
+    pub fn process_event(&mut self, engine: &crile::Engine, event: &crile::Event) {
+        assert!(event.window_id == Some(engine.main_window().id()));
 
-        match event {
+        let input = &engine.main_window().input;
+        let mouse_position = to_egui_pos(input.mouse_position() / self.scale_factor);
+        let modifiers = to_egui_modifiers(input.key_modifiers());
+
+        match &event.kind {
             crile::EventKind::WindowResize { size } => self.resize_event(size),
             crile::EventKind::MouseMoved { .. } => {
                 self.push_event(egui::Event::PointerMoved(mouse_position))
@@ -129,7 +135,7 @@ impl EguiContext {
             crile::EventKind::WindowScaleChanged { factor } => {
                 let ui_scale = self.scale_factor / self.window_scale;
                 self.window_scale = *factor as f32;
-                self.set_ui_scale(ui_scale, engine.window.size());
+                self.set_ui_scale(ui_scale, engine.main_window().size());
             }
             crile::EventKind::WindowHoverChanged { hovering: false } => {
                 self.push_event(egui::Event::PointerGone)

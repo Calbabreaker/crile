@@ -1,28 +1,30 @@
 use std::sync::Arc;
 
-use crate::{EventKind, WgpuContext, WindowId};
-pub use winit::window::CursorIcon;
+use crate::{EventKind, Input, WgpuContext};
+pub use winit::window::{CursorIcon, WindowAttributes, WindowId};
 
 pub struct Window {
     pub(crate) winit: Arc<winit::window::Window>,
     pub viewport: WindowViewport,
+    pub input: Input,
 }
 
 impl Window {
-    pub fn new(
+    pub(crate) fn new(
         wgpu: &WgpuContext,
-        event_loop: &winit::event_loop::EventLoopWindowTarget<()>,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        attributes: WindowAttributes,
     ) -> Self {
         let winit = Arc::new(
-            winit::window::WindowBuilder::new()
-                .with_title("Crile")
-                .build(event_loop)
-                .expect("failed to create window"),
+            event_loop
+                .create_window(attributes)
+                .expect("Failed to create window"),
         );
 
         Self {
             viewport: WindowViewport::new(wgpu, winit.clone()),
             winit,
+            input: Input::default(),
         }
     }
 
@@ -41,17 +43,19 @@ impl Window {
         self.winit.id()
     }
 
-    pub fn process_event(&mut self, event: &EventKind, wgpu: &WgpuContext) {
-        if let EventKind::WindowResize { size } = event {
+    pub fn process_event(&mut self, kind: &EventKind, wgpu: &WgpuContext) {
+        if let EventKind::WindowResize { size } = kind {
             self.viewport.resize(*size, wgpu)
         };
+
+        self.input.process_event(kind);
     }
 
     /// Sets the cursor icon
     /// Use None to make it invisible
     pub fn set_cursor_icon(&self, icon: Option<CursorIcon>) {
         if let Some(icon) = icon {
-            self.winit.set_cursor_icon(icon);
+            self.winit.set_cursor(icon);
         } else {
             self.winit.set_cursor_visible(false);
         }
