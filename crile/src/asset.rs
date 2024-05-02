@@ -45,9 +45,6 @@ impl Asset for Script {
             bytecode: compiler.compile(crate::read_file(path)?),
             source: Some(path.to_string_lossy().to_string()),
         })
-        // Some(Script {
-        //     source: crate::read_file(path)?,
-        // })
     }
 
     fn get_map(manager: &mut AssetManager) -> &mut AssetMap<Self> {

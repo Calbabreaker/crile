@@ -4,15 +4,14 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     ui.add_space(5.);
     let mut action = HierachyAction::None;
 
-    let scene = state.active_scene();
-    let root_meta = scene.root_meta();
+    let root_meta = state.active_scene.root_meta();
 
     for child_id in &root_meta.children {
         display_entity(
             ui,
             &mut state.selection,
             *child_id,
-            &scene.world,
+            &state.active_scene.world,
             &mut action,
         );
     }
@@ -32,11 +31,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     match action {
         HierachyAction::AddChildEntity(parent_id) => {
             state
-                .scene
+                .active_scene
                 .spawn("Empty", (crile::TransformComponent::default(),), parent_id);
         }
         HierachyAction::DestroyEntity(id) => {
-            state.scene.despawn(id);
+            state.active_scene.despawn(id);
         }
         HierachyAction::None => (),
     }

@@ -55,6 +55,10 @@ impl GraphicsContext {
         self.caches.index_buffer_allocator.free();
         self.caches.bind_group_holder.clear();
     }
+
+    pub fn target_window_id(&self) -> Option<WindowId> {
+        self.frame.as_ref().map(|frame| frame.window_id)
+    }
 }
 
 impl Default for GraphicsContext {

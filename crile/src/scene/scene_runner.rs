@@ -3,23 +3,23 @@ use crate::{
     TransformComponent,
 };
 
-pub struct SceneRuntime {
-    pub scene: Scene,
+pub struct SceneRunner {
     scripting: ScriptingEngine,
 }
 
-impl SceneRuntime {
-    pub fn new(mut scene: Scene, engine: &Engine) -> Self {
-        SceneRuntime {
-            scripting: ScriptingEngine::new(&mut scene, engine),
-            scene,
+impl SceneRunner {
+    /// # Safety
+    /// TODO: scene needs to live for the duration of ScriptingEngine, perhaps don't use raw ptrs
+    pub unsafe fn new(scene: &mut Scene, engine: &Engine) -> Self {
+        SceneRunner {
+            scripting: ScriptingEngine::new(scene, engine),
         }
     }
 
-    pub fn start(&mut self) -> mlua::Result<()> {
+    pub fn start(&mut self, scene: &mut Scene) -> mlua::Result<()> {
         self.scripting.setup()?;
 
-        for (id, (script,)) in self.scene.world.query::<(ScriptComponent,)>() {
+        for (id, (script,)) in scene.world.query::<(ScriptComponent,)>() {
             if let Some(script) = &script.script {
                 self.scripting.run(id, script)?;
             }
@@ -32,14 +32,14 @@ impl SceneRuntime {
         self.scripting.call_signal("MainEvents.Update", ())
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass) {
-        let world = &self.scene.world;
-        if let Some((_, (camera_transform, camera))) = world
+    pub fn render(&mut self, render_pass: &mut RenderPass, scene: &mut Scene) {
+        if let Some((_, (camera_transform, camera))) = scene
+            .world
             .query::<(TransformComponent, CameraComponent)>()
             .next()
         {
             let view_projection = camera.projection() * camera_transform.matrix().inverse();
-            self.scene.render(render_pass, view_projection);
+            scene.render(render_pass, view_projection);
         }
     }
 

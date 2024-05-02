@@ -1,11 +1,12 @@
 use crate::{
     AssetManager, Clipboard, Event, GraphicsContext, Time, Window, WindowAttributes, WindowId,
 };
+pub use winit::event_loop::ActiveEventLoop;
 
 /// For applications to implement in order to run
 pub trait Application {
     fn new(engine: &mut Engine) -> Self;
-    fn update(&mut self, engine: &mut Engine);
+    fn update(&mut self, engine: &mut Engine, event_loop: &ActiveEventLoop);
     fn render(&mut self, engine: &mut Engine);
     fn event(&mut self, engine: &mut Engine, event: Event);
 }
@@ -22,10 +23,10 @@ pub struct Engine {
 }
 
 impl Engine {
-    /// Queues a window to be created
+    /// Creates a new window using the active event loop
     pub fn create_window(
         &mut self,
-        event_loop: &winit::event_loop::ActiveEventLoop,
+        event_loop: &ActiveEventLoop,
         attributes: WindowAttributes,
     ) -> WindowId {
         let window = Window::new(&self.gfx.wgpu, event_loop, attributes);
@@ -34,16 +35,24 @@ impl Engine {
         window_id
     }
 
+    pub fn delete_window(&mut self, window_id: WindowId) {
+        self.windows.remove(&window_id);
+    }
+
+    pub fn get_window(&self, window_id: WindowId) -> Option<&Window> {
+        self.windows.get(&window_id)
+    }
+
     pub fn request_exit(&mut self) {
         self.should_exit = true;
     }
 
     pub fn main_window(&self) -> &Window {
         // main_window_id gets created in new so this should never be none
-        self.windows.get(&self.main_window_id.unwrap()).unwrap()
+        self.get_window(self.main_window_id.unwrap()).unwrap()
     }
 
-    fn new(event_loop: &winit::event_loop::ActiveEventLoop) -> Self {
+    fn new(event_loop: &ActiveEventLoop) -> Self {
         let mut engine = Self::default();
         engine.main_window_id =
             Some(engine.create_window(event_loop, WindowAttributes::default().with_title("Crile")));
@@ -58,9 +67,9 @@ impl Engine {
         }
     }
 
-    fn update(&mut self, app: &mut impl Application) {
+    fn update(&mut self, app: &mut impl Application, event_loop: &ActiveEventLoop) {
         self.time.update();
-        app.update(self);
+        app.update(self, event_loop);
         for (_, window) in &mut self.windows {
             window.input.clear();
             window.winit.request_redraw();
@@ -76,7 +85,7 @@ impl Engine {
     }
 }
 
-pub struct AppRunner<App: Application> {
+struct AppRunner<App: Application> {
     app: Option<App>,
     engine: Option<Engine>,
 }
@@ -91,16 +100,16 @@ impl<App: Application> Default for AppRunner<App> {
 }
 
 impl<A: Application> winit::application::ApplicationHandler<()> for AppRunner<A> {
-    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let mut engine = Engine::new(event_loop);
         self.app = Some(A::new(&mut engine));
         self.engine = Some(engine);
     }
 
-    fn about_to_wait(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         // Engine should be valid here as it gets created before this function calls
         let engine = self.engine.as_mut().unwrap();
-        engine.update(self.app.as_mut().unwrap());
+        engine.update(self.app.as_mut().unwrap(), event_loop);
         if engine.should_exit {
             event_loop.exit();
         }
@@ -108,7 +117,7 @@ impl<A: Application> winit::application::ApplicationHandler<()> for AppRunner<A>
 
     fn window_event(
         &mut self,
-        _: &winit::event_loop::ActiveEventLoop,
+        _: &ActiveEventLoop,
         window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {

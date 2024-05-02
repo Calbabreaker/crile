@@ -27,7 +27,15 @@ impl crile::Application for CrileEditorApp {
         app
     }
 
-    fn update(&mut self, engine: &mut crile::Engine) {
+    fn update(&mut self, engine: &mut crile::Engine, event_loop: &crile::ActiveEventLoop) {
+        if engine
+            .main_window()
+            .input
+            .key_just_pressed(crile::KeyCode::Tab)
+        {
+            engine.create_window(event_loop, crile::WindowAttributes::default());
+        }
+
         self.state
             .editor_view
             .check_texture(&engine.gfx.wgpu, &mut self.egui);
@@ -61,7 +69,7 @@ impl crile::Application for CrileEditorApp {
         egui::TopBottomPanel::top("top_panel")
             .frame(egui::Frame::default().fill(default_bg).inner_margin(8.0))
             .show(&ctx, |ui| {
-                sections::top_panel::show(ui, &mut self.state, engine);
+                sections::top_panel::show(ui, &mut self.state, engine, event_loop);
             });
 
         egui::SidePanel::left("Hierachy")
@@ -81,7 +89,7 @@ impl crile::Application for CrileEditorApp {
             .show(&ctx, |ui| {
                 // TODO: have seperate game and editor view
                 if let Some(response) = self.state.editor_view.show(ui) {
-                    if response.hovered() && self.state.scene_runtime.is_none() {
+                    if response.hovered() {
                         ui.input(|i| {
                             self.state
                                 .editor_camera
@@ -94,42 +102,54 @@ impl crile::Application for CrileEditorApp {
         self.egui.end_frame(engine, ctx);
 
         sections::inspector::update_assets(&mut self.state, engine);
-        if let Some(scene_runtime) = self.state.scene_runtime.as_mut() {
-            if let Err(err) = scene_runtime.update() {
+        if let SceneState::Running(data) = &mut self.state.scene_state {
+            if let Err(err) = data.scene_runner.update() {
+                // Stop running if error
                 log::error!("{err}");
-                self.state.stop_scene();
+                self.state.stop_scene(engine);
             }
         }
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
-        // First render onto the viewport texture which will be put in an egui panel
-        let viewport_size = self.state.editor_view.size.as_vec2();
-        self.state.active_scene().set_viewport(viewport_size);
-        self.state.editor_camera.set_viewport(viewport_size);
-
-        if let Some(mut render_pass) = self.state.editor_view.get_render_pass(engine) {
-            if let Some(scene_runtime) = self.state.scene_runtime.as_mut() {
-                scene_runtime.render(&mut render_pass);
-            } else {
+        // Check if the main window is rendering
+        if engine.gfx.target_window_id() == Some(engine.main_window().id()) {
+            // First render onto the viewport texture which will be put in an egui panel
+            let viewport_size = self.state.editor_view.size.as_vec2();
+            self.state.editor_camera.set_viewport(viewport_size);
+            self.state.active_scene.set_viewport(viewport_size);
+            if let Some(mut render_pass) = self.state.editor_view.get_render_pass(engine) {
                 self.state
-                    .scene
+                    .active_scene
                     .render(&mut render_pass, self.state.editor_camera.view_projection());
             }
-        }
 
-        // Now render onto the window
-        let mut render_pass = crile::RenderPass::new(&mut engine.gfx, None, None, None);
-        self.egui.render(&mut render_pass);
-    }
-
-    fn event(&mut self, engine: &mut crile::Engine, event: crile::Event) {
-        if event.window_id != Some(engine.main_window().id()) {
+            // Now render onto the window
+            let mut render_pass = crile::RenderPass::new(&mut engine.gfx, None, None, None);
+            self.egui.render(&mut render_pass);
             return;
         }
 
+        // Now this could only be the game window from here
+        if let SceneState::Running(data) = &mut self.state.scene_state {
+            // Render directly onto the game window
+            let viewport_size = engine.get_window(data.game_window_id).unwrap().size();
+            self.state
+                .active_scene
+                .set_viewport(viewport_size.as_vec2());
+            let mut render_pass = crile::RenderPass::new(&mut engine.gfx, None, None, None);
+            data.scene_runner
+                .render(&mut render_pass, &mut self.state.active_scene);
+        }
+    }
+
+    fn event(&mut self, engine: &mut crile::Engine, event: crile::Event) {
         if event.kind == crile::EventKind::WindowClose {
-            engine.request_exit();
+            if event.window_id == Some(engine.main_window().id()) {
+                engine.request_exit();
+            } else {
+                self.state.stop_scene(engine)
+            }
         }
 
         self.egui.process_event(engine, &event);

@@ -1,6 +1,11 @@
-use crate::{EditorState, WindowKind};
+use crate::{EditorState, SceneState, WindowKind};
 
-pub fn show(ui: &mut egui::Ui, state: &mut EditorState, engine: &crile::Engine) {
+pub fn show(
+    ui: &mut egui::Ui,
+    state: &mut EditorState,
+    engine: &mut crile::Engine,
+    event_loop: &crile::ActiveEventLoop,
+) {
     egui::menu::bar(ui, |ui| {
         ui.columns(3, |ui| {
             ui[0].horizontal(|ui| {
@@ -8,12 +13,12 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState, engine: &crile::Engine) 
             });
 
             ui[1].vertical_centered(|ui| {
-                if state.scene_runtime.is_some() {
-                    if ui.button("⏹").clicked() {
-                        state.stop_scene();
+                if matches!(state.scene_state, SceneState::Edting) {
+                    if ui.button("▶").clicked() {
+                        state.play_scene(engine, event_loop);
                     }
-                } else if ui.button("▶").clicked() {
-                    state.play_scene(engine);
+                } else if ui.button("⏹").clicked() {
+                    state.stop_scene(engine);
                 }
             });
         });
@@ -76,10 +81,10 @@ fn left_menus(state: &mut EditorState, ui: &mut egui::Ui) {
 }
 
 fn new_scene(state: &mut EditorState) {
-    if state.scene_runtime.is_some() {
+    if matches!(state.scene_state, SceneState::Running(_)) {
         return;
     }
 
-    state.scene = crile::Scene::default();
+    state.active_scene = crile::Scene::default();
     state.editor_scene_path = None;
 }

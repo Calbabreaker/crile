@@ -7,12 +7,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
 
     ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
         if let Selection::Entity(id) = state.selection {
-            let scene = state.active_scene();
-            if let Some(meta) = scene.world.get::<crile::MetaDataComponent>(id) {
+            if let Some(meta) = state.active_scene.world.get::<crile::MetaDataComponent>(id) {
                 ui.text_edit_singleline(&mut meta.name);
                 ui.add_space(5.);
 
-                let mut entity = scene.world.entity_mut(id).unwrap();
+                let mut entity = state.active_scene.world.entity_mut(id).unwrap();
                 inspect_entity(ui, &mut entity)
             } else {
                 state.selection = Selection::None;
@@ -22,24 +21,21 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
 }
 
 pub fn update_assets(state: &mut EditorState, engine: &mut crile::Engine) {
-    let scene = state.active_scene();
-    for (_, (sprite,)) in scene.world.query_mut::<(crile::SpriteComponent,)>() {
-        update_asset(
-            &mut sprite.texture,
-            &mut sprite.texture_path,
-            engine,
-            &state.project,
-        );
+    macro_rules! update_asset_type {
+        ($component: ident, $asset_name: ident, $asset_path_name: ident) => {
+            for (_, (asset,)) in state.active_scene.world.query_mut::<(crile::$component,)>() {
+                update_asset(
+                    &mut asset.$asset_name,
+                    &mut asset.$asset_path_name,
+                    engine,
+                    &state.project,
+                );
+            }
+        };
     }
 
-    for (_, (script,)) in scene.world.query_mut::<(crile::ScriptComponent,)>() {
-        update_asset(
-            &mut script.script,
-            &mut script.script_path,
-            engine,
-            &state.project,
-        );
-    }
+    update_asset_type!(SpriteComponent, texture, texture_path);
+    update_asset_type!(ScriptComponent, script, script_path);
 }
 
 fn update_asset<Asset: crile::Asset>(

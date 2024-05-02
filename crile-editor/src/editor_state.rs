@@ -16,9 +16,20 @@ pub enum WindowKind {
     None,
 }
 
+pub struct RuntimeData {
+    pub backup_scene: crile::Scene,
+    pub scene_runner: crile::SceneRunner,
+    pub game_window_id: crile::WindowId,
+}
+
+pub enum SceneState {
+    Edting,
+    Running(RuntimeData),
+}
+
 pub struct EditorState {
-    pub scene: crile::Scene,
-    pub scene_runtime: Option<crile::SceneRuntime>,
+    pub active_scene: crile::Scene,
+    pub scene_state: SceneState,
     pub editor_scene_path: Option<PathBuf>,
 
     pub selection: Selection,
@@ -33,8 +44,8 @@ pub struct EditorState {
 impl Default for EditorState {
     fn default() -> Self {
         Self {
-            scene: Default::default(),
-            scene_runtime: None,
+            active_scene: Default::default(),
+            scene_state: SceneState::Edting,
             editor_scene_path: None,
 
             selection: Selection::None,
@@ -49,31 +60,42 @@ impl Default for EditorState {
 }
 
 impl EditorState {
-    pub fn play_scene(&mut self, engine: &crile::Engine) {
+    pub fn play_scene(&mut self, engine: &mut crile::Engine, event_loop: &crile::ActiveEventLoop) {
         log::trace!("Playing scene...");
-        let mut scene_runtime = crile::SceneRuntime::new(self.scene.clone(), engine);
+        let backup_scene = self.active_scene.clone();
+        let mut scene_runtime = unsafe { crile::SceneRunner::new(&mut self.active_scene, engine) };
 
-        if let Err(err) = scene_runtime.start() {
+        if let Err(err) = scene_runtime.start(&mut self.active_scene) {
             log::error!("{err}");
             scene_runtime.stop();
         } else {
-            self.scene_runtime = Some(scene_runtime);
+            self.scene_state = SceneState::Running(RuntimeData {
+                backup_scene,
+                scene_runner: scene_runtime,
+                game_window_id: engine.create_window(
+                    event_loop,
+                    crile::WindowAttributes::default().with_title("Game"),
+                ),
+            });
         }
     }
 
-    pub fn stop_scene(&mut self) {
-        if let Some(mut scene_runtime) = self.scene_runtime.take() {
+    pub fn stop_scene(&mut self, engine: &mut crile::Engine) {
+        if let SceneState::Running(runtime_data) = &mut self.scene_state {
             log::trace!("Stopping scene...");
-            scene_runtime.stop();
+            runtime_data.scene_runner.stop();
+            engine.delete_window(runtime_data.game_window_id);
+            self.active_scene = runtime_data.backup_scene.clone();
+            self.scene_state = SceneState::Edting;
         }
     }
 
     pub fn save_scene(&mut self, scene_path: Option<PathBuf>) {
-        if self.scene_runtime.is_some() {
+        if matches!(self.scene_state, SceneState::Running(_)) {
             return;
         }
 
-        if let Ok(data) = crile::SceneSerializer::serialize(&self.scene)
+        if let Ok(data) = crile::SceneSerializer::serialize(&self.active_scene)
             .inspect_err(|err| log::error!("Failed to save scene: {err}"))
         {
             if let Some(path) =
@@ -93,7 +115,7 @@ impl EditorState {
     }
 
     pub fn load_scene(&mut self, scene_path: Option<PathBuf>) {
-        if self.scene_runtime.is_some() {
+        if matches!(self.scene_state, SceneState::Running(_)) {
             return;
         }
 
@@ -104,7 +126,7 @@ impl EditorState {
                 if let Ok(scene) = crile::SceneSerializer::deserialize(source)
                     .inspect_err(|err| log::error!("Failed to load scene: {err} "))
                 {
-                    self.scene = scene;
+                    self.active_scene = scene;
                     self.editor_scene_path = Some(path);
                 }
             }
@@ -112,7 +134,7 @@ impl EditorState {
     }
 
     pub fn open_project(&mut self, project_file_path: Option<PathBuf>) {
-        if self.scene_runtime.is_some() {
+        if matches!(self.scene_state, SceneState::Running(_)) {
             return;
         }
 
@@ -137,14 +159,5 @@ impl EditorState {
                 }
             }
         }
-    }
-
-    pub fn active_scene<'a>(&mut self) -> &'a mut crile::Scene {
-        let scene = if let Some(scene_runtime) = self.scene_runtime.as_mut() {
-            &mut scene_runtime.scene
-        } else {
-            &mut self.scene
-        };
-        unsafe { &mut *(scene as *mut crile::Scene) }
     }
 }

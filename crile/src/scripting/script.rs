@@ -16,7 +16,7 @@ pub struct ScriptingEngine {
 }
 
 impl ScriptingEngine {
-    pub(crate) fn new(scene: &mut Scene, engine: &Engine) -> Self {
+    pub(crate) unsafe fn new(scene: &mut Scene, engine: &Engine) -> Self {
         Self {
             lua: mlua::Lua::default(),
             scene: scene as *mut Scene,

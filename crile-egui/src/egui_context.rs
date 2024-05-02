@@ -77,7 +77,9 @@ impl EguiContext {
     }
 
     pub fn process_event(&mut self, engine: &crile::Engine, event: &crile::Event) {
-        assert!(event.window_id == Some(engine.main_window().id()));
+        if event.window_id != Some(engine.main_window().id()) {
+            return;
+        }
 
         let input = &engine.main_window().input;
         let mouse_position = to_egui_pos(input.mouse_position() / self.scale_factor);

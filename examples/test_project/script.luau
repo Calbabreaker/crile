@@ -7,6 +7,6 @@ MainEvents.Update.connect(function()
 
     -- end
 
-    transform.translation += Vector3.new(1., 1., 0.)
-    transform.rotation += Vector3.new(0., 0., 0.5)
+    transform.translation += Vector3.new(0.5, 0.5, 0.)
+    transform.rotation += Vector3.new(0., 0., 0.01)
 end)

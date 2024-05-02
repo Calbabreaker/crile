@@ -41,8 +41,8 @@ impl crile::Application for SceneApp {
 
     fn event(&mut self, engine: &mut crile::Engine, event: &crile::Event) {
         match event.kind {
-            crile::EventKind::WindowClose => engine.request_exit(),
-            crile::EventKind::WindowResize { size } => self.scene.set_viewport(size.as_vec2()),
+            crile::Event::WindowClose => engine.request_exit(),
+            crile::Event::WindowResize { size } => self.scene.set_viewport(size.as_vec2()),
             _ => (),
         }
     }
