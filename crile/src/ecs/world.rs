@@ -226,14 +226,10 @@ impl<'a> EntityMut<'a> {
     }
 
     pub fn remove<T: Component>(&mut self) {
-        // Get the new archetype that the entity belongs in with component removed
-        let type_infos = self
-            .archetype
-            .type_infos()
-            .iter()
-            .copied()
-            .filter(|info| info.id != TypeId::of::<T>())
-            .collect::<Box<_>>();
+        // Remove the component from the type infos
+        let mut type_infos = self.archetype.type_infos().to_vec();
+        let pos = type_infos.binary_search(&TypeInfo::of::<T>()).unwrap();
+        type_infos.remove(pos);
 
         let entity_index = self.location.entity_index;
         self.modify_components(

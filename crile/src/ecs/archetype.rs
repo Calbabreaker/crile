@@ -35,7 +35,7 @@ impl Archetype {
             .iter()
             .map(|info| ComponentArray {
                 ptr: std::ptr::null_mut(),
-                type_info: *info,
+                type_info: info.clone(),
             })
             .collect();
 
@@ -245,7 +245,7 @@ impl ComponentArray {
 
         Self {
             ptr: new_ptr,
-            type_info: self.type_info,
+            type_info: self.type_info.clone(),
         }
     }
 

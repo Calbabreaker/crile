@@ -3,7 +3,7 @@ use std::{alloc::Layout, any::TypeId, mem::ManuallyDrop};
 use super::Archetype;
 
 /// Stores information about a component type to be used inside component arrays
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct TypeInfo {
     pub id: TypeId,
     pub layout: Layout,
@@ -16,12 +16,14 @@ impl TypeInfo {
     pub fn of<T: Component>() -> Self {
         Self {
             clone_to: |src, dst| unsafe {
-                // Call the clone funciton on T and copy T to dst
+                // Call the clone function on T at src and copy to dst
                 let mut cloned = ManuallyDrop::new((*src.cast::<T>()).clone());
                 let cloned_ptr = &mut *cloned as *mut T as *mut u8;
                 std::ptr::copy_nonoverlapping(cloned_ptr, dst, Layout::new::<T>().size());
             },
-            drop: |ptr| unsafe { ptr.cast::<T>().drop_in_place() },
+            drop: |ptr| unsafe {
+                ptr.cast::<T>().drop_in_place();
+            },
             id: TypeId::of::<T>(),
             layout: Layout::new::<T>(),
             typename: std::any::type_name::<T>(),
