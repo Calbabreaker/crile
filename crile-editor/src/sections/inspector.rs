@@ -64,6 +64,7 @@ fn update_asset<Asset: crile::Asset>(
     }
 }
 
+
 fn inspect_entity(ui: &mut egui::Ui, entity: &mut crile::EntityMut) {
     macro_rules! inspect_components {
         ( [$($component: ty),*]) => {{
@@ -182,7 +183,7 @@ impl Inspectable for crile::CameraComponent {
         crile_egui::inspect_f32(ui, &mut self.far);
         ui.end_row();
 
-        match self.projection {
+        match self.projection_kind {
             crile::ProjectionKind::Orthographic => {
                 ui.label("Zoom");
                 crile_egui::inspect_f32(ui, &mut self.orthographic_zoom);
@@ -196,16 +197,16 @@ impl Inspectable for crile::CameraComponent {
 
         ui.label("Projection");
         egui::ComboBox::from_id_source("Projection")
-            .selected_text(format!("{:?}", self.projection))
+            .selected_text(format!("{:?}", self.projection_kind))
             .width(ui.available_width())
             .show_ui(ui, |ui| {
                 ui.selectable_value(
-                    &mut self.projection,
+                    &mut self.projection_kind,
                     crile::ProjectionKind::Perspective,
                     "Perspective",
                 );
                 ui.selectable_value(
-                    &mut self.projection,
+                    &mut self.projection_kind,
                     crile::ProjectionKind::Orthographic,
                     "Orthographic",
                 );

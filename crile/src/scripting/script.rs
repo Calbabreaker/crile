@@ -1,5 +1,5 @@
 use super::vector::{Vector2, Vector3};
-use crate::{impl_mlua_conversion, Engine, EntityId, KeyCode, Scene, TransformComponent};
+use crate::{impl_mlua_conversion, Engine, EntityId, Scene, TransformComponent};
 use mlua::IntoLua;
 
 pub struct Script {

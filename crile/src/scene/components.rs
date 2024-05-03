@@ -73,6 +73,15 @@ pub struct CameraComponent {
     #[serde(skip)]
     pub viewport_size: glam::Vec2,
 
+    #[serde(skip)]
+    pub projection: glam::Mat4,
+
+    #[serde(skip)]
+    pub view_projection: glam::Mat4,
+
+    #[serde(skip)]
+    pub dirty: bool,
+
     #[serde(skip_serializing_if = "default")]
     pub near: f32,
 
@@ -87,7 +96,7 @@ pub struct CameraComponent {
     pub perspective_fov: f32,
 
     #[serde(skip_serializing_if = "default")]
-    pub projection: ProjectionKind,
+    pub projection_kind: ProjectionKind,
 }
 
 impl Default for CameraComponent {
@@ -96,34 +105,57 @@ impl Default for CameraComponent {
             viewport_size: Default::default(),
             near: -1.0,
             far: 1.0,
+            dirty: true,
             perspective_fov: 45.,
             orthographic_zoom: 1.,
-            projection: ProjectionKind::default(),
+            projection: glam::Mat4::IDENTITY,
+            view_projection: glam::Mat4::IDENTITY,
+            projection_kind: ProjectionKind::default(),
         }
     }
 }
 
 impl CameraComponent {
-    pub fn projection(&self) -> glam::Mat4 {
-        match self.projection {
-            ProjectionKind::Perspective => glam::Mat4::perspective_rh(
-                self.perspective_fov.to_radians(),
-                self.viewport_size.x / self.viewport_size.y,
-                self.near.max(0.001),
-                self.far,
-            ),
+    pub fn update_projection(&mut self, transform: glam::Mat4) {
+        if !self.dirty {
+            return;
+        }
+
+        match self.projection_kind {
+            ProjectionKind::Perspective => {
+                self.projection = glam::Mat4::perspective_rh(
+                    self.perspective_fov.to_radians(),
+                    self.viewport_size.x / self.viewport_size.y,
+                    self.near.max(0.001),
+                    self.far,
+                );
+            }
             ProjectionKind::Orthographic => {
                 let size_half = self.viewport_size / self.orthographic_zoom / 2.;
-                glam::Mat4::orthographic_rh(
+                self.projection = glam::Mat4::orthographic_rh(
                     -size_half.x,
                     size_half.x,
                     size_half.y,
                     -size_half.y,
                     self.near,
                     self.far,
-                )
+                );
             }
         }
+
+        self.view_projection = self.projection * transform.inverse();
+        self.dirty = false;
+    }
+
+    pub fn screen_to_world(&self, screen: glam::Vec2) -> glam::Vec2 {
+        // Make position go from -1 to +1
+        let mut normalized = screen / self.viewport_size * 2.;
+        normalized.x -= 1.;
+        normalized.y = -normalized.y + 1.;
+
+        let mut clip = glam::Vec4::new(normalized.x, normalized.y, -1., 1.);
+        clip = self.view_projection.inverse().mul_vec4(clip);
+        glam::Vec2::new(clip.x / clip.w, clip.y / clip.w)
     }
 }
 

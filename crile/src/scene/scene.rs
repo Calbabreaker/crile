@@ -86,6 +86,7 @@ impl Scene {
 
     pub fn set_viewport(&mut self, viewport_size: glam::Vec2) {
         for (_, (camera,)) in self.world.query_mut::<(CameraComponent,)>() {
+            camera.dirty = true;
             camera.viewport_size = viewport_size;
         }
     }

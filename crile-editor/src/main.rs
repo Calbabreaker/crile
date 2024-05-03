@@ -91,6 +91,12 @@ impl crile::Application for CrileEditorApp {
                 if let Some(response) = self.state.editor_view.show(ui) {
                     if response.hovered() {
                         ui.input(|i| {
+                            if let Some(pos) = i.pointer.latest_pos() {
+                                self.state.editor_camera.mouse_position = glam::Vec2::new(
+                                    pos.x - response.rect.left(),
+                                    pos.y - response.rect.top(),
+                                );
+                            }
                             self.state
                                 .editor_camera
                                 .process_input(i, &self.state.preferences)
@@ -100,6 +106,30 @@ impl crile::Application for CrileEditorApp {
             });
 
         self.egui.end_frame(engine, ctx);
+
+        if engine
+            .main_window()
+            .input
+            .mouse_just_pressed(crile::MouseButton::Left)
+        {
+            self.state.active_scene.spawn(
+                "test",
+                (
+                    crile::TransformComponent {
+                        translation: self
+                            .state
+                            .editor_camera
+                            .camera
+                            .screen_to_world(self.state.editor_camera.mouse_position)
+                            .extend(1.),
+                        scale: glam::Vec3::splat(100.),
+                        ..Default::default()
+                    },
+                    crile::SpriteComponent::default(),
+                ),
+                None,
+            );
+        }
 
         sections::inspector::update_assets(&mut self.state, engine);
         if let SceneState::Running(data) = &mut self.state.scene_state {
@@ -119,6 +149,7 @@ impl crile::Application for CrileEditorApp {
             self.state.editor_camera.set_viewport(viewport_size);
             self.state.active_scene.set_viewport(viewport_size);
             if let Some(mut render_pass) = self.state.editor_view.get_render_pass(engine) {
+                self.state.editor_camera.update();
                 self.state
                     .active_scene
                     .render(&mut render_pass, self.state.editor_camera.view_projection());

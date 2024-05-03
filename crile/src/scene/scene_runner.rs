@@ -35,10 +35,11 @@ impl SceneRunner {
     pub fn render(&mut self, render_pass: &mut RenderPass, scene: &mut Scene) {
         if let Some((_, (camera_transform, camera))) = scene
             .world
-            .query::<(TransformComponent, CameraComponent)>()
+            .query_mut::<(TransformComponent, CameraComponent)>()
             .next()
         {
-            let view_projection = camera.projection() * camera_transform.matrix().inverse();
+            camera.update_projection(camera_transform.matrix());
+            let view_projection = camera.view_projection;
             scene.render(render_pass, view_projection);
         }
     }

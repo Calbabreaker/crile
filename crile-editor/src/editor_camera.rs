@@ -3,25 +3,44 @@ use crate::Preferences;
 #[derive(Default)]
 pub struct EditorCamera2D {
     position: glam::Vec2,
-    camera: crile::CameraComponent,
+    pub camera: crile::CameraComponent,
+    pub mouse_position: glam::Vec2,
 }
 
 impl EditorCamera2D {
+    pub fn update(&mut self) {
+        self.camera
+            .update_projection(glam::Mat4::from_translation(self.position.extend(0.)));
+    }
+
     pub fn view_projection(&self) -> glam::Mat4 {
-        self.camera.projection() * glam::Mat4::from_translation(self.position.extend(0.))
+        self.camera.view_projection
     }
 
     pub fn process_input(&mut self, input: &egui::InputState, preferences: &Preferences) {
+        let camera_zoom = self.camera.orthographic_zoom;
         if input.pointer.secondary_down() {
-            let speed = 1.0 / self.camera.orthographic_zoom;
-            self.position += crile_egui::from_egui_vec(input.pointer.delta()) * speed;
+            self.position -= crile_egui::from_egui_vec(input.pointer.delta()) / camera_zoom;
         }
 
         // Change zoom amount based on zoom so zooming close would feel the same
         let zoom_speed = preferences.zoom_speed * 0.1;
-        let zoom_amount = input.smooth_scroll_delta.y * zoom_speed * self.camera.orthographic_zoom;
-        self.camera.orthographic_zoom =
-            f32::clamp(self.camera.orthographic_zoom + zoom_amount, 0.001, 100.0);
+        let zoom_amount = input.smooth_scroll_delta.y * zoom_speed * camera_zoom;
+        self.camera.orthographic_zoom = f32::clamp(camera_zoom + zoom_amount, 0.001, 100.0);
+
+        if zoom_amount != 0. {
+            // Calculate where to move the camera so it will feel like we zoomed into where the cursor is pointing at
+            let cursor_world_position = self.camera.screen_to_world(self.mouse_position);
+            let offset = self.position - cursor_world_position;
+
+            // Scale the offset according to the zoom amount
+            // TODO: this does not feel right
+            let scaled_offset =
+                offset * (camera_zoom - self.camera.orthographic_zoom) / camera_zoom;
+            self.position += scaled_offset;
+        }
+
+        self.camera.dirty = true;
     }
 
     pub fn set_viewport(&mut self, viewport_size: glam::Vec2) {
