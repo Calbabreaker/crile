@@ -64,7 +64,6 @@ fn update_asset<Asset: crile::Asset>(
     }
 }
 
-
 fn inspect_entity(ui: &mut egui::Ui, entity: &mut crile::EntityMut) {
     macro_rules! inspect_components {
         ( [$($component: ty),*]) => {{
@@ -212,5 +211,6 @@ impl Inspectable for crile::CameraComponent {
                 );
             });
         ui.end_row();
+        self.dirty = true;
     }
 }

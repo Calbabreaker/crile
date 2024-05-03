@@ -1,4 +1,5 @@
 mod components;
+#[allow(clippy::module_inception)]
 mod scene;
 mod scene_runner;
 mod scene_serializer;

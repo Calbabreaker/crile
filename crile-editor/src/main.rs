@@ -107,30 +107,6 @@ impl crile::Application for CrileEditorApp {
 
         self.egui.end_frame(engine, ctx);
 
-        if engine
-            .main_window()
-            .input
-            .mouse_just_pressed(crile::MouseButton::Left)
-        {
-            self.state.active_scene.spawn(
-                "test",
-                (
-                    crile::TransformComponent {
-                        translation: self
-                            .state
-                            .editor_camera
-                            .camera
-                            .screen_to_world(self.state.editor_camera.mouse_position)
-                            .extend(1.),
-                        scale: glam::Vec3::splat(100.),
-                        ..Default::default()
-                    },
-                    crile::SpriteComponent::default(),
-                ),
-                None,
-            );
-        }
-
         sections::inspector::update_assets(&mut self.state, engine);
         if let SceneState::Running(data) = &mut self.state.scene_state {
             if let Err(err) = data.scene_runner.update() {
@@ -169,8 +145,7 @@ impl crile::Application for CrileEditorApp {
                 .active_scene
                 .set_viewport(viewport_size.as_vec2());
             let mut render_pass = crile::RenderPass::new(&mut engine.gfx, None, None, None);
-            data.scene_runner
-                .render(&mut render_pass, &mut self.state.active_scene);
+            data.scene_runner.render(&mut render_pass);
         }
     }
 

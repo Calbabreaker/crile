@@ -121,7 +121,7 @@ impl Archetype {
 
         for array in self.component_arrays.iter_mut() {
             unsafe {
-                array.grow(old_capacity, new_capacity, self.count);
+                array.grow(old_capacity, new_capacity);
             }
         }
     }
@@ -183,7 +183,7 @@ pub(crate) struct ComponentArray {
 impl ComponentArray {
     // We don't store the capcity or count inside the ComponentArray to make sure every
     // ComponentArray is the same size
-    unsafe fn grow(&mut self, old_capacity: usize, new_capacity: usize, count: usize) {
+    unsafe fn grow(&mut self, old_capacity: usize, new_capacity: usize) {
         let size = self.type_info.layout.size();
 
         // We need to allocate new space manually since we don't have access the component type here
@@ -195,10 +195,6 @@ impl ComponentArray {
             ),
             size * new_capacity,
         );
-
-        if count > 0 {
-            std::ptr::copy_nonoverlapping(self.ptr, new_ptr, count * size);
-        }
 
         self.ptr = new_ptr;
     }

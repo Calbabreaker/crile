@@ -17,4 +17,4 @@ serde = { version = "1", features = ["derive"] }
 dirs = "5"
 toml = "0.8"
 mlua = { version = "0.9", features = ["luau"] }
-strum = "0.26"
+strum = { version = "0.26", features = ["derive"] }

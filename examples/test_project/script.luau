@@ -3,10 +3,8 @@ print("called setup")
 local transform = entity.get_component("TransformComponent")
 
 MainEvents.Update.connect(function() 
-    -- if Input.key_pressed("W") then
+    local direction = Input.get_vector("KeyA", "KeyS", "KeyD", "KeyW")
 
-    -- end
-
-    transform.translation += Vector3.new(0.5, 0.5, 0.)
-    transform.rotation += Vector3.new(0., 0., 0.01)
+    transform.translation += Vector3.new(direction.x, direction.y, 0)
+    transform.rotation += Vector3.new(0, 0, 0.1)
 end)

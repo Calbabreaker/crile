@@ -25,7 +25,7 @@ impl ButtonState {
 }
 
 /// Represents the mouse button code on a mouse
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy, strum::EnumString)]
 pub enum MouseButton {
     Left,
     Right,
@@ -79,8 +79,7 @@ impl KeyModifiers {
 }
 
 /// Represents the physical key on the keyboard not accounting for keyboard layouts
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-#[repr(u32)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy, strum::EnumString)]
 pub enum KeyCode {
     Backquote,
     Backslash,
@@ -277,10 +276,6 @@ pub enum KeyCode {
 }
 
 impl KeyCode {
-    pub fn from_u32(int: u32) -> Self {
-        unsafe { ::std::mem::transmute(int) }
-    }
-
     pub(crate) fn from_winit(keycode: winit::keyboard::KeyCode) -> KeyCode {
         use winit::keyboard::KeyCode as WKC;
         match keycode {

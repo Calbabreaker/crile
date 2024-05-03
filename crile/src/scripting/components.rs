@@ -1,5 +1,7 @@
+use mlua::IntoLua;
+
 use super::vector::*;
-use crate::TransformComponent;
+use crate::{Scene, TransformComponent};
 
 impl mlua::UserData for &mut TransformComponent {
     fn add_fields<'lua, F: mlua::prelude::LuaUserDataFields<'lua, Self>>(fields: &mut F) {
@@ -21,4 +23,33 @@ impl mlua::UserData for &mut TransformComponent {
             Ok(())
         });
     }
+}
+
+pub fn register_entity_class(lua: &mlua::Lua, scene: &'static Scene) -> mlua::Result<()> {
+    // Class to access details about the entity like parent children and components
+    let entity_class = lua.create_table()?;
+
+    entity_class.set(
+        "get_component",
+        lua.create_function(|lua, component_name: String| {
+            let entity: mlua::Table = lua.globals().get("entity")?;
+            let id = entity.get("id")?;
+
+            let value = match component_name.as_str() {
+                "TransformComponent" => scene
+                    .world
+                    .get::<TransformComponent>(id)
+                    .map(|c| c.into_lua(lua)),
+                _ => None,
+            };
+
+            value.ok_or_else(move || {
+                mlua::Error::RuntimeError(format!("\"{component_name}\" does not exist"))
+            })?
+        })?,
+    )?;
+
+    lua.globals().set("entity", entity_class)?;
+
+    Ok(())
 }

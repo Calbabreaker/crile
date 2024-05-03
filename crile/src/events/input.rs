@@ -72,6 +72,21 @@ impl Input {
         self.mouse_position
     }
 
+    /// Gets an input vector with the specified keycodes for the negative and positive XY.
+    pub fn get_vector(
+        &self,
+        negative_x: KeyCode,
+        negative_y: KeyCode,
+        positive_x: KeyCode,
+        positive_y: KeyCode,
+    ) -> glam::Vec2 {
+        glam::Vec2::new(
+            self.key_pressed(positive_x) as u32 as f32 - self.key_pressed(negative_x) as u32 as f32,
+            self.key_pressed(negative_y) as u32 as f32 - self.key_pressed(positive_y) as u32 as f32,
+        )
+        .normalize_or_zero()
+    }
+
     /// Update an internal state with crile::EventKind
     pub fn process_event(&mut self, kind: &EventKind) {
         match kind {
@@ -97,7 +112,7 @@ impl Input {
     }
 
     /// Clear the current frame state
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.mouse_state.clear();
         self.key_state.clear();
     }

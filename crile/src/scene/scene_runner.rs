@@ -1,6 +1,6 @@
 use crate::{
-    CameraComponent, Engine, RenderPass, Scene, ScriptComponent, ScriptingEngine,
-    TransformComponent,
+    CameraComponent, RenderPass, Scene, ScriptComponent, ScriptingEngine, TransformComponent,
+    Window,
 };
 
 pub struct SceneRunner {
@@ -10,14 +10,16 @@ pub struct SceneRunner {
 impl SceneRunner {
     /// # Safety
     /// TODO: scene needs to live for the duration of ScriptingEngine, perhaps don't use raw ptrs
-    pub unsafe fn new(scene: &mut Scene, engine: &Engine) -> Self {
+    pub unsafe fn new(scene: &mut Scene, window: &Window) -> Self {
         SceneRunner {
-            scripting: ScriptingEngine::new(scene, engine),
+            scripting: ScriptingEngine::new(scene, window),
         }
     }
 
-    pub fn start(&mut self, scene: &mut Scene) -> mlua::Result<()> {
+    pub fn start(&mut self) -> mlua::Result<()> {
         self.scripting.setup()?;
+
+        let scene = unsafe { &mut *self.scripting.scene };
 
         for (id, (script,)) in scene.world.query::<(ScriptComponent,)>() {
             if let Some(script) = &script.script {
@@ -32,7 +34,9 @@ impl SceneRunner {
         self.scripting.call_signal("MainEvents.Update", ())
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass, scene: &mut Scene) {
+    pub fn render(&mut self, render_pass: &mut RenderPass) {
+        let scene = unsafe { &mut *self.scripting.scene };
+
         if let Some((_, (camera_transform, camera))) = scene
             .world
             .query_mut::<(TransformComponent, CameraComponent)>()
