@@ -13,8 +13,8 @@ log = "0.4"
 pollster = "0.3"
 wgpu = "0.20"
 winit = "0.30"
-env_logger = "0.11"
 serde = { version = "1", features = ["derive"] }
 dirs = "5"
 toml = "0.8"
 mlua = { version = "0.9", features = ["luau"] }
+strum = "0.26"

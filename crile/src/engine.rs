@@ -85,12 +85,13 @@ impl Engine {
     }
 }
 
-struct AppRunner<App: Application> {
+// This is used in order to run app and engine by implementing the winit app trait
+struct EngineRunner<App: Application> {
     app: Option<App>,
     engine: Option<Engine>,
 }
 
-impl<App: Application> Default for AppRunner<App> {
+impl<App: Application> Default for EngineRunner<App> {
     fn default() -> Self {
         Self {
             app: None,
@@ -99,7 +100,7 @@ impl<App: Application> Default for AppRunner<App> {
     }
 }
 
-impl<A: Application> winit::application::ApplicationHandler<()> for AppRunner<A> {
+impl<A: Application> winit::application::ApplicationHandler<()> for EngineRunner<A> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let mut engine = Engine::new(event_loop);
         self.app = Some(A::new(&mut engine));
@@ -136,13 +137,8 @@ impl<A: Application> winit::application::ApplicationHandler<()> for AppRunner<A>
 }
 
 pub fn run_app<App: Application>() -> Result<(), winit::error::EventLoopError> {
-    env_logger::builder()
-        .filter_module("crile", log::LevelFilter::Trace)
-        .filter_level(log::LevelFilter::Warn)
-        .init();
-
     let event_loop = winit::event_loop::EventLoop::new()?;
-    let mut app_runner = AppRunner::<App>::default();
+    let mut app_runner = EngineRunner::<App>::default();
 
     event_loop.run_app(&mut app_runner)
 }

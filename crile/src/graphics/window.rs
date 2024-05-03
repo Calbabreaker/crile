@@ -4,6 +4,7 @@ use crate::{EventKind, Input, WgpuContext};
 pub use winit::window::{CursorIcon, WindowAttributes, WindowId};
 
 pub struct Window {
+    // This needs to be Arc in order for WGPU to borrow it
     pub(crate) winit: Arc<winit::window::Window>,
     pub viewport: WindowViewport,
     pub input: Input,
@@ -55,6 +56,7 @@ impl Window {
     /// Use None to make it invisible
     pub fn set_cursor_icon(&self, icon: Option<CursorIcon>) {
         if let Some(icon) = icon {
+            self.winit.set_cursor_visible(true);
             self.winit.set_cursor(icon);
         } else {
             self.winit.set_cursor_visible(false);

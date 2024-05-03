@@ -195,5 +195,10 @@ impl CrileEditorApp {
 }
 
 fn main() {
+    env_logger::builder()
+        .filter_module("crile", log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Warn)
+        .init();
+
     crile::run_app::<CrileEditorApp>().unwrap();
 }
