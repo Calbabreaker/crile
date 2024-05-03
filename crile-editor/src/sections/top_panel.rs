@@ -1,4 +1,4 @@
-use crate::{EditorState, SceneState, WindowKind};
+use crate::{EditorState, PopupKind, SceneState};
 
 pub fn show(
     ui: &mut egui::Ui,
@@ -74,7 +74,12 @@ fn left_menus(state: &mut EditorState, ui: &mut egui::Ui) {
 
     ui.menu_button("Edit", |ui| {
         if ui.button("Preferences...").clicked() {
-            state.window_open = WindowKind::Preferences;
+            state.popup_open = PopupKind::Preferences;
+            ui.close_menu();
+        }
+
+        if ui.button("Stats...").clicked() {
+            state.popup_open = PopupKind::Stats;
             ui.close_menu();
         }
     });

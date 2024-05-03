@@ -49,12 +49,10 @@ impl Project {
     }
 
     pub fn make_relative(&self, path: &Path) -> Option<PathBuf> {
-        if !path.starts_with(&self.directory) {
-            log::error!("Tried to get file outside of project directory");
-            return None;
-        }
-
-        pathdiff::diff_paths(path, &self.directory)
+        path.strip_prefix(&self.directory)
+            .inspect_err(|_| log::error!("{path:?} is outside of the project directory"))
+            .map(|path| path.to_path_buf())
+            .ok()
     }
 
     pub fn pick_file_relative(&self, filter_name: &str, extensions: &[&str]) -> Option<PathBuf> {

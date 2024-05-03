@@ -105,7 +105,7 @@ impl World {
 
     /// Gets a component from the entity id
     /// Shorthand for self.entity(id)?.get<T>()?;
-    pub fn get<T: 'static>(&self, id: EntityId) -> Option<&mut T> {
+    pub fn get<T: Component>(&self, id: EntityId) -> Option<&mut T> {
         let location = self.location(id)?;
         let archetype = &self.archetypes[location.archetype_index];
         unsafe { archetype.borrow_component(location.entity_index) }
@@ -139,9 +139,8 @@ pub struct EntityRef<'a> {
 
 impl<'a> EntityRef<'a> {
     fn new(world: &'a World, location: EntityLocation, id: EntityId) -> Self {
-        let archetype = &world.archetypes[location.archetype_index];
         Self {
-            archetype,
+            archetype: &world.archetypes[location.archetype_index],
             location,
             id,
         }

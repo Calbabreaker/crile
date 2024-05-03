@@ -19,7 +19,6 @@ impl crile::Application for CrileEditorApp {
             state: EditorState::default(),
         };
 
-        app.apply_preferences(engine);
         if let Some(last_opened_project) = &app.state.preferences.last_opened_project {
             app.state.open_project(Some(last_opened_project.clone()));
         }
@@ -28,14 +27,6 @@ impl crile::Application for CrileEditorApp {
     }
 
     fn update(&mut self, engine: &mut crile::Engine, event_loop: &crile::ActiveEventLoop) {
-        if engine
-            .main_window()
-            .input
-            .key_just_pressed(crile::KeyCode::Tab)
-        {
-            engine.create_window(event_loop, crile::WindowAttributes::default());
-        }
-
         self.state
             .editor_view
             .check_texture(&engine.gfx.wgpu, &mut self.egui);
@@ -43,28 +34,7 @@ impl crile::Application for CrileEditorApp {
         let ctx = self.egui.begin_frame(engine);
         let default_bg = ctx.style().visuals.noninteractive().bg_fill;
 
-        let mut open = true;
-        let popup = egui::Window::new("Popup")
-            .default_pos(ctx.screen_rect().size().to_pos2() / 2.)
-            .open(&mut open)
-            .resizable(false);
-
-        match self.state.window_open {
-            WindowKind::Preferences => {
-                popup.show(&ctx, |ui| {
-                    egui::Resize::default().with_stroke(false).show(ui, |ui| {
-                        if self.state.preferences.show(ui) {
-                            self.apply_preferences(engine);
-                        }
-                    });
-                });
-            }
-            WindowKind::None => (),
-        }
-
-        if !open {
-            self.state.window_open = WindowKind::None;
-        }
+        sections::popups::show(&ctx, &mut self.state, engine);
 
         egui::TopBottomPanel::top("top_panel")
             .frame(egui::Frame::default().fill(default_bg).inner_margin(8.0))
@@ -105,6 +75,8 @@ impl crile::Application for CrileEditorApp {
                 }
             });
 
+        self.egui
+            .set_ui_scale(self.state.preferences.ui_scale, engine.main_window().size());
         self.egui.end_frame(engine, ctx);
 
         sections::inspector::update_assets(&mut self.state, engine);
@@ -159,13 +131,6 @@ impl crile::Application for CrileEditorApp {
         }
 
         self.egui.process_event(engine, &event);
-    }
-}
-
-impl CrileEditorApp {
-    pub fn apply_preferences(&mut self, engine: &mut crile::Engine) {
-        self.egui
-            .set_ui_scale(self.state.preferences.ui_scale, engine.main_window().size());
     }
 }
 

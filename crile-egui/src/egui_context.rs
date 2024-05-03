@@ -146,7 +146,7 @@ impl EguiContext {
         }
     }
 
-    /// Sets the scale of the ui propertional to the window scale factor
+    /// Sets the scale of the ui proportional to the window scale factor
     pub fn set_ui_scale(&mut self, scale: f32, unscaled_size: glam::UVec2) {
         self.scale_factor = scale * self.window_scale;
         self.resize_event(&unscaled_size);

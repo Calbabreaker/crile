@@ -11,8 +11,9 @@ pub enum Selection {
 }
 
 #[derive(Eq, Hash, PartialEq)]
-pub enum WindowKind {
+pub enum PopupKind {
     Preferences,
+    Stats,
     None,
 }
 
@@ -37,7 +38,7 @@ pub struct EditorState {
     pub project: Project,
     pub editor_view: SceneViewport,
 
-    pub window_open: WindowKind,
+    pub popup_open: PopupKind,
     pub preferences: Preferences,
 }
 
@@ -53,7 +54,7 @@ impl Default for EditorState {
             project: Project::default(),
             editor_view: SceneViewport::default(),
 
-            window_open: WindowKind::None,
+            popup_open: PopupKind::None,
             preferences: Preferences::load().unwrap_or_default(),
         }
     }

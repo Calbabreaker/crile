@@ -10,7 +10,6 @@ log = "0.4"
 rfd = "0.14"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
-pathdiff = "0.2"
 env_logger = "0.11"
 
 crile = { path = "../crile" }
