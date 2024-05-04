@@ -1,5 +1,4 @@
-use crate::{impl_mlua_conversion, EntityId, Scene, TransformComponent, Window};
-use mlua::IntoLua;
+use crate::{impl_mlua_conversion, EntityId, Scene, Window};
 
 pub struct Script {
     pub bytecode: Vec<u8>,

@@ -1,7 +1,9 @@
-use super::{
-    DynamicBufferAllocator, Mesh, RenderPipelineCache, SamplerCache, Shader, ShaderKind, Texture,
+use std::sync::Arc;
+
+use crate::{
+    DynamicBufferAllocator, Mesh, RefId, RenderPipelineCache, SamplerCache, Shader, ShaderKind,
+    Texture, Window, WindowId,
 };
-use crate::{RefId, Window, WindowId};
 
 pub struct GraphicsContext {
     pub wgpu: WgpuContext,
@@ -11,8 +13,8 @@ pub struct GraphicsContext {
 }
 
 impl GraphicsContext {
-    pub fn new() -> Self {
-        let wgpu = pollster::block_on(WgpuContext::new());
+    pub(crate) fn new(winit: &Arc<winit::window::Window>) -> Self {
+        let wgpu = pollster::block_on(WgpuContext::new(winit));
 
         Self {
             data: GraphicsData::new(&wgpu),
@@ -26,7 +28,7 @@ impl GraphicsContext {
         assert!(self.frame.is_none(), "called begin frame before end frame");
 
         let wgpu = &self.wgpu;
-        let output = window.viewport.get_texture(wgpu);
+        let output = wgpu.get_surface_texture(window.id());
 
         self.frame = Some(FrameContext {
             window_id: window.id(),
@@ -61,12 +63,6 @@ impl GraphicsContext {
     }
 }
 
-impl Default for GraphicsContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 pub struct FrameContext {
     pub encoder: wgpu::CommandEncoder,
     pub output_view: wgpu::TextureView,
@@ -85,7 +81,7 @@ pub struct GraphicsCaches {
 }
 
 impl GraphicsCaches {
-    pub fn new(wgpu: &WgpuContext) -> Self {
+    pub(crate) fn new(wgpu: &WgpuContext) -> Self {
         Self {
             bind_group_holder: Vec::new(),
             render_pipeline: RenderPipelineCache::default(),
@@ -112,7 +108,7 @@ pub struct GraphicsData {
 }
 
 impl GraphicsData {
-    pub fn new(wgpu: &WgpuContext) -> Self {
+    pub(crate) fn new(wgpu: &WgpuContext) -> Self {
         Self {
             square_mesh: Mesh::new_square(wgpu),
             white_texture: Texture::from_pixels(wgpu, glam::UVec2::ONE, &[255, 255, 255, 255])
@@ -131,27 +127,36 @@ impl GraphicsData {
     }
 }
 
+pub struct WindowViewport {
+    surface: wgpu::Surface<'static>,
+    config: wgpu::SurfaceConfiguration,
+}
+
 pub struct WgpuContext {
     pub queue: wgpu::Queue,
     pub device: wgpu::Device,
     pub adapter: wgpu::Adapter,
     pub instance: wgpu::Instance,
     pub limits: wgpu::Limits,
+    pub viewport_map: hashbrown::HashMap<WindowId, WindowViewport>,
 }
 
 impl WgpuContext {
-    async fn new() -> Self {
+    pub(crate) async fn new(winit: &Arc<winit::window::Window>) -> Self {
         // Init with backends from environment variables or the default
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::all()),
             ..Default::default()
         });
 
+        let surface = instance
+            .create_surface(winit.clone())
+            .expect("Failed to create surface!");
+
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
-                // compatible_surface: Some(&surface),
-                compatible_surface: None,
+                compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             })
             .await
@@ -172,12 +177,79 @@ impl WgpuContext {
             .await
             .expect("Failed to request a device!");
 
-        Self {
+        let mut wgpu = Self {
+            viewport_map: hashbrown::HashMap::default(),
             limits: device.limits(),
             queue,
             device,
             instance,
             adapter,
+        };
+        wgpu.add_surface(winit, surface);
+        wgpu
+    }
+
+    fn add_surface(&mut self, winit: &winit::window::Window, surface: wgpu::Surface<'static>) {
+        let size = winit.inner_size();
+        let config = surface
+            .get_default_config(&self.adapter, size.width, size.height)
+            .unwrap();
+        surface.configure(&self.device, &config);
+
+        self.viewport_map
+            .insert(winit.id(), WindowViewport { surface, config });
+    }
+
+    pub(crate) fn new_viewport(&mut self, window: &Window) {
+        self.add_surface(
+            &window.winit,
+            self.instance
+                .create_surface(window.winit.clone())
+                .expect("Failed to create surface!"),
+        );
+    }
+
+    pub(crate) fn delete_viewport(&mut self, window_id: WindowId) {
+        self.viewport_map.remove(&window_id);
+    }
+
+    pub(crate) fn resize_viewport(&mut self, size: glam::UVec2, window_id: WindowId) {
+        let viewport = self.viewport_map.get_mut(&window_id).unwrap();
+        viewport.config.width = size.x;
+        viewport.config.height = size.y;
+        viewport.surface.configure(&self.device, &viewport.config);
+    }
+
+    // /// Tries to enable/disable vsync
+    // pub fn set_vsync(&mut self, wgpu: &WgpuContext, enable: bool) {
+    //     self.surface_config.present_mode = match enable {
+    //         true => wgpu::PresentMode::AutoVsync,
+    //         false => wgpu::PresentMode::AutoNoVsync,
+    //     };
+    //     self.surface.configure(&wgpu.device, &self.surface_config);
+    // }
+
+    // pub fn vsync_enabled(&self) -> bool {
+    //     use wgpu::PresentMode::*;
+    //     match self.surface_config.present_mode {
+    //         AutoVsync | Fifo | FifoRelaxed => true,
+    //         AutoNoVsync | Mailbox | Immediate => false,
+    //     }
+    // }
+
+    fn get_surface_texture(&self, window_id: WindowId) -> wgpu::SurfaceTexture {
+        let viewport = self.viewport_map.get(&window_id).unwrap();
+        match viewport.surface.get_current_texture() {
+            Err(_) => {
+                // Surface lost or something so reconfigure and try to reobtain
+                viewport.surface.configure(&self.device, &viewport.config);
+
+                viewport
+                    .surface
+                    .get_current_texture()
+                    .expect("failed to get surface texture")
+            }
+            Ok(output) => output,
         }
     }
 }

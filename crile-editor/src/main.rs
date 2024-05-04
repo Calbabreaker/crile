@@ -57,19 +57,14 @@ impl crile::Application for CrileEditorApp {
         egui::CentralPanel::default()
             .frame(egui::Frame::none())
             .show(&ctx, |ui| {
-                // TODO: have seperate game and editor view
                 if let Some(response) = self.state.editor_view.show(ui) {
                     if response.hovered() {
-                        ui.input(|i| {
-                            if let Some(pos) = i.pointer.latest_pos() {
-                                self.state.editor_camera.mouse_position = glam::Vec2::new(
-                                    pos.x - response.rect.left(),
-                                    pos.y - response.rect.top(),
-                                );
-                            }
-                            self.state
-                                .editor_camera
-                                .process_input(i, &self.state.preferences)
+                        ui.input(|input| {
+                            self.state.editor_camera.process_input(
+                                input,
+                                response.rect.min,
+                                &self.state.preferences,
+                            )
                         });
                     }
                 }
@@ -131,6 +126,10 @@ impl crile::Application for CrileEditorApp {
         }
 
         self.egui.process_event(engine, &event);
+    }
+
+    fn main_window_attributes() -> crile::WindowAttributes {
+        crile::WindowAttributes::default().with_title("Crile Editor")
     }
 }
 

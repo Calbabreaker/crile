@@ -19,7 +19,7 @@ impl EguiRenderer {
         ctx: &egui::Context,
         full_output: egui::FullOutput,
     ) {
-        // Store all the texture egui is using
+        // Store all the textures egui is using
         for (id, delta) in &full_output.textures_delta.set {
             let (pixels, width, height) = match &delta.image {
                 egui::ImageData::Color(image) => {

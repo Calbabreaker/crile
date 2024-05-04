@@ -17,7 +17,7 @@ pub fn show(ctx: &egui::Context, state: &mut EditorState, engine: &crile::Engine
         }
         PopupKind::Stats => {
             popup.show(ctx, |ui| {
-                ui.label(format!("FPS: {}", engine.time.framerate()));
+                ui.label(format!("FPS: {}", engine.time.frame_rate()));
             });
         }
         PopupKind::None => (),

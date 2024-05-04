@@ -1,32 +1,32 @@
 use std::sync::Arc;
 
-use crate::{EventKind, Input, WgpuContext};
+use crate::Input;
 pub use winit::window::{CursorIcon, WindowAttributes, WindowId};
 
 pub struct Window {
     // This needs to be Arc in order for WGPU to borrow it
     pub(crate) winit: Arc<winit::window::Window>,
-    pub viewport: WindowViewport,
     pub input: Input,
 }
 
 impl Window {
-    pub(crate) fn new(
-        wgpu: &WgpuContext,
-        event_loop: &winit::event_loop::ActiveEventLoop,
-        attributes: WindowAttributes,
-    ) -> Self {
-        let winit = Arc::new(
-            event_loop
-                .create_window(attributes)
-                .expect("Failed to create window"),
-        );
-
+    pub(crate) fn new(winit: Arc<winit::window::Window>) -> Self {
         Self {
-            viewport: WindowViewport::new(wgpu, winit.clone()),
             winit,
             input: Input::default(),
         }
+    }
+
+    pub(crate) fn new_winit(
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        attributes: WindowAttributes,
+    ) -> Arc<winit::window::Window> {
+        log::info!("Creating new window with title '{}'", attributes.title);
+        Arc::new(
+            event_loop
+                .create_window(attributes)
+                .expect("Failed to create window!"),
+        )
     }
 
     /// Returns the width and height of the window
@@ -42,14 +42,6 @@ impl Window {
 
     pub fn id(&self) -> WindowId {
         self.winit.id()
-    }
-
-    pub fn process_event(&mut self, kind: &EventKind, wgpu: &WgpuContext) {
-        if let EventKind::WindowResize { size } = kind {
-            self.viewport.resize(*size, wgpu)
-        };
-
-        self.input.process_event(kind);
     }
 
     /// Sets the cursor icon
@@ -78,68 +70,6 @@ impl Window {
             self.winit
                 .set_cursor_grab(winit::window::CursorGrabMode::None)
                 .is_ok()
-        }
-    }
-}
-
-pub struct WindowViewport {
-    pub(crate) surface: wgpu::Surface<'static>,
-    pub(crate) surface_config: wgpu::SurfaceConfiguration,
-}
-
-impl WindowViewport {
-    pub fn new(wgpu: &WgpuContext, winit: Arc<winit::window::Window>) -> Self {
-        let size = winit.inner_size();
-        let surface = wgpu
-            .instance
-            .create_surface(winit.clone())
-            .expect("Failed to create surface!");
-
-        let surface_config = surface
-            .get_default_config(&wgpu.adapter, size.width, size.height)
-            .unwrap();
-        surface.configure(&wgpu.device, &surface_config);
-
-        Self {
-            surface,
-            surface_config,
-        }
-    }
-
-    pub fn resize(&mut self, size: glam::UVec2, wgpu: &WgpuContext) {
-        self.surface_config.width = size.x;
-        self.surface_config.height = size.y;
-        self.surface.configure(&wgpu.device, &self.surface_config);
-    }
-
-    /// Tries to enable/disable vsync
-    pub fn set_vsync(&mut self, wgpu: &WgpuContext, enable: bool) {
-        self.surface_config.present_mode = match enable {
-            true => wgpu::PresentMode::AutoVsync,
-            false => wgpu::PresentMode::AutoNoVsync,
-        };
-        self.surface.configure(&wgpu.device, &self.surface_config);
-    }
-
-    pub fn vsync_enabled(&self) -> bool {
-        use wgpu::PresentMode::*;
-        match self.surface_config.present_mode {
-            AutoVsync | Fifo | FifoRelaxed => true,
-            AutoNoVsync | Mailbox | Immediate => false,
-        }
-    }
-
-    pub fn get_texture(&self, wgpu: &WgpuContext) -> wgpu::SurfaceTexture {
-        match self.surface.get_current_texture() {
-            Err(_) => {
-                // Surface lost or something so reconfigure and try to reobtain
-                self.surface.configure(&wgpu.device, &self.surface_config);
-
-                self.surface
-                    .get_current_texture()
-                    .expect("failed to get surface texture")
-            }
-            Ok(output) => output,
         }
     }
 }

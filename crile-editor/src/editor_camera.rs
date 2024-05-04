@@ -4,7 +4,6 @@ use crate::Preferences;
 pub struct EditorCamera2D {
     position: glam::Vec2,
     pub camera: crile::CameraComponent,
-    pub mouse_position: glam::Vec2,
 }
 
 impl EditorCamera2D {
@@ -17,7 +16,19 @@ impl EditorCamera2D {
         self.camera.view_projection
     }
 
-    pub fn process_input(&mut self, input: &egui::InputState, preferences: &Preferences) {
+    pub fn process_input(
+        &mut self,
+        input: &egui::InputState,
+        viewport_offset: egui::Pos2,
+        preferences: &Preferences,
+    ) {
+        // The mouse position offseted by the viewport position
+        let mouse_position = input
+            .pointer
+            .latest_pos()
+            .map(|pos| glam::Vec2::new(pos.x - viewport_offset.x, pos.y - viewport_offset.y))
+            .unwrap_or_default();
+
         let camera_zoom = self.camera.orthographic_zoom;
         if input.pointer.secondary_down() {
             self.position -= crile_egui::from_egui_vec(input.pointer.delta()) / camera_zoom;
@@ -30,7 +41,7 @@ impl EditorCamera2D {
 
         if zoom_amount != 0. {
             // Calculate where to move the camera so it will feel like we zoomed into where the cursor is pointing at
-            let cursor_world_position = self.camera.screen_to_world(self.mouse_position);
+            let cursor_world_position = self.camera.screen_to_world(mouse_position);
             let offset = self.position - cursor_world_position;
 
             // Scale the offset according to the zoom amount

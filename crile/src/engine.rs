@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use crate::{
-    AssetManager, Clipboard, Event, GraphicsContext, Time, Window, WindowAttributes, WindowId,
+    AssetManager, Clipboard, Event, EventKind, GraphicsContext, Time, Window, WindowAttributes,
+    WindowId,
 };
 pub use winit::event_loop::ActiveEventLoop;
 
@@ -9,9 +12,11 @@ pub trait Application {
     fn update(&mut self, engine: &mut Engine, event_loop: &ActiveEventLoop);
     fn render(&mut self, engine: &mut Engine);
     fn event(&mut self, engine: &mut Engine, event: Event);
+    fn main_window_attributes() -> WindowAttributes {
+        WindowAttributes::default().with_title("Crile")
+    }
 }
 
-#[derive(Default)]
 pub struct Engine {
     pub gfx: GraphicsContext,
     pub time: Time,
@@ -19,7 +24,7 @@ pub struct Engine {
     pub clipboard: Clipboard,
     should_exit: bool,
     windows: hashbrown::HashMap<WindowId, Window>,
-    main_window_id: Option<WindowId>,
+    main_window_id: WindowId,
 }
 
 impl Engine {
@@ -29,13 +34,16 @@ impl Engine {
         event_loop: &ActiveEventLoop,
         attributes: WindowAttributes,
     ) -> WindowId {
-        let window = Window::new(&self.gfx.wgpu, event_loop, attributes);
+        let window = Window::new(Window::new_winit(event_loop, attributes));
+        self.gfx.wgpu.new_viewport(&window);
+
         let window_id = window.id();
         self.windows.insert(window_id, window);
         window_id
     }
 
     pub fn delete_window(&mut self, window_id: WindowId) {
+        self.gfx.wgpu.delete_viewport(window_id);
         self.windows.remove(&window_id);
     }
 
@@ -48,21 +56,31 @@ impl Engine {
     }
 
     pub fn main_window(&self) -> &Window {
-        // main_window_id gets created in new so this should never be none
-        self.get_window(self.main_window_id.unwrap()).unwrap()
+        self.get_window(self.main_window_id).unwrap()
     }
 
-    fn new(event_loop: &ActiveEventLoop) -> Self {
-        let mut engine = Self::default();
-        engine.main_window_id =
-            Some(engine.create_window(event_loop, WindowAttributes::default().with_title("Crile")));
-        engine
+    fn new<App: Application>(event_loop: &ActiveEventLoop) -> Self {
+        let winit = Window::new_winit(event_loop, App::main_window_attributes());
+        let gfx = GraphicsContext::new(&winit);
+
+        Self {
+            gfx,
+            main_window_id: winit.id(),
+            time: Time::default(),
+            should_exit: false,
+            clipboard: Clipboard::default(),
+            asset_manager: AssetManager::default(),
+            windows: hashbrown::HashMap::from([(winit.id(), Window::new(winit))]),
+        }
     }
 
     fn render(&mut self, app: &mut impl Application, window_id: WindowId) {
         if let Some(window) = self.windows.get(&window_id) {
             self.gfx.begin_frame(window);
             app.render(self);
+        }
+        if let Some(window) = self.windows.get(&window_id) {
+            window.winit.pre_present_notify();
             self.gfx.end_frame();
         }
     }
@@ -78,7 +96,11 @@ impl Engine {
 
     fn event(&mut self, app: &mut impl Application, event: Event) {
         if let Some(window) = event.window_id.and_then(|id| self.windows.get_mut(&id)) {
-            window.process_event(&event.kind, &self.gfx.wgpu);
+            window.input.process_event(&event.kind);
+
+            if let EventKind::WindowResize { size } = event.kind {
+                self.gfx.wgpu.resize_viewport(size, window.id())
+            }
         }
 
         app.event(self, event);
@@ -100,10 +122,10 @@ impl<App: Application> Default for EngineRunner<App> {
     }
 }
 
-impl<A: Application> winit::application::ApplicationHandler<()> for EngineRunner<A> {
+impl<App: Application> winit::application::ApplicationHandler<()> for EngineRunner<App> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let mut engine = Engine::new(event_loop);
-        self.app = Some(A::new(&mut engine));
+        let mut engine = Engine::new::<App>(event_loop);
+        self.app = Some(App::new(&mut engine));
         self.engine = Some(engine);
     }
 
