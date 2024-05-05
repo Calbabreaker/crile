@@ -14,7 +14,7 @@ impl Clipboard {
     pub fn new() -> Self {
         Self {
             context: copypasta::ClipboardContext::new()
-                .inspect_err(|err| log::error!("Failed to initialize clipboard context, copy and pasting will not work: {err}"))
+                .inspect_err(|err| log::warn!("Failed to initialize clipboard context, copy and pasting will not work: {err}"))
                 .ok(),
         }
     }

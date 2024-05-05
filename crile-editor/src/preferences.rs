@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(default)]
 pub struct Preferences {
     pub ui_scale: f32,
@@ -40,10 +40,10 @@ impl Preferences {
         ui.add_space(5.);
         if ui.button("Apply").clicked() {
             self.save();
-            return true;
+            true
+        } else {
+            false
         }
-
-        false
     }
 
     pub fn save(&self) -> Option<()> {

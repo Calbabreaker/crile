@@ -34,7 +34,7 @@ impl crile::Application for CrileEditorApp {
         let ctx = self.egui.begin_frame(engine);
         let default_bg = ctx.style().visuals.noninteractive().bg_fill;
 
-        sections::popups::show(&ctx, &mut self.state, engine);
+        sections::popups::show(&ctx, &mut self.egui, &mut self.state, engine);
 
         egui::TopBottomPanel::top("top_panel")
             .frame(egui::Frame::default().fill(default_bg).inner_margin(8.0))
@@ -70,8 +70,6 @@ impl crile::Application for CrileEditorApp {
                 }
             });
 
-        self.egui
-            .set_ui_scale(self.state.preferences.ui_scale, engine.main_window().size());
         self.egui.end_frame(engine, ctx);
 
         sections::inspector::update_assets(&mut self.state, engine);

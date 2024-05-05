@@ -1,6 +1,11 @@
 use crate::{EditorState, PopupKind};
 
-pub fn show(ctx: &egui::Context, state: &mut EditorState, engine: &crile::Engine) {
+pub fn show(
+    ctx: &egui::Context,
+    egui_ctx: &mut crile_egui::EguiContext,
+    state: &mut EditorState,
+    engine: &crile::Engine,
+) {
     let mut open = true;
     let popup = egui::Window::new("Popup")
         .default_pos(ctx.screen_rect().size().to_pos2() / 2.)
@@ -10,9 +15,9 @@ pub fn show(ctx: &egui::Context, state: &mut EditorState, engine: &crile::Engine
     match state.popup_open {
         PopupKind::Preferences => {
             popup.show(ctx, |ui| {
-                egui::Resize::default().with_stroke(false).show(ui, |ui| {
-                    state.preferences.show(ui);
-                });
+                if state.preferences.show(ui) {
+                    egui_ctx.set_ui_scale(state.preferences.ui_scale, engine.main_window().size());
+                }
             });
         }
         PopupKind::Stats => {
