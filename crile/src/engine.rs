@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     AssetManager, Clipboard, Event, EventKind, GraphicsContext, Time, Window, WindowAttributes,
     WindowId,
@@ -7,9 +5,11 @@ use crate::{
 pub use winit::event_loop::ActiveEventLoop;
 
 /// For applications to implement in order to run
+#[allow(unused)]
 pub trait Application {
     fn new(engine: &mut Engine) -> Self;
     fn update(&mut self, engine: &mut Engine, event_loop: &ActiveEventLoop);
+    fn fixed_update(&mut self, engine: &mut Engine) {}
     fn render(&mut self, engine: &mut Engine);
     fn event(&mut self, engine: &mut Engine, event: Event);
     fn main_window_attributes() -> WindowAttributes {
@@ -63,10 +63,17 @@ impl Engine {
         let winit = Window::new_winit(event_loop, App::main_window_attributes());
         let gfx = GraphicsContext::new(&winit);
 
+        let refresh_rate = winit
+            .current_monitor()
+            .and_then(|m| m.refresh_rate_millihertz())
+            .unwrap_or(60);
+        let mut time = Time::default();
+        time.set_target_frame_rate(120.);
+
         Self {
             gfx,
             main_window_id: winit.id(),
-            time: Time::default(),
+            time,
             should_exit: false,
             clipboard: Clipboard::default(),
             asset_manager: AssetManager::default(),
@@ -78,15 +85,20 @@ impl Engine {
         if let Some(window) = self.windows.get(&window_id) {
             self.gfx.begin_frame(window);
             app.render(self);
-        }
-        if let Some(window) = self.windows.get(&window_id) {
+            let window = self.windows.get(&window_id).unwrap();
             window.winit.pre_present_notify();
             self.gfx.end_frame();
         }
     }
 
     fn update(&mut self, app: &mut impl Application, event_loop: &ActiveEventLoop) {
+        self.time.wait_for_target_frame_rate();
         self.time.update();
+        while self.time.fixed_update_accumulator >= self.time.target_fixed_delta {
+            app.fixed_update(self);
+            self.time.fixed_update_accumulator -= self.time.target_fixed_delta;
+        }
+
         app.update(self, event_loop);
         for (_, window) in &mut self.windows {
             window.input.clear();
@@ -95,7 +107,7 @@ impl Engine {
     }
 
     fn event(&mut self, app: &mut impl Application, event: Event) {
-        if let Some(window) = event.window_id.and_then(|id| self.windows.get_mut(&id)) {
+        if let Some(window) = self.windows.get_mut(&event.window_id) {
             window.input.process_event(&event.kind);
 
             if let EventKind::WindowResize { size } = event.kind {
@@ -109,32 +121,32 @@ impl Engine {
 
 // This is used in order to run app and engine by implementing the winit app trait
 struct EngineRunner<App: Application> {
-    app: Option<App>,
-    engine: Option<Engine>,
+    state: Option<(App, Engine)>,
 }
 
 impl<App: Application> Default for EngineRunner<App> {
     fn default() -> Self {
-        Self {
-            app: None,
-            engine: None,
-        }
+        Self { state: None }
     }
 }
 
 impl<App: Application> winit::application::ApplicationHandler<()> for EngineRunner<App> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let mut engine = Engine::new::<App>(event_loop);
-        self.app = Some(App::new(&mut engine));
-        self.engine = Some(engine);
+        self.state = Some((App::new(&mut engine), engine));
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
     }
 
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        // Engine should be valid here as it gets created before this function calls
-        let engine = self.engine.as_mut().unwrap();
-        engine.update(self.app.as_mut().unwrap(), event_loop);
-        if engine.should_exit {
-            event_loop.exit();
+    fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: winit::event::StartCause) {
+        if cause != winit::event::StartCause::Poll {
+            return;
+        }
+
+        if let Some((app, engine)) = self.state.as_mut() {
+            engine.update(app, event_loop);
+            if engine.should_exit {
+                event_loop.exit();
+            }
         }
     }
 
@@ -144,23 +156,21 @@ impl<App: Application> winit::application::ApplicationHandler<()> for EngineRunn
         window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
-        let engine = self.engine.as_mut().unwrap();
-        let app = self.app.as_mut().unwrap();
+        if let Some((app, engine)) = self.state.as_mut() {
+            if event == winit::event::WindowEvent::RedrawRequested {
+                engine.render(app, window_id);
+                return;
+            }
 
-        if event == winit::event::WindowEvent::RedrawRequested {
-            engine.render(app, window_id);
-            return;
-        }
-
-        if let Some(event) = Event::from_winit_window_event(window_id, event) {
-            engine.event(app, event);
+            if let Some(event) = Event::from_winit_window_event(window_id, event) {
+                engine.event(app, event);
+            }
         }
     }
 }
 
-pub fn run_app<App: Application>() -> Result<(), winit::error::EventLoopError> {
+pub fn run_app<App: Application>() -> Result<(), impl std::error::Error> {
     let event_loop = winit::event_loop::EventLoop::new()?;
     let mut app_runner = EngineRunner::<App>::default();
-
     event_loop.run_app(&mut app_runner)
 }

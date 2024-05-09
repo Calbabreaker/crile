@@ -1,7 +1,7 @@
 use mlua::UserDataFields;
 
 macro_rules! make_vector_type {
-    ($wrapper_type: ident, $inner_type: ty, $number_type: ty, [$($field: ident),*]) => {
+    ($wrapper_type: ident, $inner_type: ty, [$($field: ident),*]) => {
 
 /// Math vector used for lua scripting only
 /// We need to wrap around the glam::Vec* as rust doesn't allow implementing traits onto it outside of the crate
@@ -43,10 +43,6 @@ impl mlua::UserData for $wrapper_type {
                     mlua::MetaMethod::$method,
                     |_, (a, b): ($wrapper_type, $wrapper_type)| Ok($wrapper_type(a.0 $operator b.0)),
                 );
-                // methods.add_meta_function(
-                //     mlua::MetaMethod::$method,
-                //     |_, (a, b): ($wrapper_type, String)| Ok($wrapper_type(a.0)),
-                // );
             }
         }
 
@@ -79,5 +75,5 @@ impl<'lua> mlua::FromLua<'lua> for $wrapper_type {
     }
 }
 
-make_vector_type!(Vector3, glam::Vec3, f32, [x, y, z]);
-make_vector_type!(Vector2, glam::Vec2, f32, [x, y]);
+make_vector_type!(Vector3, glam::Vec3, [x, y, z]);
+make_vector_type!(Vector2, glam::Vec2, [x, y]);

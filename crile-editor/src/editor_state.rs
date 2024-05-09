@@ -68,7 +68,8 @@ impl EditorState {
             event_loop,
             crile::WindowAttributes::default().with_title("Game"),
         );
-        let mut runtime_data = RuntimeData {
+
+        self.scene_state = SceneState::Running(RuntimeData {
             backup_scene: self.active_scene.clone(),
             scene_runner: unsafe {
                 crile::SceneRunner::new(
@@ -77,15 +78,13 @@ impl EditorState {
                 )
             },
             game_window_id,
-        };
+        });
 
-        if let Err(err) = runtime_data.scene_runner.start() {
-            log::error!("{err}");
-            runtime_data.scene_runner.stop();
-            engine.delete_window(game_window_id);
-            self.active_scene = runtime_data.backup_scene;
-        } else {
-            self.scene_state = SceneState::Running(runtime_data);
+        if let SceneState::Running(runtime_data) = &mut self.scene_state {
+            if let Err(err) = runtime_data.scene_runner.start() {
+                log::error!("{err}");
+                self.stop_scene(engine);
+            }
         }
     }
 

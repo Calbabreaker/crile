@@ -29,7 +29,7 @@ impl EguiContext {
 
     #[must_use]
     pub fn begin_frame(&mut self, engine: &mut crile::Engine) -> egui::Context {
-        self.raw_input.time = Some(engine.time.since_start().as_secs_f64());
+        self.raw_input.time = Some(engine.time.elapsed().as_secs_f64());
         let input = &engine.main_window().input;
         let modifiers = to_egui_modifiers(input.key_modifiers());
         if modifiers.command {
@@ -77,7 +77,7 @@ impl EguiContext {
     }
 
     pub fn process_event(&mut self, engine: &crile::Engine, event: &crile::Event) {
-        if event.window_id != Some(engine.main_window().id()) {
+        if event.window_id != engine.main_window().id() {
             return;
         }
 

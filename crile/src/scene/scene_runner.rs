@@ -9,7 +9,8 @@ pub struct SceneRunner {
 
 impl SceneRunner {
     /// # Safety
-    /// TODO: scene needs to live for the duration of ScriptingEngine, perhaps don't use raw ptrs
+    /// scene needs to live for the duration of ScriptingEngine
+    /// TODO: perhaps don't use raw ptrs
     pub unsafe fn new(scene: &mut Scene, window: &Window) -> Self {
         SceneRunner {
             scripting: ScriptingEngine::new(scene, window),
@@ -32,6 +33,10 @@ impl SceneRunner {
 
     pub fn update(&mut self) -> mlua::Result<()> {
         self.scripting.call_signal("MainEvents.Update", ())
+    }
+
+    pub fn fixed_update(&mut self) -> mlua::Result<()> {
+        self.scripting.call_signal("MainEvents.FixedUpdate", ())
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass) {

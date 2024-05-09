@@ -11,7 +11,7 @@ hashbrown = "0.14"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 log = "0.4"
 pollster = "0.3"
-wgpu = "0.20"
+wgpu = "0.19"
 winit = "0.30"
 serde = { version = "1", features = ["derive"] }
 dirs = "5"

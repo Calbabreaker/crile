@@ -6,8 +6,14 @@ pub fn show(
     state: &mut EditorState,
     engine: &crile::Engine,
 ) {
+    let title = match state.popup_open {
+        PopupKind::Stats => "Stats",
+        PopupKind::Preferences => "Preferences",
+        PopupKind::None => return,
+    };
+
     let mut open = true;
-    let popup = egui::Window::new("Popup")
+    let popup = egui::Window::new(title)
         .default_pos(ctx.screen_rect().size().to_pos2() / 2.)
         .open(&mut open)
         .resizable(false);
@@ -25,7 +31,7 @@ pub fn show(
                 ui.label(format!("FPS: {}", engine.time.frame_rate()));
             });
         }
-        PopupKind::None => (),
+        PopupKind::None => unreachable!(),
     }
 
     if !open {

@@ -220,23 +220,6 @@ impl WgpuContext {
         viewport.surface.configure(&self.device, &viewport.config);
     }
 
-    // /// Tries to enable/disable vsync
-    // pub fn set_vsync(&mut self, wgpu: &WgpuContext, enable: bool) {
-    //     self.surface_config.present_mode = match enable {
-    //         true => wgpu::PresentMode::AutoVsync,
-    //         false => wgpu::PresentMode::AutoNoVsync,
-    //     };
-    //     self.surface.configure(&wgpu.device, &self.surface_config);
-    // }
-
-    // pub fn vsync_enabled(&self) -> bool {
-    //     use wgpu::PresentMode::*;
-    //     match self.surface_config.present_mode {
-    //         AutoVsync | Fifo | FifoRelaxed => true,
-    //         AutoNoVsync | Mailbox | Immediate => false,
-    //     }
-    // }
-
     fn get_surface_texture(&self, window_id: WindowId) -> wgpu::SurfaceTexture {
         let viewport = self.viewport_map.get(&window_id).unwrap();
         match viewport.surface.get_current_texture() {

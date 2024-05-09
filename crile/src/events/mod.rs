@@ -51,12 +51,13 @@ pub enum EventKind {
     FileHovered {
         path: std::path::PathBuf,
     },
+    FixedUpdate,
 }
 
 #[derive(Debug)]
 pub struct Event {
     pub kind: EventKind,
-    pub window_id: Option<WindowId>,
+    pub window_id: WindowId,
 }
 
 impl Event {
@@ -119,9 +120,6 @@ impl Event {
             _ => return None,
         };
 
-        Some(Event {
-            kind,
-            window_id: Some(window_id),
-        })
+        Some(Event { kind, window_id })
     }
 }

@@ -36,6 +36,7 @@ impl ScriptingEngine {
 
         let main_events = lua.create_table()?;
         main_events.set("Update", self.make_signal("MainEvents.Update")?)?;
+        main_events.set("FixedUpdate", self.make_signal("MainEvents.FixedUpdate")?)?;
         self.lua.globals().set("MainEvents", main_events)?;
 
         Ok(())

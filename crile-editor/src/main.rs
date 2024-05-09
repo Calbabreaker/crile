@@ -19,9 +19,8 @@ impl crile::Application for CrileEditorApp {
             state: EditorState::default(),
         };
 
-        if let Some(last_opened_project) = &app.state.preferences.last_opened_project {
-            app.state.open_project(Some(last_opened_project.clone()));
-        }
+        app.state
+            .open_project(app.state.preferences.last_opened_project.clone());
 
         app
     }
@@ -75,11 +74,23 @@ impl crile::Application for CrileEditorApp {
         sections::inspector::update_assets(&mut self.state, engine);
         if let SceneState::Running(data) = &mut self.state.scene_state {
             if let Err(err) = data.scene_runner.update() {
-                // Stop running if error
                 log::error!("{err}");
                 self.state.stop_scene(engine);
             }
         }
+    }
+
+    fn fixed_update(&mut self, engine: &mut crile::Engine) {
+        if let SceneState::Running(data) = &mut self.state.scene_state {
+            if let Err(err) = data.scene_runner.fixed_update() {
+                log::error!("{err}");
+                self.state.stop_scene(engine);
+            }
+        }
+
+        // if engine.time.frame_count() % 2 == 0 {
+        //     std::thread::sleep(std::time::Duration::from_secs_f32(0.1));
+        // }
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {
@@ -116,7 +127,7 @@ impl crile::Application for CrileEditorApp {
 
     fn event(&mut self, engine: &mut crile::Engine, event: crile::Event) {
         if event.kind == crile::EventKind::WindowClose {
-            if event.window_id == Some(engine.main_window().id()) {
+            if event.window_id == engine.main_window().id() {
                 engine.request_exit();
             } else {
                 self.state.stop_scene(engine)

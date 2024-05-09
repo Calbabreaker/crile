@@ -75,7 +75,7 @@ impl DynamicBufferAllocator {
     ) -> BufferAllocation {
         let size = std::mem::size_of_val(data) as u64;
 
-        // Aligns size to alignment since gpus require the buffer to have a certain alignment
+        // Aligns size to alignment since UBOs require a min alignment for dynamic indexing
         let size_aligned = size.next_multiple_of(self.alignment);
         assert!(
             size_aligned <= self.max_size,
