@@ -53,6 +53,7 @@ impl Time {
     }
 
     pub fn set_target_frame_rate(&mut self, target_frame_rate: f32) {
+        log::trace!("Set target frame rate as {target_frame_rate}fps");
         self.target_delta = Some(Duration::from_secs_f32(1. / target_frame_rate));
     }
 

@@ -66,9 +66,9 @@ impl Engine {
         let refresh_rate = winit
             .current_monitor()
             .and_then(|m| m.refresh_rate_millihertz())
-            .unwrap_or(60);
+            .unwrap_or(60000);
         let mut time = Time::default();
-        time.set_target_frame_rate(120.);
+        time.set_target_frame_rate((refresh_rate / 1000) as f32);
 
         Self {
             gfx,
