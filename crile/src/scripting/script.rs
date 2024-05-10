@@ -30,7 +30,7 @@ impl ScriptingEngine {
         super::vector::Vector3::register_class(lua)?;
         super::vector::Vector2::register_class(lua)?;
         super::input::register_class(lua, window)?;
-        super::components::register_entity_class(lua, scene)?;
+        super::components::register_entity_funcs(lua, scene)?;
 
         lua.globals().set("__signals_index", lua.create_table()?)?;
 
@@ -43,8 +43,7 @@ impl ScriptingEngine {
     }
 
     pub fn run(&mut self, id: EntityId, script: &Script) -> mlua::Result<()> {
-        let entity: mlua::Table = self.lua.globals().get("entity")?;
-        entity.set("id", id)?;
+        self.lua.globals().set("entity_id", id)?;
         self.lua
             .load(&script.bytecode)
             .set_name(script.source.clone().unwrap_or_default())
@@ -61,8 +60,9 @@ impl ScriptingEngine {
 
         let args = args.into_lua_multi(&self.lua)?;
         signal_list.for_each(move |_: usize, signal: Signal| {
-            let entity: mlua::Table = self.lua.globals().get("entity")?;
-            entity.set("id", signal.caller_entity_id)?;
+            self.lua
+                .globals()
+                .set("entity_id", signal.caller_entity_id)?;
 
             signal.callback.call(args.clone())?;
             Ok(())
@@ -83,10 +83,9 @@ impl ScriptingEngine {
             let signals_index: mlua::Table = lua.globals().get("__signals_index")?;
             let signal_list: mlua::Table = signals_index.get(full_name)?;
 
-            let entity: mlua::Table = lua.globals().get("entity")?;
             let signal = Signal {
                 callback,
-                caller_entity_id: entity.get("id")?,
+                caller_entity_id: lua.globals().get("entity_id")?,
             };
             signal_list.push(signal)
         };
