@@ -1,7 +1,7 @@
 use mlua::UserDataFields;
 
 macro_rules! make_vector_type {
-    ($wrapper_type: ident, $inner_type: ty, [$($field: ident),*]) => {
+    ($wrapper_type: ident, $inner_type: ty, $number_type: ty, [$($field: ident),*]) => {
 
 /// Math vector used for lua scripting only
 /// We need to wrap around the glam::Vec* as rust doesn't allow implementing traits onto it outside of the crate
@@ -33,6 +33,10 @@ impl mlua::UserData for $wrapper_type {
             fields.add_field_method_get(stringify!($field), |_, this| {
                 Ok(this.0.$field)
             });
+            fields.add_field_method_set(stringify!($field), |_, this, val| {
+                this.0.$field = val;
+                Ok(())
+            });
         )*
     }
 
@@ -41,7 +45,7 @@ impl mlua::UserData for $wrapper_type {
             ($method: ident, $operator: tt) => {
                 methods.add_meta_function(
                     mlua::MetaMethod::$method,
-                    |_, (a, b): ($wrapper_type, $wrapper_type)| Ok($wrapper_type(a.0 $operator b.0)),
+                    |_, (a, b): (Self, Self)| Ok(Self(a.0 $operator b.0)),
                 );
             }
         }
@@ -57,23 +61,36 @@ impl<'lua> mlua::FromLua<'lua> for $wrapper_type {
     fn from_lua(value: mlua::Value<'lua>, _: &'lua mlua::Lua) -> mlua::Result<Self> {
         match value {
             mlua::Value::UserData(ud) => {
-                if let Ok(value) = ud.borrow::<Self>() {
-                    return Ok(*value);
+                if let Ok(value) = ud.borrow::<Vector2>() {
+                    return Ok(Self::from(*value));
                 }
 
-                // TODO impletement implicit conveersion
-                // if let Ok(value) = ud.borrow::<$other_vector_type>() {
-                //     return Ok(Self(<$inner_type>::new($(value.0.$field,)*)));
-                // }
-
-                Err(mlua::Error::RuntimeError(format!("Expected a vector")))
+                if let Ok(value) = ud.borrow::<Vector3>() {
+                    return Ok(Self::from(*value));
+                }
             }
-            _ => unreachable!(),
+            mlua::Value::Number(number) => return Ok(Self(<$inner_type>::splat(number as $number_type))),
+            mlua::Value::Integer(number) => return Ok(Self(<$inner_type>::splat(number as $number_type))),
+            _ => (),
         }
+
+        Err(mlua::Error::RuntimeError(format!("Expected a vector")))
     }
 }
     }
 }
 
-make_vector_type!(Vector3, glam::Vec3, [x, y, z]);
-make_vector_type!(Vector2, glam::Vec2, [x, y]);
+impl From<Vector2> for Vector3 {
+    fn from(value: Vector2) -> Self {
+        Self(value.0.extend(0.))
+    }
+}
+
+impl From<Vector3> for Vector2 {
+    fn from(value: Vector3) -> Self {
+        Self(value.0.truncate())
+    }
+}
+
+make_vector_type!(Vector3, glam::Vec3, f32, [x, y, z]);
+make_vector_type!(Vector2, glam::Vec2, f32, [x, y]);
