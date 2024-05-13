@@ -131,7 +131,7 @@ macro_rules! tuple_impl {
                 Box::new(infos)
             }
 
-            #[allow(non_snake_case, unused_variables, unused_mut)]
+            #[allow(non_snake_case)]
             fn take_all(self, index: usize, archetype: &mut Archetype) {
                 let ($($type,)*) = self;
                 $(
@@ -142,7 +142,6 @@ macro_rules! tuple_impl {
                 )*
             }
 
-            #[allow(unused_variables)]
             fn get_array_ptrs(archetype: &Archetype) -> Option<Self::FixedArray<*mut u8>> {
                 Some([
                     $(
@@ -154,7 +153,7 @@ macro_rules! tuple_impl {
             type RefTuple<'a> = ($(&'a $type,)*);
             type MutTuple<'a> = ($(&'a mut $type,)*);
 
-            #[allow(non_snake_case, unused_variables, clippy::unused_unit)]
+            #[allow(non_snake_case)]
             unsafe fn array_ptr_array_get<'a>(
                 ptr_array: &Self::FixedArray<*mut u8>,
                 index: usize,
@@ -167,7 +166,7 @@ macro_rules! tuple_impl {
                 )
             }
 
-            #[allow(non_snake_case, clippy::unused_unit)]
+            #[allow(non_snake_case)]
             fn mut_to_ref(mut_tuple: Self::MutTuple<'_>) -> Self::RefTuple<'_> {
                 let ($($type,)*) = mut_tuple;
                 ( $($type,)* )
@@ -178,7 +177,6 @@ macro_rules! tuple_impl {
 
 macro_rules! recursive_impl {
     ($head: tt) => {
-        tuple_impl!();
         tuple_impl!($head);
     };
     ($head: tt, $($tail: tt),*) => {

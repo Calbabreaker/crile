@@ -66,7 +66,7 @@ fn left_menus(state: &mut EditorState, ui: &mut egui::Ui) {
             ui.close_menu();
         }
 
-        if crile_egui::button_shorcut(ui, "Load Scene", "Ctrl+L").clicked() {
+        if crile_egui::button_shorcut(ui, "Load Scene...", "Ctrl+L").clicked() {
             state.load_scene(None);
             ui.close_menu();
         }
