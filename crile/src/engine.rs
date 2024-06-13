@@ -90,9 +90,8 @@ impl Engine {
     fn update(&mut self, app: &mut impl Application, event_loop: &ActiveEventLoop) {
         self.time.wait_for_target_frame_rate();
         self.time.update();
-        while self.time.fixed_update_accumulator >= self.time.target_fixed_delta {
+        while self.time.should_call_fixed_update() {
             app.fixed_update(self);
-            self.time.fixed_update_accumulator -= self.time.target_fixed_delta;
         }
 
         app.update(self, event_loop);

@@ -64,7 +64,6 @@ impl<'lua> mlua::FromLua<'lua> for $wrapper_type {
                 if let Ok(value) = ud.borrow::<Vector2>() {
                     return Ok(Self::from(*value));
                 }
-
                 if let Ok(value) = ud.borrow::<Vector3>() {
                     return Ok(Self::from(*value));
                 }

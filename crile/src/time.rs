@@ -1,21 +1,21 @@
 use std::time::{Duration, Instant};
 
 pub struct Time {
-    last_frame: Instant,
+    last_frame_time: Instant,
     elapsed: Duration,
     delta: Duration,
     frame_count: u32,
     /// Target delta for normal update and rendering frame rate
     target_delta: Option<Duration>,
     /// Target delta for fixed update
-    pub(crate) target_fixed_delta: Duration,
-    pub(crate) fixed_update_accumulator: Duration,
+    target_fixed_delta: Duration,
+    fixed_update_accumulator: Duration,
 }
 
 impl Default for Time {
     fn default() -> Self {
         Self {
-            last_frame: Instant::now(),
+            last_frame_time: Instant::now(),
             elapsed: Duration::ZERO,
             delta: Duration::ZERO,
             frame_count: 0,
@@ -29,8 +29,8 @@ impl Default for Time {
 
 impl Time {
     pub fn update(&mut self) {
-        self.delta = self.last_frame.elapsed();
-        self.last_frame = Instant::now();
+        self.delta = self.last_frame_time.elapsed();
+        self.last_frame_time = Instant::now();
         self.frame_count += 1;
         self.fixed_update_accumulator += self.delta;
         self.elapsed += self.delta;
@@ -38,9 +38,18 @@ impl Time {
 
     pub(crate) fn wait_for_target_frame_rate(&self) {
         if let Some(target_delta) = self.target_delta {
-            if let Some(wait_duration) = target_delta.checked_sub(self.last_frame.elapsed()) {
+            if let Some(wait_duration) = target_delta.checked_sub(self.last_frame_time.elapsed()) {
                 std::thread::sleep(wait_duration);
             }
+        }
+    }
+
+    pub(crate) fn should_call_fixed_update(&mut self) -> bool {
+        if self.fixed_update_accumulator >= self.target_fixed_delta {
+            self.fixed_update_accumulator -= self.target_fixed_delta;
+            true
+        } else {
+            false
         }
     }
 
@@ -53,7 +62,10 @@ impl Time {
     }
 
     pub fn set_target_frame_rate(&mut self, target_frame_rate: Option<f32>) {
-        log::trace!("Set target frame rate as {target_frame_rate:?}fps");
+        if let Some(target_frame_rate) = target_frame_rate {
+            log::trace!("Set target frame rate as {target_frame_rate}fps");
+        }
+
         self.target_delta = target_frame_rate.map(|rate| Duration::from_secs_f32(1. / rate));
     }
 

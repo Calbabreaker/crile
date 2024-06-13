@@ -13,7 +13,7 @@ macro_rules! impl_from_lua_str {
                 Self::from_str(string).map_err(|_| {
                     mlua::Error::RuntimeError(format!(
                         "{} '{}' is not valid.",
-                        stringify!($code_type),
+                        stringify!($type),
                         string
                     ))
                 })
