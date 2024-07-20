@@ -11,7 +11,7 @@ pub struct $wrapper_type(pub $inner_type);
 
 impl $wrapper_type {
     pub fn register_class(lua: &mlua::Lua) -> mlua::Result<()> {
-        let class = lua.create_table()?;
+        let class = super::make_class(lua, stringify!($wrapper_type))?;
         class.set(
             "new",
             lua.create_function(|_, ($($field,)*)| -> mlua::Result<$wrapper_type> {
@@ -21,8 +21,6 @@ impl $wrapper_type {
 
         class.set("ONE", $wrapper_type(<$inner_type>::ONE))?;
         class.set("ZERO", $wrapper_type(<$inner_type>::ZERO))?;
-        class.set_readonly(true);
-        lua.globals().set(stringify!($wrapper_type), class)?;
         Ok(())
     }
 }

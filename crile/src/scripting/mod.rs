@@ -1,6 +1,7 @@
 mod components;
 mod input;
 mod script;
+mod time;
 mod vector;
 
 pub use script::*;
@@ -29,6 +30,12 @@ macro_rules! impl_mlua_conversion {
             }
         }
     }
+}
+
+pub fn make_class<'a>(lua: &'a mlua::Lua, name: &'static str) -> mlua::Result<mlua::Table<'a>> {
+    let class = lua.create_table()?;
+    lua.globals().set(name, class)?;
+    lua.globals().get(name)
 }
 
 pub(crate) use impl_mlua_conversion;

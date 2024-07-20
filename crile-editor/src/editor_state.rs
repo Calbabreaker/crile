@@ -72,10 +72,11 @@ impl EditorState {
         self.scene_state = SceneState::Running(RuntimeData {
             backup_scene: self.active_scene.clone(),
             scene_runner: unsafe {
-                crile::SceneRunner::new(
+                crile::SceneRunner::new(crile::ScriptingEngine::new(
                     &mut self.active_scene,
-                    engine.get_window(game_window_id).unwrap(),
-                )
+                    engine,
+                    game_window_id,
+                ))
             },
             game_window_id,
         });

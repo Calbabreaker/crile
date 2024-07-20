@@ -6,6 +6,7 @@ pub struct Time {
     delta: Duration,
     frame_count: u32,
     /// Target delta for normal update and rendering frame rate
+    /// Set to None to use unlimited
     target_delta: Option<Duration>,
     /// Target delta for fixed update
     target_fixed_delta: Duration,
@@ -62,10 +63,10 @@ impl Time {
     }
 
     pub fn set_target_frame_rate(&mut self, target_frame_rate: Option<f32>) {
-        if let Some(target_frame_rate) = target_frame_rate {
-            log::trace!("Set target frame rate as {target_frame_rate}fps");
-        }
-
+        log::trace!(
+            "Set target frame rate as {} fps",
+            target_frame_rate.unwrap_or(f32::INFINITY)
+        );
         self.target_delta = target_frame_rate.map(|rate| Duration::from_secs_f32(1. / rate));
     }
 

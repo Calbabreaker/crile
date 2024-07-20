@@ -63,13 +63,10 @@ impl Engine {
         let winit = Window::new_winit(event_loop, App::main_window_attributes());
         let gfx = GraphicsContext::new(&winit);
 
-        let mut time = Time::default();
-        time.set_target_frame_rate(Some(120.));
-
         Self {
             gfx,
             main_window_id: winit.id(),
-            time,
+            time: Time::default(),
             should_exit: false,
             clipboard: Clipboard::default(),
             asset_manager: AssetManager::default(),

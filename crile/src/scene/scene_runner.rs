@@ -1,20 +1,12 @@
-use crate::{
-    CameraComponent, RenderPass, Scene, ScriptComponent, ScriptingEngine, TransformComponent,
-    Window,
-};
+use crate::{CameraComponent, RenderPass, ScriptComponent, ScriptingEngine, TransformComponent};
 
 pub struct SceneRunner {
     scripting: ScriptingEngine,
 }
 
 impl SceneRunner {
-    /// # Safety
-    /// scene needs to live for the duration of ScriptingEngine
-    /// TODO: perhaps don't use raw ptrs
-    pub unsafe fn new(scene: &mut Scene, window: &Window) -> Self {
-        SceneRunner {
-            scripting: ScriptingEngine::new(scene, window),
-        }
+    pub fn new(scripting: ScriptingEngine) -> Self {
+        SceneRunner { scripting }
     }
 
     pub fn start(&mut self) -> mlua::Result<()> {
@@ -32,11 +24,11 @@ impl SceneRunner {
     }
 
     pub fn update(&mut self) -> mlua::Result<()> {
-        self.scripting.call_signal("MainEvents.Update", ())
+        self.scripting.call_signal("MainEvents.Update")
     }
 
     pub fn fixed_update(&mut self) -> mlua::Result<()> {
-        self.scripting.call_signal("MainEvents.FixedUpdate", ())
+        self.scripting.call_signal("MainEvents.FixedUpdate")
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass) {

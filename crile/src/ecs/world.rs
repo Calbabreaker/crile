@@ -52,7 +52,7 @@ impl World {
         type_infos: &[TypeInfo],
         take_func: impl FnOnce(usize, &mut Archetype),
     ) {
-        assert!(
+        debug_assert!(
             self.entity_locations.get(id).map_or(true, |l| !l.valid),
             "id {id} already in use"
         );
