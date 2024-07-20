@@ -166,14 +166,7 @@ impl WgpuContext {
         log::info!("Using {} ({:?})", info.name, info.backend);
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
-                    label: None,
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor::default(), None)
             .await
             .expect("Failed to request a device!");
 

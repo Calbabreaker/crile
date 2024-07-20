@@ -15,7 +15,7 @@ pub struct CrileEditorApp {
 impl crile::Application for CrileEditorApp {
     fn new(engine: &mut crile::Engine) -> Self {
         let mut app = Self {
-            egui: crile_egui::EguiContext::new(engine),
+            egui: crile_egui::EguiContext::new(engine, engine.main_window().id()),
             state: EditorState::default(),
         };
 
@@ -87,10 +87,6 @@ impl crile::Application for CrileEditorApp {
                 self.state.stop_scene(engine);
             }
         }
-
-        // if engine.time.frame_count() % 2 == 0 {
-        //     std::thread::sleep(std::time::Duration::from_secs_f32(0.1));
-        // }
     }
 
     fn render(&mut self, engine: &mut crile::Engine) {

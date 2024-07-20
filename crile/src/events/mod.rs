@@ -7,6 +7,12 @@ pub use winit::window::WindowId;
 pub use codes::*;
 pub use input::*;
 
+#[derive(Debug, PartialEq)]
+pub enum MouseScrolledUnit {
+    Pixels,
+    Lines,
+}
+
 // We create our own event enum instead of using winit so we can manage it ourselves.
 #[derive(Debug, PartialEq)]
 pub enum EventKind {
@@ -22,6 +28,7 @@ pub enum EventKind {
     },
     MouseScrolled {
         delta: glam::Vec2,
+        unit: MouseScrolledUnit,
     },
     KeyInput {
         state: ButtonState,
@@ -101,9 +108,11 @@ impl Event {
             winit::event::WindowEvent::MouseWheel { delta, .. } => match delta {
                 winit::event::MouseScrollDelta::LineDelta(x, y) => EventKind::MouseScrolled {
                     delta: glam::Vec2::new(x, y),
+                    unit: MouseScrolledUnit::Lines,
                 },
                 winit::event::MouseScrollDelta::PixelDelta(pos) => EventKind::MouseScrolled {
                     delta: glam::Vec2::new(pos.x as f32, pos.y as f32),
+                    unit: MouseScrolledUnit::Pixels,
                 },
             },
             winit::event::WindowEvent::Focused(focused) => {

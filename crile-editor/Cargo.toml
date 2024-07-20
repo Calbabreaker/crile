@@ -4,8 +4,8 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-egui = "0.27"
-glam = "0.27"
+egui = "0.28"
+glam = "0.28"
 log = "0.4"
 rfd = "0.14"
 serde = { version = "1", features = ["derive"] }

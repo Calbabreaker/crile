@@ -8,29 +8,35 @@ pub struct EguiContext {
     scale_factor: f32,
     /// Scale factor of the window so the user requested scale factor would be propertional to it
     window_scale: f32,
+    target_window_id: crile::WindowId,
 }
 
 impl EguiContext {
-    pub fn new(engine: &crile::Engine) -> Self {
-        let mut egui = Self {
+    pub fn new(engine: &crile::Engine, target_window_id: crile::WindowId) -> Self {
+        let window = engine
+            .get_window(target_window_id)
+            .expect("Invalid window ID");
+
+        let mut context = Self {
             ctx: Some(egui::Context::default()),
-            window_scale: engine.main_window().scale_factor() as f32,
+            window_scale: window.scale_factor() as f32,
             scale_factor: 0.,
             raw_input: egui::RawInput {
                 max_texture_side: Some(engine.gfx.wgpu.limits.max_texture_dimension_2d as usize),
                 ..Default::default()
             },
             renderer: EguiRenderer::default(),
+            target_window_id,
         };
 
-        egui.set_ui_scale(1., engine.main_window().size());
-        egui
+        context.set_ui_scale(1., window.size());
+        context
     }
 
     #[must_use]
     pub fn begin_frame(&mut self, engine: &mut crile::Engine) -> egui::Context {
         self.raw_input.time = Some(engine.time.elapsed().as_secs_f64());
-        let input = &engine.main_window().input;
+        let input = &self.target_window(engine).input;
         let modifiers = to_egui_modifiers(input.key_modifiers());
         if modifiers.command {
             if input.key_just_pressed(crile::KeyCode::KeyC) {
@@ -62,9 +68,10 @@ impl EguiContext {
             engine.clipboard.set(copied_text.clone());
         }
 
-        engine.main_window().set_cursor_icon(to_crile_cursor_icon(
-            full_output.platform_output.cursor_icon,
-        ));
+        self.target_window(engine)
+            .set_cursor_icon(to_crile_cursor_icon(
+                full_output.platform_output.cursor_icon,
+            ));
 
         self.renderer.prepare(engine, &ctx, full_output);
 
@@ -77,11 +84,11 @@ impl EguiContext {
     }
 
     pub fn process_event(&mut self, engine: &crile::Engine, event: &crile::Event) {
-        if event.window_id != engine.main_window().id() {
+        if event.window_id != self.target_window_id {
             return;
         }
 
-        let input = &engine.main_window().input;
+        let input = &self.target_window(engine).input;
         let mouse_position = to_egui_pos(input.mouse_position() / self.scale_factor);
         let modifiers = to_egui_modifiers(input.key_modifiers());
 
@@ -105,10 +112,15 @@ impl EguiContext {
                     pressed: state.is_pressed(),
                 })
             }
-            crile::EventKind::MouseScrolled { delta } => {
-                self.push_event(egui::Event::Scroll(
-                    egui::vec2(delta.x, delta.y) / self.scale_factor,
-                ));
+            crile::EventKind::MouseScrolled { delta, unit } => {
+                self.push_event(egui::Event::MouseWheel {
+                    delta: egui::vec2(delta.x, delta.y) / self.scale_factor,
+                    unit: match unit {
+                        crile::MouseScrolledUnit::Lines => egui::MouseWheelUnit::Line,
+                        crile::MouseScrolledUnit::Pixels => egui::MouseWheelUnit::Point,
+                    },
+                    modifiers,
+                });
             }
             crile::EventKind::KeyInput {
                 state,
@@ -137,7 +149,7 @@ impl EguiContext {
             crile::EventKind::WindowScaleChanged { factor } => {
                 let ui_scale = self.scale_factor / self.window_scale;
                 self.window_scale = *factor as f32;
-                self.set_ui_scale(ui_scale, engine.main_window().size());
+                self.set_ui_scale(ui_scale, self.target_window(engine).size());
             }
             crile::EventKind::WindowHoverChanged { hovering: false } => {
                 self.push_event(egui::Event::PointerGone)
@@ -173,6 +185,12 @@ impl EguiContext {
             egui::Pos2::ZERO,
             egui::vec2(size.x as f32, size.y as f32) / self.scale_factor,
         ));
+    }
+
+    fn target_window<'a>(&self, engine: &'a crile::Engine) -> &'a crile::Window {
+        engine
+            .get_window(self.target_window_id)
+            .expect("Invalid window Id")
     }
 }
 
