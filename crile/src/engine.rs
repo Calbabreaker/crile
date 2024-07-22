@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::{
     AssetManager, Clipboard, Event, EventKind, GraphicsContext, Time, Window, WindowAttributes,
     WindowId,
@@ -23,7 +25,7 @@ pub struct Engine {
     pub asset_manager: AssetManager,
     pub clipboard: Clipboard,
     should_exit: bool,
-    windows: hashbrown::HashMap<WindowId, Window>,
+    windows: BTreeMap<WindowId, Window>,
     main_window_id: WindowId,
 }
 
@@ -70,7 +72,7 @@ impl Engine {
             should_exit: false,
             clipboard: Clipboard::default(),
             asset_manager: AssetManager::default(),
-            windows: hashbrown::HashMap::from([(winit.id(), Window::new(winit))]),
+            windows: BTreeMap::from([(winit.id(), Window::new(winit))]),
         }
     }
 
