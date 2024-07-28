@@ -39,8 +39,8 @@ impl World {
     }
 
     pub fn spawn_with_id<T: ComponentTuple>(&mut self, id: EntityId, components: T) {
-        self.spawn_raw(id, &T::type_infos(), |index, put_func| {
-            components.take_all(index, put_func)
+        self.spawn_raw(id, &T::type_infos(), |index, archetype| {
+            components.take_all(index, archetype)
         });
     }
 

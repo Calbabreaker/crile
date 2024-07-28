@@ -7,3 +7,6 @@ pub use archetype::*;
 pub use component::*;
 pub use query::*;
 pub use world::*;
+
+#[cfg(test)]
+mod tests;

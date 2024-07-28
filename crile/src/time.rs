@@ -29,7 +29,7 @@ impl Default for Time {
 }
 
 impl Time {
-    pub fn update(&mut self) {
+    pub(crate) fn update(&mut self) {
         self.delta = self.last_frame_time.elapsed();
         self.last_frame_time = Instant::now();
         self.frame_count += 1;

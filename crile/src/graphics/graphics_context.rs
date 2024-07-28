@@ -213,6 +213,16 @@ impl WgpuContext {
         viewport.surface.configure(&self.device, &viewport.config);
     }
 
+    pub fn set_vsync(&mut self, vsync: bool, window_id: WindowId) {
+        let viewport = self.viewport_map.get_mut(&window_id).unwrap();
+        viewport.config.present_mode = if vsync {
+            wgpu::PresentMode::AutoVsync
+        } else {
+            wgpu::PresentMode::AutoNoVsync
+        };
+        viewport.surface.configure(&self.device, &viewport.config);
+    }
+
     fn get_surface_texture(&self, window_id: WindowId) -> wgpu::SurfaceTexture {
         let viewport = self.viewport_map.get(&window_id).unwrap();
         match viewport.surface.get_current_texture() {
