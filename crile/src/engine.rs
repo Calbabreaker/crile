@@ -95,7 +95,7 @@ impl Engine {
         }
 
         app.update(self, event_loop);
-        for (_, window) in &mut self.windows {
+        for window in &mut self.windows.values_mut() {
             window.input.clear();
             window.winit.request_redraw();
         }

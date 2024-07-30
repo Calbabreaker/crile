@@ -9,11 +9,12 @@ pub fn inspect_vec3(ui: &mut egui::Ui, value: &mut glam::Vec3) {
         ui.spacing_mut().interact_size.x = 0.;
         // Make sure vec3 control resizes to fit
         let font_size = ui.style().text_styles[&egui::TextStyle::Body].size;
-        let size = egui::vec2(
+        let mut size = egui::vec2(
             ui.available_width() / 3. - font_size - ui.spacing().item_spacing.x,
             ui.spacing().interact_size.y,
         )
         .floor();
+        size.x = size.x.max(0.);
 
         ui.label("X");
         ui.add_sized(size, egui::DragValue::new(&mut value.x).speed(0.01));

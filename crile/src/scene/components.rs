@@ -1,21 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{Color, EntityId, RefId, Script, Texture};
-
-/// Component to contain meta data about the enitity
-/// Not really a real component but used internally to keep track of metadata
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
-#[serde(default)]
-pub struct MetaDataComponent {
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub name: String,
-
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<EntityId>,
-
-    #[serde(skip_serializing_if = "default")]
-    pub parent: EntityId,
-}
+use crate::{Color, RefId, Script, Texture};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(default)]

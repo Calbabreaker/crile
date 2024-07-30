@@ -1,55 +1,36 @@
-[[entities]]
+[[entity]]
 id = 0
-
-[entities.MetaDataComponent]
-children = [2, 1]
 name = "Root"
 
-[[entities]]
-id = 3
+[entity.TransformComponent]
+scale = [1.0, 1.0, 1.0]
+translation = [0.20999999344348907, 0.0, 0.0]
 
-[entities.MetaDataComponent]
-name = "Empty"
-parent = 1
-
-[entities.SpriteComponent]
-color = [0.41861340403556824, 0.41861340403556824, 0.41861340403556824, 1.0]
-
-[entities.SpriteComponent.texture_path]
-path = "blobfish.png"
-
-[entities.TransformComponent]
-scale = [100.0, 100.0, 1.0]
-translation = [-37.650001525878906, 0.0, -0.27000001072883606]
-
-[[entities]]
+[[entity]]
 id = 1
-
-[entities.MetaDataComponent]
-children = [3]
 name = "Sprite"
+parent = 0
 
-[entities.ScriptComponent.script_path]
+[entity.ScriptComponent.script_path]
 path = "script.luau"
 
-[entities.SpriteComponent.texture_path]
+[entity.SpriteComponent.texture_path]
 path = "blobfish.png"
 
-[entities.TransformComponent]
+[entity.TransformComponent]
 scale = [1.0, 1.0, 1.149999976158142]
 translation = [100.0, 0.0, 0.4699999988079071]
 
-[[entities]]
-id = 2
+[[entity]]
+id = 3
+name = "Camera"
+parent = 0
 
-[entities.CameraComponent]
+[entity.CameraComponent]
 far = 1.0
 near = -1.0
 orthographic_zoom = 1.0
 perspective_fov = 45.0
 
-[entities.MetaDataComponent]
-name = "Camera"
-
-[entities.TransformComponent]
+[entity.TransformComponent]
 scale = [1.0, 1.0, 1.0]

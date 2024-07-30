@@ -35,8 +35,9 @@ fn normal_spawn_1_component() {
 fn spawn_raw_1_component() {
     let mut world = World::default();
     let position = Position { x: 1., y: 2. };
+    let id = world.next_free_id();
     world.spawn_raw(
-        0,
+        id,
         &[TypeInfo::of::<Position>()],
         |index, archetype| unsafe {
             archetype.put_component(
@@ -98,14 +99,12 @@ fn query_world() {
 
     let mut query = world.query_mut::<(Position, Velocity)>();
     assert_eq!(query.next().unwrap(), (0, (&mut position, &mut velocity)));
-    assert_eq!(
-        query.next().unwrap(),
-        (1_usize, (&mut position, &mut velocity))
-    );
+    assert_eq!(query.next().unwrap(), (1, (&mut position, &mut velocity)));
 }
 
 // TODO: fix this test
 // #[test]
+// #[should_panic]
 // fn multiple_borrow() {
 //     let mut world = World::default();
 //     let id = world.spawn((Metadata::default(),));
@@ -116,8 +115,6 @@ fn query_world() {
 
 //     let b = world.get::<Metadata>(id).unwrap();
 //     b.stuff.remove(0);
-
-//     assert_eq!(string.as_str(), "test");
 // }
 
 #[test]

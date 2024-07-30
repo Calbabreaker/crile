@@ -70,10 +70,10 @@ impl<'lua> mlua::FromLua<'lua> for $wrapper_type {
             mlua::Value::Integer(number) => return Ok(Self(<$inner_type>::splat(number as $number_type))),
             _ => (),
         }
-
         Err(mlua::Error::RuntimeError(format!("Expected a vector")))
     }
 }
+
     }
 }
 

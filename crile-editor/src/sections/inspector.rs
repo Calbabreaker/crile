@@ -7,8 +7,8 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
 
     ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
         if let Selection::Entity(id) = state.selection {
-            if let Some(meta) = state.active_scene.world.get::<crile::MetaDataComponent>(id) {
-                ui.text_edit_singleline(&mut meta.name);
+            if let Some(node) = state.active_scene.get_node_mut(id) {
+                ui.text_edit_singleline(&mut node.name);
                 ui.add_space(5.);
 
                 let mut entity = state.active_scene.world.entity_mut(id).unwrap();

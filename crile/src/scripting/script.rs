@@ -16,7 +16,7 @@ pub struct ScriptingEngine {
 
 impl ScriptingEngine {
     /// # Safety
-    /// scene needs to live for the duration of ScriptingEngine
+    /// scene and engine needs to live for the duration of ScriptingEngine
     /// TODO: perhaps don't use raw ptrs
     pub unsafe fn new(scene: &mut Scene, engine: &Engine, window_id: WindowId) -> Self {
         Self {

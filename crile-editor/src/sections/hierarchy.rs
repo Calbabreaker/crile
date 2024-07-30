@@ -1,20 +1,22 @@
 use crate::{EditorState, Selection};
 
+pub enum HierachyAction {
+    None,
+    AddChildEntity(crile::EntityId),
+    DestroyEntity(crile::EntityId),
+}
+
 pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     ui.add_space(5.);
     let mut action = HierachyAction::None;
 
-    let root_meta = state.active_scene.root_meta();
-
-    for child_id in &root_meta.children {
-        display_entity(
-            ui,
-            &mut state.selection,
-            *child_id,
-            &state.active_scene.world,
-            &mut action,
-        );
-    }
+    display_entity(
+        ui,
+        &mut state.selection,
+        crile::Scene::ROOT_ID,
+        &state.active_scene,
+        &mut action,
+    );
 
     ui.interact(
         egui::Rect::from_min_size(ui.cursor().left_top(), ui.available_size()),
@@ -23,7 +25,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     )
     .context_menu(|ui| {
         if ui.button("Add entity").clicked() {
-            action = HierachyAction::AddChildEntity(None);
+            action = HierachyAction::AddChildEntity(0);
             ui.close_menu();
         }
     });
@@ -41,24 +43,15 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     }
 }
 
-pub enum HierachyAction {
-    None,
-    AddChildEntity(Option<crile::EntityId>),
-    DestroyEntity(crile::EntityId),
-}
-
 fn display_entity(
     ui: &mut egui::Ui,
     selection: &mut Selection,
     id: crile::EntityId,
-    world: &crile::World,
+    scene: &crile::Scene,
     action: &mut HierachyAction,
 ) {
-    let meta = world
-        .get::<crile::MetaDataComponent>(id)
-        .expect("displaying invalid entity");
+    let node = scene.get_node(id).unwrap();
 
-    let has_children = !meta.children.is_empty();
     let header_state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         ui.make_persistent_id(id),
@@ -67,17 +60,14 @@ fn display_entity(
 
     let mut show_header = |ui: &mut egui::Ui| {
         ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-            let response = ui.selectable_label(
-                *selection == Selection::Entity(id),
-                egui::RichText::new(&meta.name),
-            );
+            let response = ui.selectable_label(*selection == Selection::Entity(id), &node.name);
             if response.clicked() {
                 *selection = Selection::Entity(id)
             }
 
             response.context_menu(|ui| {
                 if ui.button("Add entity").clicked() {
-                    *action = HierachyAction::AddChildEntity(Some(id));
+                    *action = HierachyAction::AddChildEntity(id);
                     ui.close_menu();
                 }
 
@@ -89,13 +79,13 @@ fn display_entity(
         });
     };
 
-    if has_children {
+    if !node.children.is_empty() {
         header_state
             .show_header(ui, show_header)
             .body_unindented(|ui| {
                 ui.indent(id, |ui| {
-                    for child_id in &meta.children {
-                        display_entity(ui, selection, *child_id, world, action);
+                    for id in node.children.iter() {
+                        display_entity(ui, selection, *id, scene, action);
                     }
                 });
             });
