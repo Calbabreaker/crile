@@ -145,7 +145,7 @@ impl Archetype {
         }
     }
 
-    pub fn get_array(&self, id: &TypeId) -> Option<&ComponentArray> {
+    pub(crate) fn get_array(&self, id: &TypeId) -> Option<&ComponentArray> {
         let index = self.index_map.get(id)?;
         Some(unsafe { self.component_arrays.get_unchecked(*index) })
     }
