@@ -49,7 +49,10 @@ impl Scene {
         let mut scene = Scene::default();
         let id = scene.random_hierarchy_id();
         scene.world.spawn(());
-        scene.add_to_hierarchy("Root", Self::ROOT_INDEX, id, HierarchyId(0));
+        scene.add_to_hierarchy(
+            HierarchyNode::new("Root", id, HierarchyId(0)),
+            Self::ROOT_INDEX,
+        );
         scene
     }
 
@@ -113,17 +116,11 @@ impl Scene {
         let index = self.world.spawn(components);
         let parent_id = self.hierarchy_nodes[parent_index].id;
         let entity_id = self.random_hierarchy_id();
-        self.add_to_hierarchy(name, index, entity_id, parent_id);
+        self.add_to_hierarchy(HierarchyNode::new(name, entity_id, parent_id), index);
         index
     }
 
-    pub fn add_to_hierarchy(
-        &mut self,
-        name: impl ToString,
-        entity_index: usize,
-        entity_id: HierarchyId,
-        parent_id: HierarchyId,
-    ) {
+    pub fn add_to_hierarchy(&mut self, node: HierarchyNode, entity_index: usize) {
         debug_assert!(
             self.world.exists(entity_index),
             "entity {entity_index} does not exist"
@@ -134,8 +131,10 @@ impl Scene {
                 .resize_with(entity_index + 1, HierarchyNode::default);
         }
 
-        self.hierarchy_nodes[entity_index] = HierarchyNode::new(name, entity_id, parent_id);
-        self.hierachy_id_index_map.insert(entity_id, entity_index);
+        let parent_id = node.parent;
+        let node_id = node.id;
+        self.hierarchy_nodes[entity_index] = node;
+        self.hierachy_id_index_map.insert(node_id, entity_index);
 
         if entity_index != Self::ROOT_INDEX {
             debug_assert!(
@@ -143,7 +142,21 @@ impl Scene {
                 "parent {parent_id:?} does not exist"
             );
             let parent_node = self.get_node_mut(self.id_to_index(parent_id)).unwrap();
-            parent_node.children.push(entity_id);
+            parent_node.children.push(node_id);
+        }
+    }
+
+    pub fn spawn_from_scene(&mut self, other: &Scene) {
+        for other_index in other.hierarchy_iter(Scene::ROOT_INDEX) {
+            let other_node = other.get_node(other_index).unwrap().clone();
+
+            // TODO: Regen id if conflicts
+            // if self.hierachy_id_index_map.contains_key(&other_node.id) {
+            //     other_node.id = self.random_hierarchy_id();
+            // }
+
+            let new_index = self.world.spawn_from_world(other_index, &other.world);
+            self.add_to_hierarchy(other_node, new_index);
         }
     }
 

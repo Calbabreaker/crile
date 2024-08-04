@@ -71,3 +71,27 @@ pub fn parent_iterator() {
     assert_eq!(iter.next().unwrap(), Scene::ROOT_INDEX);
     assert_eq!(iter.next(), None);
 }
+
+// #[test]
+// pub fn despawn() {
+//     let mut scene = Scene::with_root();
+//     let parent = scene.spawn(
+//         "Parent",
+//         (TransformComponent::default(),),
+//         Scene::ROOT_INDEX,
+//     );
+//     scene.spawn("Child", (TransformComponent::default(),), parent);
+//     scene.spawn("Child2", (TransformComponent::default(),), parent);
+//     let parent2 = scene.spawn(
+//         "Parent2",
+//         (TransformComponent::default(),),
+//         Scene::ROOT_INDEX,
+//     );
+
+//     scene.despawn(parent);
+
+//     assert_eq!(
+//         scene.get_node(Scene::ROOT_INDEX).unwrap().children,
+//         vec![scene.get_node(parent2).unwrap().id]
+//     );
+// }

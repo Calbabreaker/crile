@@ -3,7 +3,8 @@ use std::any::TypeId;
 use serde::{de::Error, Deserialize, Serialize};
 
 use crate::{
-    last_type_name, with_components, Archetype, Component, EntityRef, HierarchyId, Scene, TypeInfo,
+    last_type_name, with_components, Archetype, Component, EntityRef, HierarchyId, HierarchyNode,
+    Scene, TypeInfo,
 };
 
 #[derive(Default, Deserialize, Serialize)]
@@ -79,7 +80,10 @@ impl SceneSerializer {
             });
 
             if let Ok(parent_id) = get_value::<u32>(&entity_table, "parent") {
-                scene.add_to_hierarchy(name, index, HierarchyId(id), HierarchyId(parent_id));
+                scene.add_to_hierarchy(
+                    HierarchyNode::new(name, HierarchyId(id), HierarchyId(parent_id)),
+                    index,
+                );
             } else {
                 // Doesn't have a parent then must be the root
                 if index != Scene::ROOT_INDEX {
@@ -88,7 +92,10 @@ impl SceneSerializer {
                     )));
                 }
 
-                scene.add_to_hierarchy(name, index, HierarchyId(id), HierarchyId(0));
+                scene.add_to_hierarchy(
+                    HierarchyNode::new(name, HierarchyId(id), HierarchyId(0)),
+                    index,
+                );
             }
         }
 

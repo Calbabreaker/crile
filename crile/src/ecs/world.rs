@@ -65,6 +65,19 @@ impl World {
         index
     }
 
+    pub fn spawn_from_world(&mut self, other_index: usize, world: &World) -> usize {
+        let location = world.location(other_index).expect("entity does not exist");
+        let source_arch = &world.archetypes[location.archetype_index];
+
+        // Clone the entity's components
+        self.spawn_raw(source_arch.type_infos(), |index, arch| unsafe {
+            for array in source_arch.component_arrays.iter() {
+                let size = array.type_info.layout.size();
+                arch.put_component(index, array.ptr.add(index * size), array.type_info.id, true);
+            }
+        })
+    }
+
     pub fn despawn(&mut self, index: usize) {
         let location = self
             .location(index)
