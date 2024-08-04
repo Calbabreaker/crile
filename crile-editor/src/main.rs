@@ -14,6 +14,7 @@ pub struct CrileEditorApp {
 
 impl crile::Application for CrileEditorApp {
     fn new(engine: &mut crile::Engine) -> Self {
+        engine.gfx.wgpu.set_vsync(true, engine.main_window().id());
         let mut app = Self {
             egui: crile_egui::EguiContext::new(engine, engine.main_window().id()),
             state: EditorState::default(),
