@@ -1,4 +1,4 @@
-use crate::{impl_mlua_conversion, Engine, EntityId, Scene, WindowId};
+use crate::{impl_mlua_conversion, Engine, Scene, WindowId};
 
 pub struct Script {
     pub bytecode: Vec<u8>,
@@ -51,8 +51,8 @@ impl ScriptingEngine {
         Ok(())
     }
 
-    pub fn run(&mut self, id: EntityId, script: &Script) -> mlua::Result<()> {
-        self.lua.globals().set("entity_id", id)?;
+    pub fn run(&mut self, entity_index: usize, script: &Script) -> mlua::Result<()> {
+        self.lua.globals().set("entity_index", entity_index)?;
         self.lua
             .load(&script.bytecode)
             .set_name(script.source.clone().unwrap_or_default())
@@ -66,7 +66,7 @@ impl ScriptingEngine {
         signal_list.for_each(move |_: usize, signal: Signal| {
             self.lua
                 .globals()
-                .set("entity_id", signal.caller_entity_id)?;
+                .set("entity_index", signal.caller_entity_index)?;
 
             signal.callback.call::<_, ()>(())?;
             Ok(())
@@ -89,7 +89,7 @@ impl ScriptingEngine {
 
             let signal_connect_info = Signal {
                 callback,
-                caller_entity_id: lua.globals().get("entity_id")?,
+                caller_entity_index: lua.globals().get("entity_index")?,
             };
             signal_list.push(signal_connect_info)
         };
@@ -101,7 +101,7 @@ impl ScriptingEngine {
 
 struct Signal<'lua> {
     callback: mlua::Function<'lua>,
-    caller_entity_id: EntityId,
+    caller_entity_index: usize,
 }
 
-impl_mlua_conversion!(Signal::<'lua>, [callback, caller_entity_id]);
+impl_mlua_conversion!(Signal::<'lua>, [callback, caller_entity_index]);

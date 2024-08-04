@@ -18,3 +18,4 @@ dirs = "5"
 toml = "0.8"
 mlua = { version = "0.9", features = ["luau"] }
 strum = { version = "0.26", features = ["derive"] }
+rand = "0.8.5"

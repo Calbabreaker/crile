@@ -2,8 +2,8 @@ use crate::{EditorState, Selection};
 
 pub enum HierachyAction {
     None,
-    AddChildEntity(crile::EntityId),
-    DestroyEntity(crile::EntityId),
+    AddChildEntity(usize),
+    DestroyEntity(usize),
 }
 
 pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
@@ -13,7 +13,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     display_entity(
         ui,
         &mut state.selection,
-        crile::Scene::ROOT_ID,
+        crile::Scene::ROOT_INDEX,
         &state.active_scene,
         &mut action,
     );
@@ -46,7 +46,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
 fn display_entity(
     ui: &mut egui::Ui,
     selection: &mut Selection,
-    id: crile::EntityId,
+    id: usize,
     scene: &crile::Scene,
     action: &mut HierachyAction,
 ) {
@@ -85,7 +85,8 @@ fn display_entity(
             .body_unindented(|ui| {
                 ui.indent(id, |ui| {
                     for id in node.children.iter() {
-                        display_entity(ui, selection, *id, scene, action);
+                        let index = scene.id_to_index(*id);
+                        display_entity(ui, selection, index, scene, action);
                     }
                 });
             });

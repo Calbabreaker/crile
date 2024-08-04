@@ -29,7 +29,7 @@ impl Preferences {
             .spacing([30.0, 4.0])
             .show(ui, |ui| {
                 ui.label("Ui scale");
-                ui.add(egui::Slider::new(&mut self.ui_scale, 0.5..=2.0).step_by(0.01));
+                ui.add(egui::Slider::new(&mut self.ui_scale, 0.1..=2.0).step_by(0.01));
                 ui.end_row();
 
                 ui.label("Zoom speed");
@@ -46,9 +46,9 @@ impl Preferences {
         }
     }
 
-    pub fn save(&self) -> Option<()> {
-        let data = toml::to_string(self).ok()?;
-        crile::write_file(&Self::file_path()?, &data)
+    pub fn save(&self) -> bool {
+        let data = toml::to_string(self).unwrap();
+        crile::write_file(&Self::file_path().unwrap(), &data)
     }
 
     pub fn load() -> Option<Self> {

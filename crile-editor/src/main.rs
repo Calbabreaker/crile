@@ -111,6 +111,7 @@ impl crile::Application for CrileEditorApp {
 
         // Now this could only be the game window from here
         if let SceneState::Running(data) = &mut self.state.scene_state {
+            assert_eq!(engine.gfx.target_window_id(), Some(data.game_window_id));
             // Render directly onto the game window
             let viewport_size = engine.get_window(data.game_window_id).unwrap().size();
             self.state

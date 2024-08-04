@@ -21,13 +21,18 @@ impl std::hash::Hasher for NoHashHasher {
         self.hash = i;
     }
 
+    fn write_u32(&mut self, i: u32) {
+        self.hash = i as u64;
+    }
+
     fn finish(&self) -> u64 {
         self.hash
     }
 }
 
 /// Hash map that does not hash the key
-/// Useful for types that already hashed like TypeId
+/// Useful for types that already hashed like TypeId or ids
+/// Only u64 types are supported
 pub type NoHashHashMap<K, V> =
     hashbrown::HashMap<K, V, std::hash::BuildHasherDefault<NoHashHasher>>;
 
@@ -44,11 +49,11 @@ pub fn get_data_path() -> Option<std::path::PathBuf> {
     Some(config_path)
 }
 
-pub fn write_file(path: &std::path::Path, str: &str) -> Option<()> {
+pub fn write_file(path: &std::path::Path, str: &str) -> bool {
     log::trace!("Saving to {path:?}");
     std::fs::write(path, str)
         .inspect_err(|err| log::error!("Failed to save {path:?}: {err}"))
-        .ok()
+        .is_ok()
 }
 
 pub fn read_file(path: &std::path::Path) -> Option<String> {

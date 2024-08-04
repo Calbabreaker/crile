@@ -8,7 +8,8 @@ pub struct TypeInfo {
     pub id: TypeId,
     pub layout: Layout,
     pub drop: unsafe fn(*mut u8),
-    pub clone_to: unsafe fn(*mut u8, *mut u8),
+    /// Calls the type's clone function on T at src cloning to dst
+    pub clone_to: unsafe fn(*const u8, *mut u8),
     pub typename: &'static str,
 }
 
@@ -16,7 +17,6 @@ impl TypeInfo {
     pub fn of<T: Component>() -> Self {
         Self {
             clone_to: |src, dst| unsafe {
-                // Call the clone function on T at src and copy to dst
                 let mut cloned = ManuallyDrop::new((*src.cast::<T>()).clone());
                 let cloned_ptr = &mut *cloned as *mut T as *mut u8;
                 std::ptr::copy_nonoverlapping(cloned_ptr, dst, Layout::new::<T>().size());
@@ -81,7 +81,7 @@ pub trait ComponentTuple {
     fn type_infos() -> Box<[TypeInfo]>;
 
     /// Moves every component from the tuple into the archetype
-    fn take_all(self, index: usize, archetype: &mut Archetype);
+    fn move_all(self, index: usize, archetype: &mut Archetype);
 
     /// Gets an array of component arrays from the archetype that matches this component tuple
     /// We use a static sized tuple to prevent unnecessary heap allocation
@@ -132,11 +132,11 @@ macro_rules! tuple_impl {
             }
 
             #[allow(non_snake_case, unused)]
-            fn take_all(self, index: usize, archetype: &mut Archetype) {
+            fn move_all(self, index: usize, archetype: &mut Archetype) {
                 let ($($type,)*) = self;
                 $(
                     unsafe {
-                        archetype.put_component(index, &$type as *const $type as *const u8, TypeId::of::<$type>());
+                        archetype.put_component(index, &$type as *const $type as *const u8, TypeId::of::<$type>(), false);
                         std::mem::forget($type);
                     }
                 )*

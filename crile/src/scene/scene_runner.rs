@@ -14,9 +14,9 @@ impl SceneRunner {
 
         let scene = unsafe { &mut *self.scripting.scene };
 
-        for (id, (script,)) in scene.world.query::<(ScriptComponent,)>() {
+        for (index, (script,)) in scene.world.query::<(ScriptComponent,)>() {
             if let Some(script) = &script.script {
-                self.scripting.run(id, script)?;
+                self.scripting.run(index, script)?;
             }
         }
 
@@ -39,7 +39,10 @@ impl SceneRunner {
             .query_mut::<(TransformComponent, CameraComponent)>()
             .next()
         {
-            camera.update_projection(camera_transform.matrix());
+            if camera.dirty {
+                camera.update_projection(camera_transform.matrix());
+            }
+
             let view_projection = camera.view_projection;
             scene.render(render_pass, view_projection);
         }

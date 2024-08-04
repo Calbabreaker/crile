@@ -6,7 +6,7 @@ use crate::{
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Selection {
-    Entity(crile::EntityId),
+    Entity(usize),
     None,
 }
 

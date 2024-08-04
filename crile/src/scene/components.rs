@@ -102,10 +102,6 @@ impl Default for CameraComponent {
 
 impl CameraComponent {
     pub fn update_projection(&mut self, transform: glam::Mat4) {
-        if !self.dirty {
-            return;
-        }
-
         match self.projection_kind {
             ProjectionKind::Perspective => {
                 self.projection = glam::Mat4::perspective_rh(

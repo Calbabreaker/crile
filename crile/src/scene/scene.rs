@@ -1,22 +1,29 @@
 use std::cell::RefCell;
 
+use rand::Rng;
+
 use crate::{
-    CameraComponent, ComponentTuple, DrawUniform, EntityId, RefId, RenderInstance, RenderPass,
+    CameraComponent, ComponentTuple, DrawUniform, NoHashHashMap, RefId, RenderInstance, RenderPass,
     SpriteComponent, Texture, TransformComponent, World,
 };
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Default)]
+pub struct HierarchyId(pub u32);
+
 #[derive(Clone, Default, Debug)]
-pub struct HierachyNode {
+pub struct HierarchyNode {
     pub name: String,
-    pub parent: EntityId,
-    pub children: Vec<EntityId>,
+    pub parent: HierarchyId,
+    pub children: Vec<HierarchyId>,
+    pub id: HierarchyId,
 }
 
-impl HierachyNode {
-    pub fn new(name: impl ToString, parent: EntityId) -> Self {
+impl HierarchyNode {
+    pub fn new(name: impl ToString, id: HierarchyId, parent: HierarchyId) -> Self {
         Self {
             name: name.to_string(),
             parent,
+            id,
             children: Vec::new(),
         }
     }
@@ -25,23 +32,24 @@ impl HierachyNode {
 #[derive(Clone, Default)]
 pub struct Scene {
     pub world: World,
-    // Index will be same as entity id
-    pub(crate) hierachy_nodes: Vec<HierachyNode>,
-    render_instances_map: hashbrown::HashMap<RefId<Texture>, Vec<RenderInstance>>,
+    /// Maps entity index (inside world) to hierachy node information
+    pub(crate) hierarchy_nodes: Vec<HierarchyNode>,
+    /// Maps a hierarchy id to an entity index
+    pub(crate) hierachy_id_index_map: NoHashHashMap<HierarchyId, usize>,
+    render_instances_map: NoHashHashMap<RefId<Texture>, Vec<RenderInstance>>,
     pub running: bool,
 }
 
 impl Scene {
-    pub const ROOT_ID: EntityId = 0;
+    /// Index of the root entity (this will always be zero since it is the first one spawned in)
+    pub const ROOT_INDEX: usize = 0;
 
     /// Creates a scene with a root entity
     pub fn with_root() -> Self {
         let mut scene = Scene::default();
-        let id = scene.spawn("Root", (), 0);
-        debug_assert!(
-            id == Self::ROOT_ID,
-            "id was not the root id for some reason"
-        );
+        let id = scene.random_hierarchy_id();
+        scene.world.spawn(());
+        scene.add_to_hierarchy("Root", Self::ROOT_INDEX, id, HierarchyId(0));
         scene
     }
 
@@ -51,13 +59,14 @@ impl Scene {
             instances.clear();
         }
 
-        for (id, (transform, sprite)) in self.world.query::<(TransformComponent, SpriteComponent)>()
+        for (index, (transform, sprite)) in
+            self.world.query::<(TransformComponent, SpriteComponent)>()
         {
             // Go through each parent and multiply by their transforms
             // TODO: a bit inefficient think about caching?
             let mut global_transform = transform.matrix();
-            for (_, parent_id) in self.parent_iter(id) {
-                if let Some(transform) = self.world.get::<TransformComponent>(parent_id) {
+            for parent_index in self.ancestor_iter(index) {
+                if let Some(transform) = self.world.get::<TransformComponent>(parent_index) {
                     global_transform = transform.matrix() * global_transform;
                 }
             }
@@ -99,129 +108,173 @@ impl Scene {
         &mut self,
         name: impl ToString,
         components: T,
-        parent_id: EntityId,
-    ) -> EntityId {
-        dbg!(name.to_string());
-        let id = self.world.spawn(components);
-        self.add_to_hierachy(name, id, parent_id);
-        id
+        parent_index: usize,
+    ) -> usize {
+        let index = self.world.spawn(components);
+        let parent_id = self.hierarchy_nodes[parent_index].id;
+        let entity_id = self.random_hierarchy_id();
+        self.add_to_hierarchy(name, index, entity_id, parent_id);
+        index
     }
 
-    pub fn add_to_hierachy(&mut self, name: impl ToString, id: EntityId, parent_id: EntityId) {
-        debug_assert!(self.world.exists(id), "entity {id} does not exist");
+    pub fn add_to_hierarchy(
+        &mut self,
+        name: impl ToString,
+        entity_index: usize,
+        entity_id: HierarchyId,
+        parent_id: HierarchyId,
+    ) {
         debug_assert!(
-            self.world.exists(parent_id),
-            "parent entity {parent_id} does not exist"
+            self.world.exists(entity_index),
+            "entity {entity_index} does not exist"
         );
 
-        if id >= self.hierachy_nodes.len() {
-            self.hierachy_nodes
-                .resize_with(id + 1, HierachyNode::default);
+        if entity_index >= self.hierarchy_nodes.len() {
+            self.hierarchy_nodes
+                .resize_with(entity_index + 1, HierarchyNode::default);
         }
 
-        self.hierachy_nodes[id] = HierachyNode::new(name, parent_id);
+        self.hierarchy_nodes[entity_index] = HierarchyNode::new(name, entity_id, parent_id);
+        self.hierachy_id_index_map.insert(entity_id, entity_index);
 
-        if id != Self::ROOT_ID {
-            debug_assert!(id != parent_id, "id was the same as the parent id");
-            self.hierachy_nodes[parent_id].children.push(id);
+        if entity_index != Self::ROOT_INDEX {
+            debug_assert!(
+                self.hierachy_id_index_map.contains_key(&parent_id),
+                "parent {parent_id:?} does not exist"
+            );
+            let parent_node = self.get_node_mut(self.id_to_index(parent_id)).unwrap();
+            parent_node.children.push(entity_id);
         }
     }
 
     /// Despawns the entity and its children recursively
-    pub fn despawn(&mut self, id: EntityId) {
-        let parent_index = self.hierachy_nodes[id].parent;
-        let parent_node = &mut self.hierachy_nodes[parent_index];
+    pub fn despawn(&mut self, entity_index: usize) {
+        assert!(
+            entity_index != Self::ROOT_INDEX,
+            "cannot despawn the root entity"
+        );
+
+        let node_id = self.hierarchy_nodes[entity_index].id;
+        let parent_index = self
+            .ancestor_iter(entity_index)
+            .next()
+            .expect("parent invalid");
 
         // Remove the child from the children array inside the parent
-        if let Some(pos) = parent_node.children.iter().position(|x| *x == id) {
+        let parent_node = &mut self.hierarchy_nodes[parent_index];
+        if let Some(pos) = parent_node.children.iter().position(|x| *x == node_id) {
             parent_node.children.remove(pos);
         }
 
-        for (_, child_id) in SceneHierarchyIter::new(&self.hierachy_nodes, id) {
-            self.world.despawn(child_id);
+        let to_remove = self.hierarchy_iter(entity_index).collect::<Vec<_>>();
+        for index in to_remove {
+            self.world.despawn(index);
+            let node = &self.hierarchy_nodes[index];
+            self.hierachy_id_index_map.remove(&node.id);
         }
     }
 
     /// Returns an iterator that returns the entity itself then all its children and all its decendents
-    pub fn iter(&self, id: EntityId) -> SceneHierarchyIter {
-        SceneHierarchyIter::new(&self.hierachy_nodes, id)
+    pub fn hierarchy_iter(&self, entity_index: usize) -> SceneHierarchyIter {
+        SceneHierarchyIter::new(self, entity_index)
     }
+
     /// Returns an iterator that goes through all the entity parents and all its ancestors
-    pub fn parent_iter(&self, id: EntityId) -> SceneParentIter {
-        SceneParentIter::new(&self.hierachy_nodes, id)
+    pub fn ancestor_iter(&self, entity_index: usize) -> SceneAncestorIter {
+        SceneAncestorIter::new(self, entity_index)
     }
 
-    pub fn get_node(&self, id: EntityId) -> Option<&HierachyNode> {
-        if !self.world.exists(id) {
-            return None;
+    pub fn random_hierarchy_id(&self) -> HierarchyId {
+        let id = HierarchyId(rand::thread_rng().gen());
+        if self.hierachy_id_index_map.contains_key(&id) {
+            // Regen id if conflicts
+            self.random_hierarchy_id()
+        } else {
+            id
         }
-        self.hierachy_nodes.get(id)
     }
 
-    pub fn get_node_mut(&mut self, id: EntityId) -> Option<&mut HierachyNode> {
-        if !self.world.exists(id) {
-            return None;
-        }
-        self.hierachy_nodes.get_mut(id)
+    pub fn id_to_index(&self, id: HierarchyId) -> usize {
+        *self
+            .hierachy_id_index_map
+            .get(&id)
+            .expect("id should exist")
+    }
+
+    pub fn get_node(&self, entity_index: usize) -> Option<&HierarchyNode> {
+        self.hierarchy_nodes.get(entity_index)
+    }
+
+    pub fn get_node_mut(&mut self, entity_index: usize) -> Option<&mut HierarchyNode> {
+        self.hierarchy_nodes.get_mut(entity_index)
+    }
+
+    pub fn root_node(&self) -> &HierarchyNode {
+        self.hierarchy_nodes
+            .get(Self::ROOT_INDEX)
+            .expect("should be a root node")
     }
 }
 
 pub struct SceneHierarchyIter<'a> {
-    hierachy_nodes: &'a Vec<HierachyNode>,
+    scene: &'a Scene,
 }
 
 impl<'a> SceneHierarchyIter<'a> {
     thread_local! {
-        static NEXT_IDS_STACK: RefCell<Vec<EntityId>> = const { RefCell::new(Vec::new()) };
+        static NEXT_INDEXES_STACK: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
     }
 
-    fn new(hierachy_nodes: &'a Vec<HierachyNode>, start_id: EntityId) -> Self {
-        Self::NEXT_IDS_STACK.with(|stack| stack.borrow_mut().push(start_id));
+    fn new(scene: &'a Scene, start_index: usize) -> Self {
+        Self::NEXT_INDEXES_STACK.with(|stack| stack.borrow_mut().push(start_index));
 
-        Self { hierachy_nodes }
+        Self { scene }
     }
 }
 
 impl<'a> Iterator for SceneHierarchyIter<'a> {
-    type Item = (&'a HierachyNode, EntityId);
+    type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Self::NEXT_IDS_STACK.with(|stack| {
+        Self::NEXT_INDEXES_STACK.with(|stack| {
             let mut stack = stack.borrow_mut();
-            let id = stack.pop()?;
-            let node = &self.hierachy_nodes[id];
-            stack.extend(node.children.iter().rev());
-            Some((node, id))
+            let index = stack.pop()?;
+            let node = self.scene.hierarchy_nodes.get(index)?;
+            stack.extend(node.children.iter().rev().map(|id| {
+                // Add the children entity indexes
+                self.scene.id_to_index(*id)
+            }));
+
+            Some(index)
         })
     }
 }
 
-pub struct SceneParentIter<'a> {
-    hierachy_nodes: &'a Vec<HierachyNode>,
-    next_parent_id: Option<usize>,
+pub struct SceneAncestorIter<'a> {
+    scene: &'a Scene,
+    next_index: usize,
 }
 
-impl<'a> SceneParentIter<'a> {
-    fn new(hierachy_nodes: &'a Vec<HierachyNode>, start_id: EntityId) -> Self {
+impl<'a> SceneAncestorIter<'a> {
+    fn new(scene: &'a Scene, start_index: usize) -> Self {
         Self {
-            hierachy_nodes,
-            next_parent_id: hierachy_nodes.get(start_id).map(|node| node.parent),
+            scene,
+            next_index: start_index,
         }
     }
 }
 
-impl<'a> Iterator for SceneParentIter<'a> {
-    type Item = (&'a HierachyNode, EntityId);
+impl<'a> Iterator for SceneAncestorIter<'a> {
+    type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let id = self.next_parent_id?;
-        let node = &self.hierachy_nodes[id];
-        if id == Scene::ROOT_ID {
-            self.next_parent_id = None;
-        } else {
-            self.next_parent_id = Some(node.parent);
+        if self.next_index == Scene::ROOT_INDEX {
+            return None;
         }
 
-        Some((node, id))
+        let node = self.scene.hierarchy_nodes.get(self.next_index)?;
+        let parent_index = *self.scene.hierachy_id_index_map.get(&node.parent)?;
+        self.next_index = parent_index;
+        Some(parent_index)
     }
 }

@@ -44,7 +44,7 @@ pub fn register_entity_funcs(lua: &mlua::Lua, scene: &'static Scene) -> mlua::Re
     lua.globals().set(
         "get_component",
         lua.create_function(|lua, component_name: String| {
-            let id = lua.globals().get("entity_id")?;
+            let index = lua.globals().get("entity_index")?;
 
             macro_rules! match_components {
                 ([$($component: ty),*]) => {
@@ -52,7 +52,7 @@ pub fn register_entity_funcs(lua: &mlua::Lua, scene: &'static Scene) -> mlua::Re
                         $(
                             stringify!($component) => scene
                                 .world
-                                .get::<$component>(id)
+                                .get::<$component>(index)
                                 .map(|c| c.into_lua(lua)),
                         )*
                         _ => None,

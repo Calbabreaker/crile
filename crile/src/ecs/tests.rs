@@ -35,18 +35,14 @@ fn normal_spawn_1_component() {
 fn spawn_raw_1_component() {
     let mut world = World::default();
     let position = Position { x: 1., y: 2. };
-    let id = world.next_free_id();
-    world.spawn_raw(
-        id,
-        &[TypeInfo::of::<Position>()],
-        |index, archetype| unsafe {
-            archetype.put_component(
-                index,
-                &position as *const Position as *const u8,
-                TypeId::of::<Position>(),
-            );
-        },
-    );
+    world.spawn_raw(&[TypeInfo::of::<Position>()], |index, archetype| unsafe {
+        archetype.put_component(
+            index,
+            &position as *const Position as *const u8,
+            TypeId::of::<Position>(),
+            true,
+        );
+    });
 
     let position = world.get::<Position>(0).unwrap();
     assert_eq!(position.x, 1.);
@@ -102,20 +98,22 @@ fn query_world() {
     assert_eq!(query.next().unwrap(), (1, (&mut position, &mut velocity)));
 }
 
-// TODO: fix this test
-// #[test]
-// #[should_panic]
-// fn multiple_borrow() {
-//     let mut world = World::default();
-//     let id = world.spawn((Metadata::default(),));
+#[test]
+#[should_panic]
+#[ignore = "TODO: fix this test"]
+fn multiple_borrow() {
+    let mut world = World::default();
+    let id = world.spawn((Metadata::default(),));
 
-//     let a = world.get::<Metadata>(id).unwrap();
-//     a.stuff.push("test".to_string());
-//     let string = &mut a.stuff[0];
+    let a = world.get::<Metadata>(id).unwrap();
+    a.stuff.push("test".to_string());
+    let string = &mut a.stuff[0];
 
-//     let b = world.get::<Metadata>(id).unwrap();
-//     b.stuff.remove(0);
-// }
+    let b = world.get::<Metadata>(id).unwrap();
+    b.stuff.remove(0);
+
+    string.push('a');
+}
 
 #[test]
 #[should_panic]

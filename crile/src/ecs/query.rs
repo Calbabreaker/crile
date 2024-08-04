@@ -1,4 +1,4 @@
-use super::{Archetype, ComponentTuple, EntityId, World};
+use super::{Archetype, ComponentTuple, World};
 
 pub struct QueryIter<'a, T: ComponentTuple> {
     world: &'a World,
@@ -23,7 +23,7 @@ impl<'a, T: ComponentTuple> QueryIter<'a, T> {
     }
 
     // Gets the next entity as part of this query
-    unsafe fn next_mut(&mut self) -> Option<(EntityId, T::MutTuple<'a>)> {
+    unsafe fn next_mut(&mut self) -> Option<(usize, T::MutTuple<'a>)> {
         match self.current_archetype_iter.next() {
             Some(tuple) => Some(tuple),
             None => {
@@ -36,7 +36,7 @@ impl<'a, T: ComponentTuple> QueryIter<'a, T> {
 }
 
 impl<'a, T: ComponentTuple> Iterator for QueryIter<'a, T> {
-    type Item = (EntityId, T::RefTuple<'a>);
+    type Item = (usize, T::RefTuple<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.next_mut() }.map(|(id, c)| (id, T::mut_to_ref(c)))
@@ -58,7 +58,7 @@ impl<'a, T: ComponentTuple> QueryIterMut<'a, T> {
 }
 
 impl<'a, T: ComponentTuple> Iterator for QueryIterMut<'a, T> {
-    type Item = (EntityId, T::MutTuple<'a>);
+    type Item = (usize, T::MutTuple<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.query.next_mut() }
@@ -66,9 +66,9 @@ impl<'a, T: ComponentTuple> Iterator for QueryIterMut<'a, T> {
 }
 
 struct ArchetypeIter<T: ComponentTuple> {
-    index: usize,
+    component_index: usize,
     count: usize,
-    entity_array: *const EntityId,
+    entity_indexs: *const usize,
     array_ptr_array: Option<T::FixedArray<*mut u8>>,
 }
 
@@ -76,9 +76,9 @@ impl<T: ComponentTuple> ArchetypeIter<T> {
     fn new(archetype: &Archetype) -> Self {
         match T::get_array_ptrs(archetype) {
             Some(array_ptr_array) => Self {
-                index: 0,
+                component_index: 0,
                 count: archetype.count(),
-                entity_array: archetype.entities.as_ptr(),
+                entity_indexs: archetype.entity_indexs.as_ptr(),
                 array_ptr_array: Some(array_ptr_array),
             },
             None => Self::empty(),
@@ -87,22 +87,22 @@ impl<T: ComponentTuple> ArchetypeIter<T> {
 
     fn empty() -> Self {
         Self {
-            index: 0,
+            component_index: 0,
             count: 0,
-            entity_array: std::ptr::null(),
+            entity_indexs: std::ptr::null(),
             array_ptr_array: None,
         }
     }
 
-    unsafe fn next<'a>(&mut self) -> Option<(EntityId, T::MutTuple<'a>)> {
-        if self.index < self.count {
+    unsafe fn next<'a>(&mut self) -> Option<(usize, T::MutTuple<'a>)> {
+        if self.component_index < self.count {
             let component_tuple = T::array_ptr_array_get(
                 self.array_ptr_array.as_ref().unwrap_unchecked(),
-                self.index,
+                self.component_index,
             );
-            let id = *self.entity_array.add(self.index);
-            self.index += 1;
-            Some((id, component_tuple))
+            let index = *self.entity_indexs.add(self.component_index);
+            self.component_index += 1;
+            Some((index, component_tuple))
         } else {
             None
         }

@@ -21,11 +21,11 @@ impl Default for Project {
 }
 
 impl Project {
-    pub fn save(&self) -> Option<()> {
+    pub fn save(&self) -> bool {
         let mut path = self.directory.clone();
         path.push("project.crile");
 
-        let data = toml::to_string(self).ok()?;
+        let data = toml::to_string(self).unwrap();
         crile::write_file(&path, &data)
     }
 

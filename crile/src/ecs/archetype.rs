@@ -2,14 +2,14 @@ use std::any::TypeId;
 
 use crate::NoHashHashMap;
 
-use super::{EntityId, TypeInfo};
+use super::TypeInfo;
 
 pub struct Archetype {
     pub(crate) component_arrays: Box<[ComponentArray]>,
     /// Maps a component type id to its index inside self.component
     index_map: NoHashHashMap<TypeId, usize>,
     type_infos: Box<[TypeInfo]>,
-    pub(crate) entities: Box<[EntityId]>,
+    pub(crate) entity_indexs: Box<[usize]>,
     count: usize,
 }
 
@@ -42,31 +42,50 @@ impl Archetype {
         Self {
             type_infos,
             index_map,
-            entities: Box::new([]),
+            entity_indexs: Box::new([]),
             count: 0,
             component_arrays,
         }
     }
 
+    /// Moves/Clones a component into a component array in this archetype using raw pointers
     /// # Safety
-    /// - Component pointer's real type must match the type id
-    pub unsafe fn put_component(&mut self, index: usize, component_ptr: *const u8, id: TypeId) {
-        assert!(index < self.count);
+    /// - Component real type must match the type id
+    /// - The component must not be dropped and must not be used elsewhere after moving (if should_clone is false)
+    pub unsafe fn put_component(
+        &mut self,
+        component_ndex: usize,
+        component_ptr: *const u8,
+        type_id: TypeId,
+        should_clone: bool,
+    ) {
+        assert!(component_ndex < self.count);
 
         let array = self
-            .get_array(&id)
+            .get_array(&type_id)
             .expect("component is not in the archetype");
         let size = array.type_info.layout.size();
-        std::ptr::copy_nonoverlapping(component_ptr, array.ptr.add(index * size), size);
+        if should_clone {
+            (array.type_info.clone_to)(component_ptr, array.ptr.add(component_ndex * size));
+        } else {
+            std::ptr::copy_nonoverlapping(
+                component_ptr,
+                array.ptr.add(component_ndex * size),
+                size,
+            );
+        }
     }
 
     // # Safety
     // - Component reference must follow Rust borrow rules
-    pub(crate) unsafe fn borrow_component<T: 'static>(&self, index: usize) -> Option<&mut T> {
-        assert!(index < self.count);
+    pub(crate) unsafe fn borrow_component<T: 'static>(
+        &self,
+        component_index: usize,
+    ) -> Option<&mut T> {
+        assert!(component_index < self.count);
 
         let array = self.get_array(&TypeId::of::<T>())?;
-        Some(&mut *array.ptr.cast::<T>().add(index))
+        Some(&mut *array.ptr.cast::<T>().add(component_index))
     }
 
     pub(crate) fn has_component<T: 'static>(&self) -> bool {
@@ -74,41 +93,41 @@ impl Archetype {
     }
 
     /// Returns the entity index inside this archetype
-    pub(crate) fn new_entity(&mut self, id: EntityId) -> usize {
-        if self.count >= self.entities.len() {
+    pub(crate) fn new_entity(&mut self, entity_index: usize) -> usize {
+        if self.count >= self.entity_indexs.len() {
             // Grow by double or at least 32
-            self.grow(self.entities.len().max(32))
+            self.grow(self.entity_indexs.len().max(32))
         }
 
         let index = self.count;
-        self.entities[index] = id;
+        self.entity_indexs[index] = entity_index;
         self.count += 1;
         index
     }
 
-    pub(crate) fn remove_entity(&mut self, index: usize, should_drop: bool) -> EntityId {
-        assert!(index < self.count);
+    pub(crate) fn remove_entity(&mut self, component_index: usize, should_drop: bool) -> usize {
+        assert!(component_index < self.count);
 
         // Moves the last item to index and decrement length by 1
         let last_index = self.count - 1;
         for array in self.component_arrays.iter_mut() {
             unsafe {
                 if should_drop {
-                    array.drop_component(index);
+                    array.drop_component(component_index);
                 }
 
-                array.swap_remove(index, last_index);
+                array.swap_remove(component_index, last_index);
             }
         }
 
-        self.entities[index] = self.entities[last_index];
+        self.entity_indexs[component_index] = self.entity_indexs[last_index];
 
         self.count -= 1;
-        self.entities[index]
+        self.entity_indexs[component_index]
     }
 
     fn grow(&mut self, amount: usize) {
-        let old_capacity = self.entities.len();
+        let old_capacity = self.entity_indexs.len();
         let new_capacity = old_capacity + amount;
 
         if new_capacity == old_capacity {
@@ -116,8 +135,8 @@ impl Archetype {
         }
 
         let mut new_entites = vec![0; new_capacity].into_boxed_slice();
-        new_entites[0..self.count].copy_from_slice(&self.entities[0..self.count]);
-        self.entities = new_entites;
+        new_entites[0..self.count].copy_from_slice(&self.entity_indexs[0..self.count]);
+        self.entity_indexs = new_entites;
 
         for array in self.component_arrays.iter_mut() {
             unsafe {
@@ -126,12 +145,12 @@ impl Archetype {
         }
     }
 
-    pub(crate) fn get_array(&self, id: &TypeId) -> Option<&ComponentArray> {
+    pub fn get_array(&self, id: &TypeId) -> Option<&ComponentArray> {
         let index = self.index_map.get(id)?;
         Some(unsafe { self.component_arrays.get_unchecked(*index) })
     }
 
-    pub(crate) fn type_infos(&self) -> &[TypeInfo] {
+    pub fn type_infos(&self) -> &[TypeInfo] {
         &self.type_infos
     }
 
@@ -142,13 +161,13 @@ impl Archetype {
 
 impl Drop for Archetype {
     fn drop(&mut self) {
-        if self.entities.len() == 0 {
+        if self.entity_indexs.len() == 0 {
             return;
         }
 
         for array in self.component_arrays.iter_mut() {
             unsafe {
-                array.clean(self.count, self.entities.len());
+                array.clean(self.count, self.entity_indexs.len());
             }
         }
     }
@@ -159,13 +178,13 @@ impl Clone for Archetype {
         let component_arrays = self
             .component_arrays
             .iter()
-            .map(|array| unsafe { array.clone(self.count, self.entities.len()) })
+            .map(|array| unsafe { array.clone(self.count, self.entity_indexs.len()) })
             .collect();
 
         Self {
             count: self.count,
             index_map: self.index_map.clone(),
-            entities: self.entities.clone(),
+            entity_indexs: self.entity_indexs.clone(),
             component_arrays,
             type_infos: self.type_infos.clone(),
         }
@@ -186,7 +205,7 @@ impl ComponentArray {
     unsafe fn grow(&mut self, old_capacity: usize, new_capacity: usize) {
         let size = self.type_info.layout.size();
 
-        // We need to allocate new space manually since we don't have access the component type here
+        // We need to allocate new space manually since we don't have access the component generic here
         let new_ptr = std::alloc::realloc(
             self.ptr,
             std::alloc::Layout::from_size_align_unchecked(

@@ -3,7 +3,7 @@ use std::any::TypeId;
 use serde::{de::Error, Deserialize, Serialize};
 
 use crate::{
-    last_type_name, with_components, Archetype, Component, EntityId, EntityRef, Scene, TypeInfo,
+    last_type_name, with_components, Archetype, Component, EntityRef, HierarchyId, Scene, TypeInfo,
 };
 
 #[derive(Default, Deserialize, Serialize)]
@@ -17,19 +17,20 @@ impl SceneSerializer {
     pub fn serialize(scene: &Scene) -> Result<String, toml::ser::Error> {
         let mut output = SerializedScene::default();
 
-        for (node, id) in scene.iter(Scene::ROOT_ID) {
+        for index in scene.hierarchy_iter(Scene::ROOT_INDEX) {
             let mut table = toml::Table::new();
-            table.insert("id".to_owned(), toml::Value::Integer(id as i64));
+            let node = scene.get_node(index).unwrap();
+            table.insert("id".to_owned(), toml::Value::Integer(node.id.0 as i64));
             table.insert("name".to_owned(), toml::Value::String(node.name.clone()));
 
-            if id != Scene::ROOT_ID {
+            if index != Scene::ROOT_INDEX {
                 table.insert(
                     "parent".to_owned(),
-                    toml::Value::Integer(node.parent as i64),
+                    toml::Value::Integer(node.parent.0 as i64),
                 );
             }
 
-            let entity = scene.world.entity(id).unwrap();
+            let entity = scene.world.entity(index).unwrap();
             macro_rules! serialize_components {
                 ( [$($component: ty),*]) => {{
                     $( serialize_component::<$component>(&mut table, entity)?; )*
@@ -62,16 +63,10 @@ impl SceneSerializer {
 
             type_infos.sort_unstable();
 
-            let id = get_value::<EntityId>(&entity_table, "id")?;
+            let id = get_value::<u32>(&entity_table, "id")?;
             let name = get_value::<String>(&entity_table, "name")?;
 
-            if id != scene.world.next_free_id() {
-                log::warn!(
-                    "Entity '{name}' with id {id} skipped an id, some memory maybe be ununsed"
-                );
-            }
-
-            scene.world.spawn_raw(id, &type_infos, |index, archetype| {
+            let index = scene.world.spawn_raw(&type_infos, |index, archetype| {
                 for (key, value) in &entity_table {
                     macro_rules! deserialize_components {
                         ( [$($component: ty),*]) => {{
@@ -83,22 +78,22 @@ impl SceneSerializer {
                 }
             });
 
-            if let Ok(parent_id) = get_value::<EntityId>(&entity_table, "parent") {
-                scene.add_to_hierachy(name, id, parent_id);
+            if let Ok(parent_id) = get_value::<u32>(&entity_table, "parent") {
+                scene.add_to_hierarchy(name, index, HierarchyId(id), HierarchyId(parent_id));
             } else {
                 // Doesn't have a parent then must be the root
-                if id != Scene::ROOT_ID {
+                if index != Scene::ROOT_INDEX {
                     return Err(toml::de::Error::custom(format!(
-                        "Entity '{name}' listed without parents but was not the root entity (id {})", Scene::ROOT_ID,
+                        "Entity '{name}' listed without parents but was not the first entity",
                     )));
                 }
 
-                scene.add_to_hierachy(name, id, 0);
+                scene.add_to_hierarchy(name, index, HierarchyId(id), HierarchyId(0));
             }
         }
 
-        if scene.world.entity(Scene::ROOT_ID).is_none() {
-            return Err(toml::de::Error::custom("No root entity found"));
+        if scene.hierarchy_nodes.is_empty() {
+            return Err(toml::de::Error::custom("scene was empty"));
         }
 
         Ok(scene)
@@ -145,6 +140,7 @@ fn deserialize_component<T: Component + for<'a> serde::Deserialize<'a>>(
                 index,
                 &*component as *const T as *const u8,
                 TypeId::of::<T>(),
+                false,
             );
         }
     }

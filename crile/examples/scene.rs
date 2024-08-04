@@ -18,14 +18,18 @@ impl crile::Application for SceneApp {
             },
         ));
 
-        let id = scene.world.spawn((TestComponent,));
-        let component = scene.world.get::<TestComponent>(id);
+        let index = scene.world.spawn((TestComponent,));
+        let component = scene.world.get::<TestComponent>(index);
 
         scene.set_viewport(engine.main_window().size().as_vec2());
         Self { scene }
     }
 
-    fn update(&mut self, engine: &mut crile::Engine, event_loop: &crile::ActiveEventLoop) {}
+    fn update(&mut self, engine: &mut crile::Engine, event_loop: &crile::ActiveEventLoop) {
+        if engine.time.frame_count() % 300 == 0 {
+            dbg!(engine.time.frame_rate());
+        }
+    }
 
     fn render(&mut self, engine: &mut crile::Engine) {
         let mut render_pass =
