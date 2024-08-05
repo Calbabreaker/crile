@@ -1,4 +1,4 @@
-use crate::Preferences;
+use crate::preferences::Preferences;
 
 #[derive(Default)]
 pub struct EditorCamera2D {

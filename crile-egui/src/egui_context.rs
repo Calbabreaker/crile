@@ -112,13 +112,10 @@ impl EguiContext {
                     pressed: state.is_pressed(),
                 })
             }
-            crile::EventKind::MouseScrolled { delta, unit } => {
+            crile::EventKind::MouseScrolled { delta } => {
                 self.push_event(egui::Event::MouseWheel {
                     delta: egui::vec2(delta.x, delta.y) / self.scale_factor,
-                    unit: match unit {
-                        crile::MouseScrolledUnit::Lines => egui::MouseWheelUnit::Line,
-                        crile::MouseScrolledUnit::Pixels => egui::MouseWheelUnit::Point,
-                    },
+                    unit: egui::MouseWheelUnit::Point,
                     modifiers,
                 });
             }

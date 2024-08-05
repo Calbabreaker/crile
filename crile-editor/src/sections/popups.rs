@@ -4,11 +4,11 @@ pub fn show(
     ctx: &egui::Context,
     egui_ctx: &mut crile_egui::EguiContext,
     state: &mut EditorState,
-    engine: &crile::Engine,
+    engine: &mut crile::Engine,
 ) {
     let title = match state.popup_open {
         PopupKind::Stats => "Stats",
-        PopupKind::Preferences => "Preferences",
+        PopupKind::Preferences(_) => "Preferences",
         PopupKind::None => return,
     };
 
@@ -19,10 +19,12 @@ pub fn show(
         .resizable(false);
 
     match state.popup_open {
-        PopupKind::Preferences => {
+        PopupKind::Preferences(ref mut temp_prefs) => {
             popup.show(ctx, |ui| {
-                if state.preferences.show(ui) {
+                if temp_prefs.show(ui) {
+                    state.preferences = temp_prefs.clone();
                     egui_ctx.set_ui_scale(state.preferences.ui_scale, engine.main_window().size());
+                    engine.gfx.wgpu.set_vsync(state.preferences.vsync);
                 }
             });
         }

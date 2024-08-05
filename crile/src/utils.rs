@@ -32,7 +32,6 @@ impl std::hash::Hasher for NoHashHasher {
 
 /// Hash map that does not hash the key
 /// Useful for types that already hashed like TypeId or ids
-/// Only u64 types are supported
 pub type NoHashHashMap<K, V> =
     hashbrown::HashMap<K, V, std::hash::BuildHasherDefault<NoHashHasher>>;
 

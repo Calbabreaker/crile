@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    DynamicBufferAllocator, Mesh, RefId, RenderPipelineCache, SamplerCache, Shader, ShaderKind,
-    Texture, Window, WindowId,
+    DynamicBufferAllocator, Mesh, NoHashHashMap, RefId, RenderPipelineCache, SamplerCache, Shader,
+    ShaderKind, Texture, Window, WindowId,
 };
 
 pub struct GraphicsContext {
@@ -138,7 +138,8 @@ pub struct WgpuContext {
     pub adapter: wgpu::Adapter,
     pub instance: wgpu::Instance,
     pub limits: wgpu::Limits,
-    pub viewport_map: hashbrown::HashMap<WindowId, WindowViewport>,
+    vsync: bool,
+    viewport_map: NoHashHashMap<WindowId, WindowViewport>,
 }
 
 impl WgpuContext {
@@ -177,6 +178,7 @@ impl WgpuContext {
             device,
             instance,
             adapter,
+            vsync: true,
         };
         wgpu.add_surface(winit, surface);
         wgpu
@@ -184,9 +186,18 @@ impl WgpuContext {
 
     fn add_surface(&mut self, winit: &winit::window::Window, surface: wgpu::Surface<'static>) {
         let size = winit.inner_size();
-        let config = surface
-            .get_default_config(&self.adapter, size.width, size.height)
-            .unwrap();
+        let caps = surface.get_capabilities(&self.adapter);
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            // The surface will always be compatible
+            format: *caps.formats.first().unwrap(),
+            width: size.width,
+            height: size.height,
+            desired_maximum_frame_latency: 1,
+            present_mode: present_mode_if_vsync(self.vsync),
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![],
+        };
         surface.configure(&self.device, &config);
 
         self.viewport_map
@@ -213,14 +224,11 @@ impl WgpuContext {
         viewport.surface.configure(&self.device, &viewport.config);
     }
 
-    pub fn set_vsync(&mut self, vsync: bool, window_id: WindowId) {
-        let viewport = self.viewport_map.get_mut(&window_id).unwrap();
-        viewport.config.present_mode = if vsync {
-            wgpu::PresentMode::AutoVsync
-        } else {
-            wgpu::PresentMode::AutoNoVsync
-        };
-        viewport.surface.configure(&self.device, &viewport.config);
+    pub fn set_vsync(&mut self, vsync: bool) {
+        for viewport in self.viewport_map.values_mut() {
+            viewport.config.present_mode = present_mode_if_vsync(vsync);
+            viewport.surface.configure(&self.device, &viewport.config);
+        }
     }
 
     fn get_surface_texture(&self, window_id: WindowId) -> wgpu::SurfaceTexture {
@@ -237,5 +245,13 @@ impl WgpuContext {
             }
             Ok(output) => output,
         }
+    }
+}
+
+fn present_mode_if_vsync(vsync: bool) -> wgpu::PresentMode {
+    if vsync {
+        wgpu::PresentMode::AutoVsync
+    } else {
+        wgpu::PresentMode::AutoNoVsync
     }
 }

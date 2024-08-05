@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use crate::{
-    editor_camera::EditorCamera2D, project::Project, sections::viewport::SceneViewport, Preferences,
+    editor_camera::EditorCamera2D, preferences::Preferences, project::Project,
+    sections::viewport::SceneViewport,
 };
 
 #[derive(PartialEq, Eq, Debug)]
@@ -10,9 +11,9 @@ pub enum Selection {
     None,
 }
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(PartialEq)]
 pub enum PopupKind {
-    Preferences,
+    Preferences(Preferences),
     Stats,
     None,
 }
@@ -35,10 +36,10 @@ pub struct EditorState {
 
     pub selection: Selection,
     pub editor_camera: EditorCamera2D,
-    pub project: Project,
     pub editor_view: SceneViewport,
 
     pub popup_open: PopupKind,
+    pub project: Project,
     pub preferences: Preferences,
 }
 
@@ -66,7 +67,10 @@ impl EditorState {
 
         let game_window_id = engine.create_window(
             event_loop,
-            crile::WindowAttributes::default().with_title("Game"),
+            crile::WindowConfig {
+                title: "Game",
+                ..Default::default()
+            },
         );
 
         self.scene_state = SceneState::Running(RuntimeData {

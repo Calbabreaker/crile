@@ -1,11 +1,10 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    AssetManager, Clipboard, Event, EventKind, GraphicsContext, Time, Window, WindowAttributes,
+    AssetManager, Clipboard, Event, EventKind, GraphicsContext, Time, Window, WindowConfig,
     WindowId,
 };
 pub use winit::event_loop::ActiveEventLoop;
-use winit::platform::wayland::EventLoopBuilderExtWayland;
 
 /// For applications to implement in order to run
 #[allow(unused)]
@@ -15,8 +14,8 @@ pub trait Application {
     fn fixed_update(&mut self, engine: &mut Engine) {}
     fn render(&mut self, engine: &mut Engine);
     fn event(&mut self, engine: &mut Engine, event: Event);
-    fn main_window_attributes() -> WindowAttributes {
-        WindowAttributes::default().with_title("Crile")
+    fn main_window_config() -> WindowConfig {
+        WindowConfig::default()
     }
 }
 
@@ -35,9 +34,9 @@ impl Engine {
     pub fn create_window(
         &mut self,
         event_loop: &ActiveEventLoop,
-        attributes: WindowAttributes,
+        config: WindowConfig,
     ) -> WindowId {
-        let window = Window::new(Window::new_winit(event_loop, attributes));
+        let window = Window::new(Window::new_winit(event_loop, config));
         self.gfx.wgpu.new_viewport(&window);
 
         let window_id = window.id();
@@ -63,7 +62,7 @@ impl Engine {
     }
 
     fn new<App: Application>(event_loop: &ActiveEventLoop) -> Self {
-        let winit = Window::new_winit(event_loop, App::main_window_attributes());
+        let winit = Window::new_winit(event_loop, App::main_window_config());
         let gfx = GraphicsContext::new(&winit);
 
         Self {
@@ -165,9 +164,7 @@ impl<App: Application> winit::application::ApplicationHandler<()> for EngineRunn
 }
 
 pub fn run_app<App: Application>() -> Result<(), impl std::error::Error> {
-    let event_loop = winit::event_loop::EventLoopBuilder::default()
-        .with_any_thread(true)
-        .build()?;
+    let event_loop = winit::event_loop::EventLoopBuilder::default().build()?;
     let mut app_runner = EngineRunner::<App>::default();
     event_loop.run_app(&mut app_runner)
 }

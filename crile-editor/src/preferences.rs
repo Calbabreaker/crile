@@ -2,12 +2,13 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 pub struct Preferences {
     pub ui_scale: f32,
     pub zoom_speed: f32,
     pub last_opened_project: Option<PathBuf>,
+    pub vsync: bool,
 }
 
 impl Default for Preferences {
@@ -16,6 +17,7 @@ impl Default for Preferences {
             ui_scale: 1.,
             last_opened_project: None,
             zoom_speed: 2.,
+            vsync: true,
         }
     }
 }
@@ -34,6 +36,10 @@ impl Preferences {
 
                 ui.label("Zoom speed");
                 ui.add(egui::Slider::new(&mut self.zoom_speed, 0.5..=4.));
+                ui.end_row();
+
+                ui.label("Vsync");
+                ui.checkbox(&mut self.vsync, "");
                 ui.end_row();
             });
 

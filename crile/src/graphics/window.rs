@@ -1,7 +1,23 @@
 use std::sync::Arc;
 
 use crate::Input;
-pub use winit::window::{CursorIcon, WindowAttributes, WindowId};
+pub use winit::window::{CursorIcon, WindowId};
+
+pub struct WindowConfig {
+    pub title: &'static str,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl Default for WindowConfig {
+    fn default() -> Self {
+        Self {
+            title: "Crile",
+            width: 1280,
+            height: 720,
+        }
+    }
+}
 
 pub struct Window {
     // This needs to be Arc in order for WGPU to borrow it
@@ -19,9 +35,13 @@ impl Window {
 
     pub(crate) fn new_winit(
         event_loop: &winit::event_loop::ActiveEventLoop,
-        attributes: WindowAttributes,
+        config: WindowConfig,
     ) -> Arc<winit::window::Window> {
-        log::info!("Creating new window with title '{}'", attributes.title);
+        log::info!("Creating new window with title '{}'", config.title);
+        let attributes = winit::window::WindowAttributes::default()
+            .with_title(config.title)
+            .with_inner_size(winit::dpi::LogicalSize::new(config.width, config.height));
+
         Arc::new(
             event_loop
                 .create_window(attributes)
@@ -34,6 +54,15 @@ impl Window {
     pub fn size(&self) -> glam::UVec2 {
         let size = self.winit.inner_size();
         glam::UVec2::new(size.width.max(1), size.height.max(1))
+    }
+
+    pub fn set_fullscreen(&self, fullscreen: bool) {
+        if fullscreen {
+            self.winit
+                .set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)))
+        } else {
+            self.winit.set_fullscreen(None)
+        }
     }
 
     pub fn scale_factor(&self) -> f64 {

@@ -20,7 +20,6 @@ fn test() {
             ));
 
             scene.set_viewport(engine.main_window().size().as_vec2());
-            engine.gfx.wgpu.set_vsync(true, engine.main_window().id());
             Self { scene }
         }
 

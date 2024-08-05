@@ -74,7 +74,7 @@ fn left_menus(state: &mut EditorState, ui: &mut egui::Ui) {
 
     ui.menu_button("Edit", |ui| {
         if ui.button("Preferences...").clicked() {
-            state.popup_open = PopupKind::Preferences;
+            state.popup_open = PopupKind::Preferences(state.preferences.clone());
             ui.close_menu();
         }
 

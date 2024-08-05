@@ -2,10 +2,6 @@
 id = 0
 name = "Root"
 
-[entity.TransformComponent]
-scale = [1.0, 1.0, 1.0]
-translation = [0.20999999344348907, 0.0, 0.0]
-
 [[entity]]
 id = 1
 name = "Sprite"
