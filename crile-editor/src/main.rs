@@ -21,6 +21,8 @@ impl crile::Application for CrileEditorApp {
 
         app.state
             .open_project(app.state.preferences.last_opened_project.clone());
+        app.egui
+            .set_ui_scale(app.state.preferences.ui_scale, engine.main_window().size());
 
         engine.gfx.wgpu.set_vsync(app.state.preferences.vsync);
         app
