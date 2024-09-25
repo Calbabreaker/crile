@@ -136,7 +136,7 @@ macro_rules! tuple_impl {
                 let ($($type,)*) = self;
                 $(
                     unsafe {
-                        archetype.put_component(index, &$type as *const $type as *const u8, TypeId::of::<$type>(), false);
+                        archetype.move_component(index, &$type as *const $type as *const u8, TypeId::of::<$type>());
                         std::mem::forget($type);
                     }
                 )*

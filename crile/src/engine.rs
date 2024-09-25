@@ -5,6 +5,7 @@ use crate::{
     WindowId,
 };
 pub use winit::event_loop::ActiveEventLoop;
+use winit::platform::wayland::EventLoopBuilderExtWayland;
 
 /// For applications to implement in order to run
 #[allow(unused)]
@@ -164,7 +165,10 @@ impl<App: Application> winit::application::ApplicationHandler<()> for EngineRunn
 }
 
 pub fn run_app<App: Application>() -> Result<(), impl std::error::Error> {
-    let event_loop = winit::event_loop::EventLoopBuilder::default().build()?;
+    let event_loop = winit::event_loop::EventLoopBuilder::default()
+        // Makes tests work
+        .with_any_thread(true)
+        .build()?;
     let mut app_runner = EngineRunner::<App>::default();
     event_loop.run_app(&mut app_runner)
 }

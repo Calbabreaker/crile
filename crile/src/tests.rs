@@ -3,7 +3,7 @@ use std::time::Duration;
 use super::*;
 
 #[test]
-fn test() {
+fn engine() {
     pub struct Test {
         scene: Scene,
     }

@@ -10,6 +10,7 @@ pub(crate) struct EntityLocation {
 }
 
 /// Contains all the data for an ECS instance.
+///
 /// This ECS works by storing a bunch of archetypes where each archetype stores all the components
 /// of entities that have the same set of components.
 /// Then when querying, it will go to each archetype and will only get components in that archetype
@@ -73,7 +74,7 @@ impl World {
         self.spawn_raw(source_arch.type_infos(), |index, arch| unsafe {
             for array in source_arch.component_arrays.iter() {
                 let size = array.type_info.layout.size();
-                arch.put_component(index, array.ptr.add(index * size), array.type_info.id, true);
+                arch.clone_component(index, array.ptr.add(index * size), array.type_info.id);
             }
         })
     }
@@ -228,20 +229,18 @@ impl<'a> EntityMut<'a> {
                 // Move all the components into the new archetype
                 for array in source_arch.component_arrays.iter() {
                     let offset = source_index * array.type_info.layout.size();
-                    target_arch.put_component(
+                    target_arch.move_component(
                         target_index,
                         array.ptr.add(offset),
                         array.type_info.id,
-                        false,
                     );
                 }
 
                 // Add the requested component into the new archetype
-                target_arch.put_component(
+                target_arch.move_component(
                     target_index,
                     &*component as *const T as *const u8,
                     TypeId::of::<T>(),
-                    false,
                 );
             },
         );
@@ -264,11 +263,10 @@ impl<'a> EntityMut<'a> {
                     } else {
                         // Put the component into the new archetype
                         let offset = array.type_info.layout.size() * source_index;
-                        target_arch.put_component(
+                        target_arch.move_component(
                             target_index,
                             array.ptr.add(offset),
                             array.type_info.id,
-                            false,
                         );
                     }
                 }

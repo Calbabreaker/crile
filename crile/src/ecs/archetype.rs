@@ -48,32 +48,31 @@ impl Archetype {
         }
     }
 
-    /// Moves/Clones a component into a component array in this archetype using raw pointers
+    /// Moves a component into a component array in this archetype using raw pointers
     /// # Safety
     /// - Component real type must match the type id
-    /// - The component must not be dropped and must not be used elsewhere after moving (if should_clone is false)
-    pub unsafe fn put_component(
+    /// - The component must not be dropped and must not be used elsewhere after moving use [Self::clone_component] otherwise
+    pub unsafe fn move_component(
         &mut self,
-        component_ndex: usize,
+        component_index: usize,
         component_ptr: *const u8,
         type_id: TypeId,
-        should_clone: bool,
     ) {
-        assert!(component_ndex < self.count);
+        let (ptr, type_info) = self.get_component_dst(component_index, type_id);
+        std::ptr::copy_nonoverlapping(component_ptr, ptr, type_info.layout.size());
+    }
 
-        let array = self
-            .get_array(&type_id)
-            .expect("component is not in the archetype");
-        let size = array.type_info.layout.size();
-        if should_clone {
-            (array.type_info.clone_to)(component_ptr, array.ptr.add(component_ndex * size));
-        } else {
-            std::ptr::copy_nonoverlapping(
-                component_ptr,
-                array.ptr.add(component_ndex * size),
-                size,
-            );
-        }
+    /// Clones a component into a component array in this archetype using raw pointers
+    /// # Safety
+    /// - Component real type must match the type id
+    pub unsafe fn clone_component(
+        &mut self,
+        component_index: usize,
+        component_ptr: *const u8,
+        type_id: TypeId,
+    ) {
+        let (ptr, type_info) = self.get_component_dst(component_index, type_id);
+        (type_info.clone_to)(component_ptr, ptr);
     }
 
     // # Safety
@@ -148,6 +147,21 @@ impl Archetype {
     pub(crate) fn get_array(&self, id: &TypeId) -> Option<&ComponentArray> {
         let index = self.index_map.get(id)?;
         Some(unsafe { self.component_arrays.get_unchecked(*index) })
+    }
+
+    #[inline]
+    unsafe fn get_component_dst(
+        &self,
+        component_index: usize,
+        type_id: TypeId,
+    ) -> (*mut u8, &TypeInfo) {
+        assert!(component_index < self.count);
+
+        let array = self
+            .get_array(&type_id)
+            .expect("component is not in the archetype");
+        let info = &array.type_info;
+        (array.ptr.add(component_index * info.layout.size()), info)
     }
 
     pub fn type_infos(&self) -> &[TypeInfo] {

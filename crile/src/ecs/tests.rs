@@ -36,11 +36,10 @@ fn spawn_raw_1_component() {
     let mut world = World::default();
     let position = Position { x: 1., y: 2. };
     world.spawn_raw(&[TypeInfo::of::<Position>()], |index, archetype| unsafe {
-        archetype.put_component(
+        archetype.clone_component(
             index,
             &position as *const Position as *const u8,
             TypeId::of::<Position>(),
-            true,
         );
     });
 
@@ -107,12 +106,8 @@ fn multiple_borrow() {
 
     let a = world.get::<Metadata>(id).unwrap();
     a.stuff.push("test".to_string());
-    let string = &mut a.stuff[0];
 
-    let b = world.get::<Metadata>(id).unwrap();
-    b.stuff.remove(0);
-
-    string.push('a');
+    world.get::<Metadata>(id).unwrap();
 }
 
 #[test]

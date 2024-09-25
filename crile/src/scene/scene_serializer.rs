@@ -143,11 +143,10 @@ fn deserialize_component<T: Component + for<'a> serde::Deserialize<'a>>(
         let component = std::mem::ManuallyDrop::new(component);
 
         unsafe {
-            archetype.put_component(
+            archetype.clone_component(
                 index,
                 &*component as *const T as *const u8,
                 TypeId::of::<T>(),
-                false,
             );
         }
     }

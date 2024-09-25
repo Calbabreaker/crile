@@ -50,7 +50,7 @@ impl SceneViewport {
     pub fn get_render_pass<'a>(
         &'a self,
         engine: &'a mut crile::Engine,
-    ) -> Option<crile::RenderPass> {
+    ) -> Option<crile::RenderPass<'a>> {
         // Render to the viewport texture to be displayed in the viewport panel
         self.texture.as_ref().map(|texture| {
             crile::RenderPass::new(
