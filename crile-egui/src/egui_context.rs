@@ -55,7 +55,7 @@ impl EguiContext {
         let ctx = self
             .ctx
             .take()
-            .expect("tried to call egui begin frame before end frame or multiple times");
+            .expect("Tried to call egui begin frame before end frame or multiple times");
         ctx.set_pixels_per_point(self.scale_factor);
         ctx.begin_frame(self.raw_input.clone());
         ctx

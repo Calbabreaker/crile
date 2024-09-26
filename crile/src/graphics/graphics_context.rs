@@ -46,7 +46,7 @@ impl GraphicsContext {
         let frame = self
             .frame
             .take()
-            .expect("called end frame before begin frame");
+            .expect("Called end frame before begin frame");
 
         self.wgpu.queue.submit([frame.encoder.finish()]);
         frame.output.present();
@@ -241,7 +241,7 @@ impl WgpuContext {
                 viewport
                     .surface
                     .get_current_texture()
-                    .expect("failed to get surface texture")
+                    .expect("Failed to get surface texture")
             }
             Ok(output) => output,
         }

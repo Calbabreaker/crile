@@ -171,7 +171,7 @@ impl Scene {
         let parent_index = self
             .ancestor_iter(entity_index)
             .next()
-            .expect("parent invalid");
+            .expect("Parent was invalid");
 
         // Remove the child from the children array inside the parent
         let parent_node = &mut self.hierarchy_nodes[parent_index];
@@ -211,7 +211,7 @@ impl Scene {
         *self
             .hierachy_id_index_map
             .get(&id)
-            .expect("id should exist")
+            .expect("Id should exist")
     }
 
     pub fn get_node(&self, entity_index: usize) -> Option<&HierarchyNode> {
@@ -225,7 +225,7 @@ impl Scene {
     pub fn root_node(&self) -> &HierarchyNode {
         self.hierarchy_nodes
             .get(Self::ROOT_INDEX)
-            .expect("should be a root node")
+            .expect("Should be a root node")
     }
 }
 

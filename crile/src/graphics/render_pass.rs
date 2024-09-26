@@ -45,7 +45,7 @@ impl<'a> RenderPass<'a> {
         let frame = gfx
             .frame
             .as_mut()
-            .expect("tried to create render pass but frame doesn't exist");
+            .expect("Tried to create render pass but frame doesn't exist");
 
         let target = target.unwrap_or(TextureView::new(&frame.output.texture, &frame.output_view));
         let gpu_render_pass = frame

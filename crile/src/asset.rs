@@ -43,7 +43,7 @@ impl Asset for Script {
         let compiler = mlua::Compiler::default();
         Some(Script {
             bytecode: compiler.compile(crate::read_file(path)?),
-            source: Some(path.to_string_lossy().to_string()),
+            source: Some(path.to_str()?.into()),
         })
     }
 

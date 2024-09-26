@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Project {
-    pub name: String,
+    pub name: Box<str>,
     pub main_scene: Option<PathBuf>,
     #[serde(skip)]
     pub directory: PathBuf,

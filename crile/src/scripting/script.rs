@@ -2,7 +2,7 @@ use crate::{impl_mlua_conversion, Engine, Scene, WindowId};
 
 pub struct Script {
     pub bytecode: Vec<u8>,
-    pub source: Option<String>,
+    pub source: Option<Box<str>>,
 }
 
 pub struct ScriptingEngine {

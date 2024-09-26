@@ -5,7 +5,9 @@ pub struct SceneApp {
 }
 
 #[derive(Clone, Default, Debug)]
-struct TestComponent;
+struct TestComponent {
+    a: u32,
+}
 
 impl crile::Application for SceneApp {
     fn new(engine: &mut crile::Engine) -> Self {
@@ -18,18 +20,14 @@ impl crile::Application for SceneApp {
             },
         ));
 
-        let index = scene.world.spawn((TestComponent,));
+        let index = scene.world.spawn((TestComponent::default(),));
         let component = scene.world.get::<TestComponent>(index);
 
         scene.set_viewport(engine.main_window().size().as_vec2());
         Self { scene }
     }
 
-    fn update(&mut self, engine: &mut crile::Engine, event_loop: &crile::ActiveEventLoop) {
-        if engine.time.frame_count() % 300 == 0 {
-            dbg!(engine.time.frame_rate());
-        }
-    }
+    fn update(&mut self, engine: &mut crile::Engine, event_loop: &crile::ActiveEventLoop) {}
 
     fn render(&mut self, engine: &mut crile::Engine) {
         let mut render_pass =

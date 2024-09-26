@@ -67,14 +67,16 @@ impl World {
     }
 
     pub fn spawn_from_world(&mut self, other_index: usize, world: &World) -> usize {
-        let location = world.location(other_index).expect("entity does not exist");
+        let location = world.location(other_index).expect("Entity does not exist");
         let source_arch = &world.archetypes[location.archetype_index];
 
         // Clone the entity's components
-        self.spawn_raw(source_arch.type_infos(), |index, arch| unsafe {
+        self.spawn_raw(source_arch.type_infos(), |index, arch| {
             for array in source_arch.component_arrays.iter() {
-                let size = array.type_info.layout.size();
-                arch.clone_component(index, array.ptr.add(index * size), array.type_info.id);
+                let ptr = array.get_component_ptr(index);
+                unsafe {
+                    arch.clone_component(index, ptr, array.get_type_id());
+                }
             }
         })
     }
@@ -82,7 +84,7 @@ impl World {
     pub fn despawn(&mut self, index: usize) {
         let location = self
             .location(index)
-            .expect("tried to despawn non-existent entity");
+            .expect("Tried to despawn non-existent entity");
 
         let archetype = &mut self.archetypes[location.archetype_index];
         let moved_index = archetype.remove_entity(location.component_index, true);
@@ -228,12 +230,8 @@ impl<'a> EntityMut<'a> {
             |source_arch, target_arch, source_index, target_index| unsafe {
                 // Move all the components into the new archetype
                 for array in source_arch.component_arrays.iter() {
-                    let offset = source_index * array.type_info.layout.size();
-                    target_arch.move_component(
-                        target_index,
-                        array.ptr.add(offset),
-                        array.type_info.id,
-                    );
+                    let ptr = array.get_component_ptr(source_index);
+                    target_arch.move_component(target_index, ptr, array.get_type_id());
                 }
 
                 // Add the requested component into the new archetype
@@ -257,17 +255,13 @@ impl<'a> EntityMut<'a> {
             |source_arch, target_arch, source_index, target_index| unsafe {
                 // Move all the components into the new archetype except for the removed component
                 for array in source_arch.component_arrays.iter_mut() {
-                    if array.type_info.id == TypeId::of::<T>() {
+                    if array.get_type_id() == TypeId::of::<T>() {
                         // Call drop on removed component
                         array.drop_component(source_index);
                     } else {
                         // Put the component into the new archetype
-                        let offset = array.type_info.layout.size() * source_index;
-                        target_arch.move_component(
-                            target_index,
-                            array.ptr.add(offset),
-                            array.type_info.id,
-                        );
+                        let ptr = array.get_component_ptr(source_index);
+                        target_arch.move_component(target_index, ptr, array.get_type_id());
                     }
                 }
             },

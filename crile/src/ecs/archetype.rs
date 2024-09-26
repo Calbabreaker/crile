@@ -1,4 +1,4 @@
-use std::any::TypeId;
+use std::{any::TypeId, ptr::NonNull};
 
 use crate::NoHashHashMap;
 
@@ -33,10 +33,7 @@ impl Archetype {
 
         let component_arrays = type_infos
             .iter()
-            .map(|info| ComponentArray {
-                ptr: std::ptr::null_mut(),
-                type_info: info.clone(),
-            })
+            .map(|info| ComponentArray::new(info.clone()))
             .collect();
 
         Self {
@@ -51,7 +48,7 @@ impl Archetype {
     /// Moves a component into a component array in this archetype using raw pointers
     /// # Safety
     /// - Component real type must match the type id
-    /// - The component must not be dropped and must not be used elsewhere after moving use [Self::clone_component] otherwise
+    /// - The component must not be dropped and must not be used elsewhere after moving. Use [Self::clone_component] otherwise
     pub unsafe fn move_component(
         &mut self,
         component_index: usize,
@@ -84,7 +81,7 @@ impl Archetype {
         assert!(component_index < self.count);
 
         let array = self.get_array(&TypeId::of::<T>())?;
-        Some(&mut *array.ptr.cast::<T>().add(component_index))
+        Some(&mut *array.get_ptr().cast::<T>().add(component_index))
     }
 
     pub(crate) fn has_component<T: 'static>(&self) -> bool {
@@ -110,13 +107,11 @@ impl Archetype {
         // Moves the last item to index and decrement length by 1
         let last_index = self.count - 1;
         for array in self.component_arrays.iter_mut() {
-            unsafe {
-                if should_drop {
-                    array.drop_component(component_index);
-                }
-
-                array.swap_remove(component_index, last_index);
+            if should_drop {
+                array.drop_component(component_index);
             }
+
+            array.move_over(last_index, component_index);
         }
 
         self.entity_indexs[component_index] = self.entity_indexs[last_index];
@@ -126,21 +121,19 @@ impl Archetype {
     }
 
     fn grow(&mut self, amount: usize) {
-        let old_capacity = self.entity_indexs.len();
-        let new_capacity = old_capacity + amount;
-
-        if new_capacity == old_capacity {
+        if amount == 0 {
             return;
         }
+
+        let old_capacity = self.entity_indexs.len();
+        let new_capacity = old_capacity + amount;
 
         let mut new_entites = vec![0; new_capacity].into_boxed_slice();
         new_entites[0..self.count].copy_from_slice(&self.entity_indexs[0..self.count]);
         self.entity_indexs = new_entites;
 
         for array in self.component_arrays.iter_mut() {
-            unsafe {
-                array.grow(old_capacity, new_capacity);
-            }
+            array.grow(new_capacity);
         }
     }
 
@@ -149,19 +142,14 @@ impl Archetype {
         Some(unsafe { self.component_arrays.get_unchecked(*index) })
     }
 
-    #[inline]
-    unsafe fn get_component_dst(
-        &self,
-        component_index: usize,
-        type_id: TypeId,
-    ) -> (*mut u8, &TypeInfo) {
+    fn get_component_dst(&self, component_index: usize, type_id: TypeId) -> (*mut u8, &TypeInfo) {
         assert!(component_index < self.count);
 
         let array = self
             .get_array(&type_id)
-            .expect("component is not in the archetype");
+            .expect("Component is not in the archetype");
         let info = &array.type_info;
-        (array.ptr.add(component_index * info.layout.size()), info)
+        (array.get_component_ptr(component_index), info)
     }
 
     pub fn type_infos(&self) -> &[TypeInfo] {
@@ -180,9 +168,7 @@ impl Drop for Archetype {
         }
 
         for array in self.component_arrays.iter_mut() {
-            unsafe {
-                array.clean(self.count, self.entity_indexs.len());
-            }
+            array.clean(self.count);
         }
     }
 }
@@ -192,7 +178,7 @@ impl Clone for Archetype {
         let component_arrays = self
             .component_arrays
             .iter()
-            .map(|array| unsafe { array.clone(self.count, self.entity_indexs.len()) })
+            .map(|array| array.clone(self.count))
             .collect();
 
         Self {
@@ -209,77 +195,120 @@ pub(crate) struct ComponentArray {
     /// Pointer to the allocated array
     /// We need to store the array as a raw ptr to allow for multiple types (can't use generics)
     /// This also means we need to manage the memory manually
-    pub ptr: *mut u8,
-    pub type_info: TypeInfo,
+    ptr: Option<NonNull<u8>>,
+    type_info: TypeInfo,
+    allocated_capacity: usize,
 }
 
 impl ComponentArray {
-    // We don't store the capcity or count inside the ComponentArray to make sure every
-    // ComponentArray is the same size
-    unsafe fn grow(&mut self, old_capacity: usize, new_capacity: usize) {
-        let size = self.type_info.layout.size();
-
-        // We need to allocate new space manually since we don't have access the component generic here
-        let new_ptr = std::alloc::realloc(
-            self.ptr,
-            std::alloc::Layout::from_size_align_unchecked(
-                size * old_capacity,
-                self.type_info.layout.align(),
-            ),
-            size * new_capacity,
-        );
-
-        self.ptr = new_ptr;
-    }
-
-    // Removes a entity component by swapping with the last element for a O(1) operation
-    unsafe fn swap_remove(&mut self, index: usize, last_index: usize) {
-        if index != last_index {
-            let size = self.type_info.layout.size();
-            let to_remove = self.ptr.add(index * size);
-            let last = self.ptr.add(last_index * size);
-
-            std::ptr::copy_nonoverlapping(last, to_remove, size);
+    fn new(type_info: TypeInfo) -> Self {
+        Self {
+            ptr: None,
+            allocated_capacity: 0,
+            type_info,
         }
     }
 
-    unsafe fn clean(&mut self, count: usize, capacity: usize) {
-        // Call the destructor on the components
+    fn grow(&mut self, new_capacity: usize) {
+        assert!(new_capacity > self.allocated_capacity);
+
+        let new_size = self.type_info.layout.size() * new_capacity;
+        assert!(
+            new_size > 0,
+            "Zero sized components are not supported: {}",
+            self.type_info
+        );
+
+        // We need to allocate new space manually since we don't have access the component generic here
+        let old_ptr = self.ptr.map_or(std::ptr::null_mut(), |ptr| ptr.as_ptr());
+        let new_ptr = unsafe { std::alloc::realloc(old_ptr, self.get_array_layout(), new_size) };
+
+        if let Some(new_ptr) = NonNull::new(new_ptr) {
+            self.allocated_capacity = new_capacity;
+            self.ptr = Some(new_ptr);
+        } else {
+            panic!(
+                "Failed to realloc/alloc component array for {}",
+                self.type_info
+            );
+        }
+    }
+
+    /// Moves a component by copying over the data from index_a to index_b
+    /// Used for swap_remove
+    fn move_over(&mut self, index_a: usize, index_b: usize) {
+        assert!(index_a <= self.allocated_capacity);
+        assert!(index_b <= self.allocated_capacity);
+
+        if index_a != index_b {
+            let size = self.type_info.layout.size();
+            unsafe {
+                let ptr_a = self.get_ptr().add(index_a * size);
+                let ptr_b = self.get_ptr().add(index_b * size);
+                std::ptr::copy_nonoverlapping(ptr_a, ptr_b, size);
+            }
+        }
+    }
+
+    fn clean(&mut self, count: usize) {
+        let ptr = match self.ptr {
+            None => return,
+            Some(ptr) => ptr.as_ptr(),
+        };
+
         for i in 0..count {
             self.drop_component(i);
         }
 
-        // Deallocate the component array data
-        std::alloc::dealloc(
-            self.ptr,
-            std::alloc::Layout::from_size_align_unchecked(
-                self.type_info.layout.size() * capacity,
-                self.type_info.layout.align(),
-            ),
-        );
+        unsafe {
+            std::alloc::dealloc(ptr, self.get_array_layout());
+        }
     }
 
-    unsafe fn clone(&self, count: usize, capacity: usize) -> Self {
-        let size = self.type_info.layout.size();
-        let new_ptr = std::alloc::alloc(std::alloc::Layout::from_size_align_unchecked(
-            size * capacity,
-            self.type_info.layout.align(),
-        ));
+    fn clone(&self, count: usize) -> Self {
+        assert!(count <= self.allocated_capacity);
+
+        let mut component_array = Self::new(self.type_info.clone());
+        component_array.grow(count);
 
         for i in 0..count {
             // Call clone on each component
-            let offset = size * i;
-            (self.type_info.clone_to)(self.ptr.add(offset), new_ptr.add(offset));
+            let src_ptr = self.get_component_ptr(i);
+            let dst_ptr = component_array.get_component_ptr(i);
+            unsafe {
+                (self.type_info.clone_to)(src_ptr, dst_ptr);
+            }
         }
 
-        Self {
-            ptr: new_ptr,
-            type_info: self.type_info.clone(),
+        component_array
+    }
+
+    pub fn drop_component(&mut self, index: usize) {
+        unsafe {
+            (self.type_info.drop)(self.get_component_ptr(index));
         }
     }
 
-    pub(crate) unsafe fn drop_component(&mut self, index: usize) {
+    /// # Safety
+    /// - Don't realloc/delloc the ptr please
+    pub(crate) unsafe fn get_ptr(&self) -> *mut u8 {
+        self.ptr.expect("Component ptr was null").as_ptr()
+    }
+
+    fn get_array_layout(&self) -> std::alloc::Layout {
+        let size = self.type_info.layout.size();
+        let align = self.type_info.layout.align();
+        std::alloc::Layout::from_size_align(self.allocated_capacity * size, align).unwrap()
+    }
+
+    pub fn get_type_id(&self) -> TypeId {
+        self.type_info.id
+    }
+
+    // Gets a raw ptr to a component inside this array
+    pub fn get_component_ptr(&self, index: usize) -> *mut u8 {
+        assert!(index <= self.allocated_capacity);
         let offset = self.type_info.layout.size() * index;
-        (self.type_info.drop)(self.ptr.add(offset));
+        unsafe { self.get_ptr().add(offset) }
     }
 }

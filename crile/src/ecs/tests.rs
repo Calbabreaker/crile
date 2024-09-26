@@ -20,6 +20,18 @@ struct Metadata {
     stuff: Vec<String>,
 }
 
+#[derive(Default, Clone, Debug, PartialEq)]
+struct Empty;
+
+#[test]
+#[should_panic]
+fn empty_component() {
+    let mut world = World::default();
+    let id = world.spawn((Empty,));
+    assert_eq!(id, 0);
+    assert_eq!(*world.get::<Empty>(id).unwrap(), Empty);
+}
+
 #[test]
 fn normal_spawn_1_component() {
     let mut world = World::default();

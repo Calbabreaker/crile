@@ -3,7 +3,7 @@ use std::{alloc::Layout, any::TypeId, mem::ManuallyDrop};
 use super::Archetype;
 
 /// Stores information about a component type to be used inside component arrays
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TypeInfo {
     pub id: TypeId,
     pub layout: Layout,
@@ -31,11 +31,9 @@ impl TypeInfo {
     }
 }
 
-impl std::fmt::Debug for TypeInfo {
+impl std::fmt::Display for TypeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TypeInfo")
-            .field("type_name", &self.typename)
-            .finish()
+        write!(f, "TypeInfo({})", self.typename)
     }
 }
 
@@ -146,7 +144,7 @@ macro_rules! tuple_impl {
             fn get_array_ptrs(archetype: &Archetype) -> Option<Self::FixedArray<*mut u8>> {
                 Some([
                     $(
-                        archetype.get_array(&TypeId::of::<$type>())?.ptr
+                        unsafe { archetype.get_array(&TypeId::of::<$type>())?.get_ptr() }
                     ),*
                 ])
             }
