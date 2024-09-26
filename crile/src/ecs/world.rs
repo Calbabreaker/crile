@@ -1,7 +1,7 @@
 use std::any::TypeId;
 
 use super::{Archetype, ComponentTuple, QueryIter, QueryIterMut, TypeInfo};
-use crate::{index_mut_twice, Component};
+use crate::Component;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub(crate) struct EntityLocation {
@@ -299,4 +299,12 @@ impl<'a> EntityMut<'a> {
         self.location.archetype_index = target_arch_index;
         self.world.entity_locations[self.index] = self.location;
     }
+}
+
+fn index_mut_twice<T>(array: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
+    assert!(a != b);
+    assert!(a < array.len());
+    assert!(b < array.len());
+    let ptr = array.as_mut_ptr();
+    unsafe { (&mut *ptr.add(a), &mut *ptr.add(b)) }
 }

@@ -3,8 +3,7 @@ use std::any::TypeId;
 use serde::{de::Error, Deserialize, Serialize};
 
 use crate::{
-    last_type_name, with_components, Archetype, Component, EntityRef, HierarchyId, HierarchyNode,
-    Scene, TypeInfo,
+    with_components, Archetype, Component, EntityRef, HierarchyId, HierarchyNode, Scene, TypeInfo,
 };
 
 #[derive(Default, Deserialize, Serialize)]
@@ -111,7 +110,7 @@ fn serialize_component<T: Component + serde::Serialize>(
     table: &mut toml::Table,
     entity: EntityRef,
 ) -> Result<(), toml::ser::Error> {
-    let type_name = last_type_name::<T>();
+    let type_name = crate::last_type_name::<T>();
     if let Some(component) = entity.get::<T>() {
         let serialized = toml::Value::try_from(component)?;
         table.insert(type_name.into(), serialized);
@@ -121,7 +120,7 @@ fn serialize_component<T: Component + serde::Serialize>(
 }
 
 fn add_component_type<T: Component>(type_infos: &mut Vec<TypeInfo>, key: &str) {
-    let type_name = last_type_name::<T>();
+    let type_name = crate::last_type_name::<T>();
     if key == type_name {
         type_infos.push(TypeInfo::of::<T>());
     }
@@ -133,7 +132,7 @@ fn deserialize_component<T: Component + for<'a> serde::Deserialize<'a>>(
     archetype: &mut Archetype,
     index: usize,
 ) {
-    let type_name = last_type_name::<T>();
+    let type_name = crate::last_type_name::<T>();
     if key == type_name {
         let component = value
             .clone()
