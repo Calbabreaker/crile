@@ -58,8 +58,11 @@ impl GraphicsContext {
         self.caches.bind_group_holder.clear();
     }
 
-    pub fn target_window_id(&self) -> Option<WindowId> {
-        self.frame.as_ref().map(|frame| frame.window_id)
+    pub fn target_window_id(&self) -> WindowId {
+        self.frame
+            .as_ref()
+            .expect("Must be called during render")
+            .window_id
     }
 }
 

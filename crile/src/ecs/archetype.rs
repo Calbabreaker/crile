@@ -289,9 +289,7 @@ impl ComponentArray {
         }
     }
 
-    /// # Safety
-    /// - Don't realloc/delloc the ptr please
-    pub(crate) unsafe fn get_ptr(&self) -> *mut u8 {
+    pub fn get_ptr(&self) -> *mut u8 {
         self.ptr.expect("Component ptr was null").as_ptr()
     }
 

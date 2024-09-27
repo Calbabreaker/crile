@@ -94,7 +94,7 @@ impl crile::Application for CrileEditorApp {
 
     fn render(&mut self, engine: &mut crile::Engine) {
         // Check if the main window is rendering
-        if engine.gfx.target_window_id() == Some(engine.main_window().id()) {
+        if engine.gfx.target_window_id() == engine.main_window().id() {
             // First render onto the viewport texture which will be put in an egui panel
             let viewport_size = self.state.editor_view.size.as_vec2();
             self.state.editor_camera.set_viewport(viewport_size);
@@ -114,7 +114,7 @@ impl crile::Application for CrileEditorApp {
 
         // Now this could only be the game window from here
         if let SceneState::Running(data) = &mut self.state.scene_state {
-            assert_eq!(engine.gfx.target_window_id(), Some(data.game_window_id));
+            assert_eq!(engine.gfx.target_window_id(), data.game_window_id);
 
             // Render directly onto the game window
             let viewport_size = engine.get_window(data.game_window_id).unwrap().size();
