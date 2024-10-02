@@ -108,7 +108,9 @@ impl Archetype {
         let last_index = self.count - 1;
         for array in self.component_arrays.iter_mut() {
             if should_drop {
-                array.drop_component(component_index);
+                unsafe {
+                    array.drop_component(component_index);
+                }
             }
 
             array.move_over(last_index, component_index);
@@ -257,7 +259,9 @@ impl ComponentArray {
         };
 
         for i in 0..count {
-            self.drop_component(i);
+            unsafe {
+                self.drop_component(i);
+            }
         }
 
         unsafe {
@@ -283,7 +287,7 @@ impl ComponentArray {
         component_array
     }
 
-    pub fn drop_component(&mut self, index: usize) {
+    pub(crate) unsafe fn drop_component(&mut self, index: usize) {
         unsafe {
             (self.type_info.drop)(self.get_component_ptr(index));
         }
