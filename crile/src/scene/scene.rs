@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use rand::Rng;
 
 use crate::{
@@ -231,17 +229,15 @@ impl Scene {
 
 pub struct SceneHierarchyIter<'a> {
     scene: &'a Scene,
+    next_indexes_stack: Vec<usize>,
 }
 
 impl<'a> SceneHierarchyIter<'a> {
-    thread_local! {
-        static NEXT_INDEXES_STACK: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
-    }
-
     fn new(scene: &'a Scene, start_index: usize) -> Self {
-        Self::NEXT_INDEXES_STACK.with(|stack| stack.borrow_mut().push(start_index));
-
-        Self { scene }
+        Self {
+            scene,
+            next_indexes_stack: vec![start_index],
+        }
     }
 }
 
@@ -249,17 +245,15 @@ impl Iterator for SceneHierarchyIter<'_> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Self::NEXT_INDEXES_STACK.with(|stack| {
-            let mut stack = stack.borrow_mut();
-            let index = stack.pop()?;
-            let node = self.scene.hierarchy_nodes.get(index)?;
-            stack.extend(node.children.iter().rev().map(|id| {
+        let index = self.next_indexes_stack.pop()?;
+        let node = self.scene.hierarchy_nodes.get(index)?;
+        self.next_indexes_stack
+            .extend(node.children.iter().rev().map(|id| {
                 // Add the children entity indexes
                 self.scene.id_to_index(*id)
             }));
 
-            Some(index)
-        })
+        Some(index)
     }
 }
 
