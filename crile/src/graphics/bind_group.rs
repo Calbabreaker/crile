@@ -160,7 +160,7 @@ impl<'a> BindGroupBuilder<'a> {
     }
 }
 
-impl<'a> Default for BindGroupBuilder<'a> {
+impl Default for BindGroupBuilder<'_> {
     fn default() -> Self {
         Self::new()
     }

@@ -245,7 +245,7 @@ impl<'a> SceneHierarchyIter<'a> {
     }
 }
 
-impl<'a> Iterator for SceneHierarchyIter<'a> {
+impl Iterator for SceneHierarchyIter<'_> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -277,7 +277,7 @@ impl<'a> SceneAncestorIter<'a> {
     }
 }
 
-impl<'a> Iterator for SceneAncestorIter<'a> {
+impl Iterator for SceneAncestorIter<'_> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {

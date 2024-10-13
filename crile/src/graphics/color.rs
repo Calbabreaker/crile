@@ -2,8 +2,8 @@ use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 
 /// Color with RGBA values from 0 to 1 in SRGB color space
-#[repr(C)]
 #[derive(PartialEq, Copy, Clone, Debug, Pod, Zeroable, Serialize, Deserialize)]
+#[repr(C)]
 pub struct Color(pub [f32; 4]);
 
 impl Default for Color {
@@ -24,14 +24,14 @@ impl From<Color> for wgpu::Color {
 }
 
 impl Color {
-    pub const BLACK: Color = Color::from_rgba(0., 0., 0., 1.);
-    pub const WHITE: Color = Color::from_rgba(1., 1., 1., 1.);
+    pub const BLACK: Color = Color::from_hex(0x000000);
+    pub const WHITE: Color = Color::from_hex(0xffffff);
 
     pub const fn from_rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self([r, g, b, a])
     }
 
-    pub fn from_srgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+    pub const fn from_srgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self([
             r as f32 / 255.,
             g as f32 / 255.,
@@ -41,7 +41,7 @@ impl Color {
     }
 
     /// Converts a hexidecimal number RGB or RGBA into the Color
-    pub fn from_hex(hex: u32) -> Self {
+    pub const fn from_hex(hex: u32) -> Self {
         if hex <= 0xffffff {
             Color::from_srgba(
                 ((hex >> 16) & 0xff) as u8,
