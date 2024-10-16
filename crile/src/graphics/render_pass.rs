@@ -1,7 +1,7 @@
 use std::num::NonZeroU64;
 
 use super::{
-    BindGroupBuilder, Color, GraphicsCaches, GraphicsContext, GraphicsData, MeshVertex, Rect,
+    BindGroupBuilder, Color, GraphicsContext, GraphicsData, GraphicsStore, MeshVertex, Rect,
     RenderPipelineConfig, Shader, ShaderKind, Texture, TextureView, WgpuContext,
 };
 use crate::{BindGroupLayoutBuilder, MeshView, RefId};
@@ -29,7 +29,7 @@ pub struct RenderPass<'a> {
 
     pub target_texture: TextureView<'a>,
     wgpu: &'a WgpuContext,
-    caches: &'a mut GraphicsCaches,
+    store: &'a mut GraphicsStore,
     pub data: &'a GraphicsData,
 }
 
@@ -48,34 +48,34 @@ impl<'a> RenderPass<'a> {
             .expect("Tried to create render pass but frame doesn't exist");
 
         let target = target.unwrap_or(TextureView::new(&frame.output.texture, &frame.output_view));
-        let gpu_render_pass = frame
-            .encoder
-            .begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: target.gpu_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: match clear_color {
-                            None => wgpu::LoadOp::Load,
-                            Some(c) => wgpu::LoadOp::Clear(c.into()),
-                        },
-                        store: wgpu::StoreOp::Store,
+        let descriptor = wgpu::RenderPassDescriptor {
+            label: None,
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target.gpu_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: match clear_color {
+                        None => wgpu::LoadOp::Load,
+                        Some(c) => wgpu::LoadOp::Clear(c.into()),
                     },
-                })],
-                depth_stencil_attachment: depth_texture.map(|depth_texture| {
-                    wgpu::RenderPassDepthStencilAttachment {
-                        view: &depth_texture.gpu_view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: depth_texture.map(|depth_texture| {
+                wgpu::RenderPassDepthStencilAttachment {
+                    view: &depth_texture.gpu_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        };
+
+        let gpu_render_pass = frame.encoder.begin_render_pass(&descriptor);
 
         Self {
             gpu_render_pass,
@@ -84,17 +84,17 @@ impl<'a> RenderPass<'a> {
             target_texture: target,
             has_depth: depth_texture.is_some(),
 
-            // We need to get references to WGPUContext, GraphicsData, GraphicsCaches seperately or rust is
+            // We need to get references to WGPUContext, GraphicsData, GraphicsStore seperately or rust is
             // going to complain about mutiple borrows
             wgpu: &gfx.wgpu,
-            caches: &mut gfx.caches,
+            store: &mut gfx.store,
             data: &gfx.data,
         }
     }
 
     pub fn draw_mesh_instanced(&mut self, mesh: MeshView<'a>, instances: &[RenderInstance]) {
         let instances_alloc = self
-            .caches
+            .store
             .storage_buffer_allocator
             .alloc_write(self.wgpu, instances);
 
@@ -127,7 +127,10 @@ impl<'a> RenderPass<'a> {
     }
 
     pub fn set_texture(&mut self, texture: &RefId<Texture>) {
-        let sampler = self.caches.sampler.get(self.wgpu, texture.sampler_config);
+        let sampler = self
+            .store
+            .sampler_cache
+            .get(self.wgpu, texture.sampler_config);
         let texture_bind_group = BindGroupBuilder::new()
             .texture(wgpu::ShaderStages::FRAGMENT, texture)
             .sampler(wgpu::ShaderStages::FRAGMENT, &sampler)
@@ -138,7 +141,7 @@ impl<'a> RenderPass<'a> {
 
     pub fn set_uniform<U: bytemuck::Pod>(&mut self, uniform: U) {
         let uniform_alloc = self
-            .caches
+            .store
             .uniform_buffer_allocator
             .alloc_write(self.wgpu, &[uniform]);
 
@@ -169,7 +172,7 @@ impl<'a> RenderPass<'a> {
             return;
         }
 
-        let uniform_layout = self.caches.render_pipeline.get_bind_layout(
+        let uniform_layout = self.store.render_pipeline_cache.get_bind_layout(
             self.wgpu,
             BindGroupLayoutBuilder::new().buffer(
                 wgpu::ShaderStages::VERTEX,
@@ -178,14 +181,14 @@ impl<'a> RenderPass<'a> {
             ),
         );
 
-        let texture_layout = self.caches.render_pipeline.get_bind_layout(
+        let texture_layout = self.store.render_pipeline_cache.get_bind_layout(
             self.wgpu,
             BindGroupLayoutBuilder::new()
                 .texture(wgpu::ShaderStages::FRAGMENT)
                 .sampler(wgpu::ShaderStages::FRAGMENT),
         );
 
-        let instances_layout = self.caches.render_pipeline.get_bind_layout(
+        let instances_layout = self.store.render_pipeline_cache.get_bind_layout(
             self.wgpu,
             BindGroupLayoutBuilder::new().buffer(
                 wgpu::ShaderStages::VERTEX,
@@ -201,7 +204,7 @@ impl<'a> RenderPass<'a> {
             ShaderKind::Instanced => instanced_layouts.as_ref(),
         };
 
-        let render_pipeline = self.caches.render_pipeline.get_pipeline(
+        let render_pipeline = self.store.render_pipeline_cache.get_pipeline(
             self.wgpu,
             RenderPipelineConfig {
                 shader: self.shader.clone(),
@@ -212,7 +215,7 @@ impl<'a> RenderPass<'a> {
             layouts,
         );
 
-        self.gpu_render_pass.set_pipeline(render_pipeline);
+        self.gpu_render_pass.set_pipeline(&render_pipeline);
         self.dirty_pipline = false;
     }
 
@@ -234,13 +237,10 @@ impl<'a> RenderPass<'a> {
 
     fn set_bind_group(&mut self, index: u32, bind_group: wgpu::BindGroup, offsets: &[u32]) {
         // Bind group will get drop soon after it is created but it needs to live until the end of frame
-        self.caches.bind_group_holder.push(bind_group);
-        let bind_group = self.caches.bind_group_holder.last().unwrap();
-        self.gpu_render_pass.set_bind_group(
-            index,
-            unsafe { &*(bind_group as *const wgpu::BindGroup) },
-            offsets,
-        );
+        self.store.bind_group_holder.push(bind_group);
+        let bind_group = self.store.bind_group_holder.last().unwrap();
+        self.gpu_render_pass
+            .set_bind_group(index, bind_group, offsets);
     }
 
     pub fn target_rect(&self) -> Rect {

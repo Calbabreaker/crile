@@ -47,9 +47,8 @@ fn normal_spawn_1_component() {
 fn spawn_raw_1_component() {
     let mut world = World::default();
     let position = Position { x: 1., y: 2. };
-    world.spawn_raw(&[TypeInfo::of::<Position>()], |index, archetype| unsafe {
-        archetype.clone_component(
-            index,
+    world.spawn_raw(&[TypeInfo::of::<Position>()], |archetype| unsafe {
+        archetype.push_component_cloned(
             &position as *const Position as *const u8,
             TypeId::of::<Position>(),
         );
@@ -69,11 +68,15 @@ fn despawn_with_dropable() {
         ..Default::default()
     };
 
-    let id = world.spawn((meta,));
-    assert_eq!(Rc::strong_count(&data), 2);
+    let id = world.spawn((meta.clone(),));
+    world.spawn((meta,));
+    assert_eq!(Rc::strong_count(&data), 3);
 
     world.despawn(id);
     assert_eq!(world.get::<Metadata>(id), None);
+    assert_eq!(Rc::strong_count(&data), 2);
+    drop(world);
+
     assert_eq!(Rc::strong_count(&data), 1);
 }
 

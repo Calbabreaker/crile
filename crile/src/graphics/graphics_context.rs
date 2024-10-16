@@ -9,7 +9,7 @@ pub struct GraphicsContext {
     pub wgpu: WgpuContext,
     pub frame: Option<FrameContext>,
     pub data: GraphicsData,
-    pub caches: GraphicsCaches,
+    pub store: GraphicsStore,
 }
 
 impl GraphicsContext {
@@ -18,7 +18,7 @@ impl GraphicsContext {
 
         Self {
             data: GraphicsData::new(&wgpu),
-            caches: GraphicsCaches::new(&wgpu),
+            store: GraphicsStore::new(&wgpu),
             wgpu,
             frame: None,
         }
@@ -51,11 +51,11 @@ impl GraphicsContext {
         self.wgpu.queue.submit([frame.encoder.finish()]);
         frame.output.present();
 
-        self.caches.uniform_buffer_allocator.free();
-        self.caches.storage_buffer_allocator.free();
-        self.caches.vertex_buffer_allocator.free();
-        self.caches.index_buffer_allocator.free();
-        self.caches.bind_group_holder.clear();
+        self.store.uniform_buffer_allocator.free();
+        self.store.storage_buffer_allocator.free();
+        self.store.vertex_buffer_allocator.free();
+        self.store.index_buffer_allocator.free();
+        self.store.bind_group_holder.clear();
     }
 
     pub fn target_window_id(&self) -> WindowId {
@@ -73,22 +73,22 @@ pub struct FrameContext {
     pub window_id: WindowId,
 }
 
-pub struct GraphicsCaches {
-    pub render_pipeline: RenderPipelineCache,
+pub struct GraphicsStore {
     pub bind_group_holder: Vec<wgpu::BindGroup>,
+    pub render_pipeline_cache: RenderPipelineCache,
     pub uniform_buffer_allocator: DynamicBufferAllocator,
     pub storage_buffer_allocator: DynamicBufferAllocator,
     pub index_buffer_allocator: DynamicBufferAllocator,
     pub vertex_buffer_allocator: DynamicBufferAllocator,
-    pub sampler: SamplerCache,
+    pub sampler_cache: SamplerCache,
 }
 
-impl GraphicsCaches {
+impl GraphicsStore {
     pub(crate) fn new(wgpu: &WgpuContext) -> Self {
         Self {
+            render_pipeline_cache: RenderPipelineCache::default(),
             bind_group_holder: Vec::new(),
-            render_pipeline: RenderPipelineCache::default(),
-            sampler: SamplerCache::default(),
+            sampler_cache: SamplerCache::default(),
             uniform_buffer_allocator: DynamicBufferAllocator::new(
                 wgpu,
                 wgpu::BufferUsages::UNIFORM,

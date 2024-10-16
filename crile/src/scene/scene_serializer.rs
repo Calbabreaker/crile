@@ -66,11 +66,11 @@ impl SceneSerializer {
             let id = get_value::<u32>(&entity_table, "id")?;
             let name = get_value::<String>(&entity_table, "name")?;
 
-            let index = scene.world.spawn_raw(&type_infos, |index, archetype| {
+            let index = scene.world.spawn_raw(&type_infos, |archetype| {
                 for (key, value) in &entity_table {
                     macro_rules! deserialize_components {
                         ( [$($component: ty),*]) => {{
-                            $( deserialize_component::<$component>(key, value, archetype, index); )*
+                            $( deserialize_component::<$component>(key, value, archetype); )*
                         }};
                     }
 
@@ -130,7 +130,6 @@ fn deserialize_component<T: Component + for<'a> serde::Deserialize<'a>>(
     key: &str,
     value: &toml::Value,
     archetype: &mut Archetype,
-    index: usize,
 ) {
     let type_name = crate::last_type_name::<T>();
     if key == type_name {
@@ -142,11 +141,8 @@ fn deserialize_component<T: Component + for<'a> serde::Deserialize<'a>>(
         let component = std::mem::ManuallyDrop::new(component);
 
         unsafe {
-            archetype.clone_component(
-                index,
-                &*component as *const T as *const u8,
-                TypeId::of::<T>(),
-            );
+            archetype
+                .push_component_cloned(&*component as *const T as *const u8, TypeId::of::<T>());
         }
     }
 }

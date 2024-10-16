@@ -110,7 +110,7 @@ impl EguiRenderer {
             .collect::<Vec<_>>();
 
         let wgpu = &engine.gfx.wgpu;
-        let caches = &mut engine.gfx.caches;
+        let caches = &mut engine.gfx.store;
 
         self.paint_jobs.push(PaintJob {
             texture_id: mesh.texture_id,

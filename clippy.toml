@@ -1,0 +1,3 @@
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "std hashmap has limited entry api, please use hashbrown::HashMap instead" },
+]

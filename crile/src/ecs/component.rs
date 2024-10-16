@@ -19,7 +19,7 @@ pub trait ComponentTuple {
     fn type_infos() -> Box<[TypeInfo]>;
 
     /// Moves every component from the tuple into the archetype
-    fn move_all(self, index: usize, archetype: &mut Archetype);
+    fn move_all(self, archetype: &mut Archetype);
 
     /// Gets an array of component arrays from the archetype that matches this component tuple
     /// We use a static sized tuple to prevent unnecessary heap allocation
@@ -70,11 +70,11 @@ macro_rules! tuple_impl {
             }
 
             #[allow(non_snake_case, unused)]
-            fn move_all(self, index: usize, archetype: &mut Archetype) {
+            fn move_all(self, archetype: &mut Archetype) {
                 let ($($type,)*) = self;
                 $(
                     unsafe {
-                        archetype.move_component(index, &$type as *const $type as *const u8, TypeId::of::<$type>());
+                        archetype.push_component(&$type as *const $type as *const u8, TypeId::of::<$type>());
                         std::mem::forget($type);
                     }
                 )*

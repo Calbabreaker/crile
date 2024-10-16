@@ -30,17 +30,15 @@ pub struct World {
 
 impl World {
     pub fn spawn<T: ComponentTuple>(&mut self, components: T) -> usize {
-        self.spawn_raw(&T::type_infos(), |index, archetype| {
-            components.move_all(index, archetype)
-        })
+        self.spawn_raw(&T::type_infos(), |archetype| components.move_all(archetype))
     }
 
     /// Spawns an entity with components specified by the type infos a function instead of tuple templates
-    /// put_func expects a closure that will call archetype.put_component with the provided entity index
+    /// put_func expects a closure that will call archetype.put_component with the provided archetype
     pub fn spawn_raw(
         &mut self,
         type_infos: &[TypeInfo],
-        put_func: impl FnOnce(usize, &mut Archetype),
+        put_func: impl FnOnce(&mut Archetype),
     ) -> usize {
         let index = self.next_free_index();
         assert!(!self.exists(index), "id {index} already in use");
@@ -49,7 +47,7 @@ impl World {
         let archetype = &mut self.archetypes[archetype_index];
 
         let entity_index = archetype.new_entity(index);
-        put_func(entity_index, archetype);
+        put_func(archetype);
 
         if index >= self.entity_locations.len() {
             self.entity_locations
@@ -71,11 +69,11 @@ impl World {
         let source_arch = &world.archetypes[location.archetype_index];
 
         // Clone the entity's components
-        self.spawn_raw(source_arch.type_infos(), |index, arch| {
+        self.spawn_raw(source_arch.type_infos(), |target_arch| {
             for array in source_arch.component_arrays.iter() {
-                let ptr = array.get_component_ptr(index);
+                let ptr = array.get_component_ptr(location.component_index);
                 unsafe {
-                    arch.clone_component(index, ptr, array.get_type_id());
+                    target_arch.push_component_cloned(ptr, array.get_type_id());
                 }
             }
         })
@@ -227,19 +225,15 @@ impl<'a> EntityMut<'a> {
 
         self.modify_components(
             &type_infos,
-            |source_arch, target_arch, source_index, target_index| unsafe {
+            |source_arch, target_arch, source_index| unsafe {
                 // Move all the components into the new archetype
                 for array in source_arch.component_arrays.iter() {
                     let ptr = array.get_component_ptr(source_index);
-                    target_arch.move_component(target_index, ptr, array.get_type_id());
+                    target_arch.push_component(ptr, array.get_type_id());
                 }
 
                 // Add the requested component into the new archetype
-                target_arch.move_component(
-                    target_index,
-                    &*component as *const T as *const u8,
-                    TypeId::of::<T>(),
-                );
+                target_arch.push_component(&*component as *const T as *const u8, TypeId::of::<T>());
             },
         );
     }
@@ -252,7 +246,7 @@ impl<'a> EntityMut<'a> {
 
         self.modify_components(
             &type_infos,
-            |source_arch, target_arch, source_index, target_index| unsafe {
+            |source_arch, target_arch, source_index| unsafe {
                 // Move all the components into the new archetype except for the removed component
                 for array in source_arch.component_arrays.iter_mut() {
                     if array.get_type_id() == TypeId::of::<T>() {
@@ -261,7 +255,7 @@ impl<'a> EntityMut<'a> {
                     } else {
                         // Put the component into the new archetype
                         let ptr = array.get_component_ptr(source_index);
-                        target_arch.move_component(target_index, ptr, array.get_type_id());
+                        target_arch.push_component(ptr, array.get_type_id());
                     }
                 }
             },
@@ -271,7 +265,7 @@ impl<'a> EntityMut<'a> {
     fn modify_components(
         &mut self,
         new_type_infos: &[TypeInfo],
-        modify_func: impl Fn(&mut Archetype, &mut Archetype, usize, usize),
+        modify_func: impl Fn(&mut Archetype, &mut Archetype, usize),
     ) {
         let target_arch_index = self.world.archetype_index_from_infos(new_type_infos);
 
@@ -287,7 +281,7 @@ impl<'a> EntityMut<'a> {
 
         let target_index = target_arch.new_entity(self.index);
         let source_index = self.location.component_index;
-        modify_func(source_arch, target_arch, source_index, target_index);
+        modify_func(source_arch, target_arch, source_index);
 
         // Remove the old entity
         let moved_index = source_arch.remove_entity(source_index, false);
