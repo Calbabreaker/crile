@@ -16,7 +16,7 @@ struct Velocity {
 
 #[derive(Default, Clone, Debug, PartialEq)]
 struct Metadata {
-    data: Rc<String>,
+    rc: Rc<String>,
     stuff: Vec<String>,
 }
 
@@ -62,40 +62,45 @@ fn spawn_raw_1_component() {
 #[test]
 fn despawn_with_dropable() {
     let mut world = World::default();
-    let data = Rc::new("data".to_string());
     let meta = Metadata {
-        data: data.clone(),
+        rc: Rc::new("data".to_string()),
         ..Default::default()
     };
 
     let id = world.spawn((meta.clone(),));
-    world.spawn((meta,));
-    assert_eq!(Rc::strong_count(&data), 3);
+    world.spawn((meta.clone(),));
+    assert_eq!(Rc::strong_count(&meta.rc), 3);
 
     world.despawn(id);
     assert_eq!(world.get::<Metadata>(id), None);
-    assert_eq!(Rc::strong_count(&data), 2);
+    assert_eq!(Rc::strong_count(&meta.rc), 2);
     drop(world);
 
-    assert_eq!(Rc::strong_count(&data), 1);
+    assert_eq!(Rc::strong_count(&meta.rc), 1);
 }
 
 #[test]
-fn add_get_remove_component() {
+fn entity_ref() {
     let mut world = World::default();
     let id = world.spawn((Velocity::default(),));
 
-    let mut entity = world.entity_mut(id).unwrap();
+    let entity = world.entity(id).unwrap();
     assert!(entity.has::<Velocity>());
     assert_eq!(*entity.get::<Velocity>().unwrap(), Velocity::default());
 
-    let position = Position { x: 1., y: 2. };
-    entity.add(position);
-    assert_eq!(*entity.get::<Position>().unwrap(), position);
+    let mut entity = world.entity_mut(id).unwrap();
+    let meta = Metadata {
+        rc: Rc::new("asdf".to_string()),
+        ..Default::default()
+    };
+    entity.add(meta.clone());
+    assert_eq!(*entity.get::<Metadata>().unwrap(), meta);
+    assert_eq!(Rc::strong_count(&meta.rc), 2);
 
-    entity.remove::<Position>();
-    assert!(!entity.has::<Position>());
+    entity.remove::<Metadata>();
+    assert!(!entity.has::<Metadata>());
     assert_eq!(*entity.get::<Velocity>().unwrap(), Velocity::default());
+    assert_eq!(Rc::strong_count(&meta.rc), 1);
 }
 
 #[test]

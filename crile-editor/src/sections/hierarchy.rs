@@ -31,13 +31,15 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
     });
 
     match action {
-        HierachyAction::AddChildEntity(parent_id) => {
-            state
-                .active_scene
-                .spawn("Empty", (crile::TransformComponent::default(),), parent_id);
+        HierachyAction::AddChildEntity(parent_index) => {
+            state.active_scene.spawn(
+                "Empty",
+                (crile::TransformComponent::default(),),
+                parent_index,
+            );
         }
-        HierachyAction::DestroyEntity(id) => {
-            state.active_scene.despawn(id);
+        HierachyAction::DestroyEntity(index) => {
+            state.active_scene.despawn(index);
         }
         HierachyAction::None => (),
     }
@@ -46,33 +48,33 @@ pub fn show(ui: &mut egui::Ui, state: &mut EditorState) {
 fn display_entity(
     ui: &mut egui::Ui,
     selection: &mut Selection,
-    id: usize,
+    index: usize,
     scene: &crile::Scene,
     action: &mut HierachyAction,
 ) {
-    let node = scene.get_node(id).unwrap();
+    let node = scene.get_node(index).unwrap();
 
     let header_state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
-        ui.make_persistent_id(id),
+        ui.make_persistent_id(index),
         true,
     );
 
     let mut show_header = |ui: &mut egui::Ui| {
         ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-            let response = ui.selectable_label(*selection == Selection::Entity(id), &node.name);
+            let response = ui.selectable_label(*selection == Selection::Entity(index), &node.name);
             if response.clicked() {
-                *selection = Selection::Entity(id)
+                *selection = Selection::Entity(index)
             }
 
             response.context_menu(|ui| {
                 if ui.button("Add entity").clicked() {
-                    *action = HierachyAction::AddChildEntity(id);
+                    *action = HierachyAction::AddChildEntity(index);
                     ui.close_menu();
                 }
 
-                if ui.button("Destroy").clicked() {
-                    *action = HierachyAction::DestroyEntity(id);
+                if index != crile::Scene::ROOT_INDEX && ui.button("Destroy").clicked() {
+                    *action = HierachyAction::DestroyEntity(index);
                     ui.close_menu();
                 }
             });
@@ -83,7 +85,7 @@ fn display_entity(
         header_state
             .show_header(ui, show_header)
             .body_unindented(|ui| {
-                ui.indent(id, |ui| {
+                ui.indent(index, |ui| {
                     for id in node.children.iter() {
                         let index = scene.id_to_index(*id);
                         display_entity(ui, selection, index, scene, action);

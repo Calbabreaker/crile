@@ -94,14 +94,13 @@ fn inspect_component<T: Inspectable + crile::Component>(
     entity: &mut crile::EntityMut,
 ) {
     if let Some(component) = entity.get::<T>() {
-        let pretty_name = get_pretty_name::<T>();
+        let pretty_name = crile::get_pretty_name::<T>();
         ui.visuals_mut().collapsing_header_frame = true;
         ui.visuals_mut().widgets.noninteractive.bg_stroke.width = 0.;
 
         let response = egui::CollapsingHeader::new(pretty_name)
             .default_open(true)
             .show(ui, |ui| {
-                // TODO: figure out how to align all component drop downs the same
                 egui::Grid::new(pretty_name)
                     .num_columns(2)
                     .spacing([30.0, 4.0])
@@ -121,17 +120,10 @@ fn add_component_button<T: Inspectable + crile::Component>(
     ui: &mut egui::Ui,
     entity: &mut crile::EntityMut,
 ) {
-    if !entity.has::<T>() && ui.button(get_pretty_name::<T>()).clicked() {
+    if !entity.has::<T>() && ui.button(crile::get_pretty_name::<T>()).clicked() {
         entity.add(T::default());
         ui.close_menu();
     }
-}
-
-fn get_pretty_name<T: 'static>() -> &'static str {
-    crile::last_type_name::<T>()
-        .split("Component")
-        .next()
-        .unwrap_or_default()
 }
 
 pub trait Inspectable {

@@ -165,7 +165,10 @@ impl Scene {
             "cannot despawn the root entity"
         );
 
-        let node_id = self.hierarchy_nodes[entity_index].id;
+        let node_id = self
+            .get_node(entity_index)
+            .expect("Entity index does not exist")
+            .id;
         let parent_index = self
             .ancestor_iter(entity_index)
             .next()
@@ -213,10 +216,16 @@ impl Scene {
     }
 
     pub fn get_node(&self, entity_index: usize) -> Option<&HierarchyNode> {
+        if !self.world.exists(entity_index) {
+            return None;
+        }
         self.hierarchy_nodes.get(entity_index)
     }
 
     pub fn get_node_mut(&mut self, entity_index: usize) -> Option<&mut HierarchyNode> {
+        if !self.world.exists(entity_index) {
+            return None;
+        }
         self.hierarchy_nodes.get_mut(entity_index)
     }
 

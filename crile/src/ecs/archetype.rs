@@ -46,23 +46,23 @@ impl Archetype {
         }
     }
 
-    /// Push a component into a component array in this archetype using raw pointers
-    /// [Self::new_entity] must be called before this
+    /// Push a component into a component array in this archetype using raw pointers.
+    /// [Self::new_entity] must be called before this.
     ///
     /// # Safety
-    /// - Component real type must match the type id
-    /// - The component must not be dropped and must not be used elsewhere after moving. Use [Self::push_component_cloned] otherwise
+    /// - Component real type must match the type id.
+    /// - The component must not be dropped and must not be used elsewhere after calling this function. Use [Self::push_component_cloned] otherwise.
     pub unsafe fn push_component(&mut self, component_ptr: *const u8, type_id: TypeId) {
         let array = self.get_array_mut(&type_id).expect("id does not exist");
         let array_ptr = array.alloc_push_space();
         std::ptr::copy_nonoverlapping(component_ptr, array_ptr, array.type_info.layout.size());
     }
 
-    /// Push a component into a component array in this archetype using raw pointers but cloned
-    /// [Self::new_entity] must be called before this
+    /// Push a component into a component array in this archetype using raw pointers but cloned.
+    /// [Self::new_entity] must be called before this.
     ///
     /// # Safety
-    /// - Component real type must match the type id
+    /// - Component real type must match the type id.
     pub unsafe fn push_component_cloned(&mut self, component_ptr: *const u8, type_id: TypeId) {
         let array = self.get_array_mut(&type_id).expect("id does not exist");
         let array_ptr = array.alloc_push_space();
@@ -89,31 +89,30 @@ impl Archetype {
         self.entity_indexs.len() - 1
     }
 
+    /// Returns the entity index of the component that was swapped
     pub(crate) fn remove_entity(&mut self, component_index: usize, should_drop: bool) -> usize {
         assert!(component_index < self.count());
 
         // Moves the last item to index and decrement length by 1
         for array in self.component_arrays.iter_mut() {
-            if should_drop {
-                unsafe {
-                    array.drop_component(component_index);
-                }
-            }
-
-            array.swap_remove(component_index);
+            array.swap_remove(component_index, should_drop);
         }
 
-        self.entity_indexs.swap_remove(component_index)
+        let moved_index = *self.entity_indexs.last().unwrap();
+        self.entity_indexs.swap_remove(component_index);
+        moved_index
     }
 
     pub(crate) fn get_array(&self, id: &TypeId) -> Option<&ComponentArray> {
         let index = self.index_map.get(id)?;
-        Some(unsafe { self.component_arrays.get_unchecked(*index) })
+        self.component_arrays.get(*index)
     }
 
     pub(crate) fn get_array_mut(&mut self, id: &TypeId) -> Option<&mut ComponentArray> {
         let index = self.index_map.get(id)?;
-        Some(unsafe { self.component_arrays.get_unchecked_mut(*index) })
+        let array = self.component_arrays.get_mut(*index)?;
+        assert_eq!(array.count + 1, self.entity_indexs.len()); // Check new_entity was called
+        Some(array)
     }
 
     pub fn type_infos(&self) -> &[TypeInfo] {
@@ -181,27 +180,29 @@ impl ComponentArray {
         }
     }
 
-    fn swap_remove(&mut self, index: usize) {
-        let last_index = self.count - 1;
-        if last_index == index {
-            return;
+    fn swap_remove(&mut self, index: usize, drop: bool) {
+        if drop {
+            unsafe {
+                self.drop_component(index);
+            }
         }
 
-        assert!(index <= self.capacity);
+        let last_index = self.count - 1;
+        self.count -= 1;
+        if index == last_index {
+            return;
+        }
 
         let size = self.type_info.layout.size();
         unsafe {
             let ptr_src = self.get_ptr().add(index * size);
             let ptr_dst = self.get_ptr().add(last_index * size);
             std::ptr::copy_nonoverlapping(ptr_src, ptr_dst, size);
-            self.count -= 1;
         }
     }
 
     pub(crate) unsafe fn drop_component(&mut self, index: usize) {
-        unsafe {
-            (self.type_info.drop)(self.get_component_ptr(index));
-        }
+        (self.type_info.drop)(self.get_component_ptr(index));
     }
 
     pub fn get_ptr(&self) -> *mut u8 {

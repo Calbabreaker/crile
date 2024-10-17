@@ -220,22 +220,25 @@ impl<'a> EntityMut<'a> {
         // Get the new archetype that the entity belongs in with component added
         let new_type_info = TypeInfo::of::<T>();
         let mut type_infos = self.archetype.type_infos().to_vec();
-        let pos = type_infos.binary_search(&new_type_info).unwrap_err();
+        let pos = type_infos
+            .binary_search(&new_type_info)
+            .expect_err("Tried to add component but it already exists");
         type_infos.insert(pos, new_type_info);
 
-        self.modify_components(
-            &type_infos,
-            |source_arch, target_arch, source_index| unsafe {
-                // Move all the components into the new archetype
-                for array in source_arch.component_arrays.iter() {
-                    let ptr = array.get_component_ptr(source_index);
+        self.modify_components(&type_infos, |source_arch, target_arch, source_index| {
+            // Move all the components into the new archetype
+            for array in source_arch.component_arrays.iter() {
+                let ptr = array.get_component_ptr(source_index);
+                unsafe {
                     target_arch.push_component(ptr, array.get_type_id());
                 }
+            }
 
-                // Add the requested component into the new archetype
+            // Add the requested component into the new archetype
+            unsafe {
                 target_arch.push_component(&*component as *const T as *const u8, TypeId::of::<T>());
-            },
-        );
+            }
+        });
     }
 
     pub fn remove<T: Component>(&mut self) {
@@ -244,22 +247,23 @@ impl<'a> EntityMut<'a> {
         let pos = type_infos.binary_search(&TypeInfo::of::<T>()).unwrap();
         type_infos.remove(pos);
 
-        self.modify_components(
-            &type_infos,
-            |source_arch, target_arch, source_index| unsafe {
-                // Move all the components into the new archetype except for the removed component
-                for array in source_arch.component_arrays.iter_mut() {
-                    if array.get_type_id() == TypeId::of::<T>() {
-                        // Call drop on removed component
+        self.modify_components(&type_infos, |source_arch, target_arch, source_index| {
+            // Move all the components into the new archetype except for the removed component
+            for array in source_arch.component_arrays.iter_mut() {
+                if array.get_type_id() == TypeId::of::<T>() {
+                    // Call drop on removed component
+                    unsafe {
                         array.drop_component(source_index);
-                    } else {
-                        // Put the component into the new archetype
-                        let ptr = array.get_component_ptr(source_index);
+                    }
+                } else {
+                    // Put the component into the new archetype
+                    let ptr = array.get_component_ptr(source_index);
+                    unsafe {
                         target_arch.push_component(ptr, array.get_type_id());
                     }
                 }
-            },
-        );
+            }
+        });
     }
 
     fn modify_components(

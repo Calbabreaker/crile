@@ -67,3 +67,10 @@ pub fn last_type_name<T: 'static>() -> &'static str {
     let name = std::any::type_name::<T>();
     name.split("::").last().unwrap_or(name)
 }
+
+pub fn get_pretty_name<T: 'static>() -> &'static str {
+    last_type_name::<T>()
+        .split("Component")
+        .next()
+        .unwrap_or_default()
+}
