@@ -46,7 +46,7 @@ pub struct EditorState {
 impl Default for EditorState {
     fn default() -> Self {
         Self {
-            active_scene: Default::default(),
+            active_scene: crile::Scene::with_root(),
             scene_state: SceneState::Edting,
             editor_scene_path: None,
 
@@ -153,7 +153,7 @@ impl EditorState {
 
         if let Some(path) = project_file_path.or_else(|| {
             rfd::FileDialog::new()
-                .add_filter("Crile project", &["crile"])
+                .add_filter("Crile project (.crile)", &["crile"])
                 .set_file_name("project.crile")
                 .set_directory(std::env::current_dir().unwrap_or_default())
                 .pick_file()
