@@ -76,7 +76,7 @@ impl EguiContext {
         self.renderer.prepare(engine, &ctx, full_output);
 
         self.raw_input.events.clear();
-        self.ctx = Some(ctx)
+        self.ctx = Some(ctx);
     }
 
     pub fn render<'a>(&'a mut self, render_pass: &mut crile::RenderPass<'a>) {

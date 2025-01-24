@@ -14,6 +14,7 @@ pub fn show(
 
     let mut open = true;
     let popup = egui::Window::new(title)
+        .pivot(egui::Align2::CENTER_CENTER)
         .default_pos(ctx.screen_rect().size().to_pos2() / 2.)
         .open(&mut open)
         .resizable(false);

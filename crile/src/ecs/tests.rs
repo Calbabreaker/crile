@@ -119,15 +119,21 @@ fn query_world() {
 
 #[test]
 #[should_panic]
-#[ignore = "TODO: fix this test"]
+// #[ignore = "TODO: fix this test"]
 fn multiple_borrow() {
     let mut world = World::default();
-    let id = world.spawn((Metadata::default(),));
+    let id = world.spawn((Metadata {
+        stuff: vec!["asdf".to_owned()],
+        ..Default::default()
+    },));
 
     let a = world.get::<Metadata>(id).unwrap();
-    a.stuff.push("test".to_string());
+    let string = &a.stuff[0];
 
-    world.get::<Metadata>(id).unwrap();
+    let a2 = world.get::<Metadata>(id).unwrap();
+    a2.stuff.resize(10, String::new());
+
+    dbg!(string);
 }
 
 #[test]

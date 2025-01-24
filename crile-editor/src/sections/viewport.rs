@@ -39,11 +39,8 @@ impl SceneViewport {
     pub fn show(&mut self, ui: &mut egui::Ui) -> Option<egui::Response> {
         self.size = glam::uvec2(ui.available_width() as u32, ui.available_height() as u32);
         self.texture_id.map(|id| {
-            ui.image(egui::ImageSource::Texture(egui::load::SizedTexture::new(
-                id,
-                ui.available_size(),
-            )))
-            .interact(egui::Sense::click_and_drag())
+            ui.image(egui::load::SizedTexture::new(id, ui.available_size()))
+                .interact(egui::Sense::click_and_drag())
         })
     }
 

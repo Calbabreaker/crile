@@ -82,16 +82,12 @@ fn display_entity(
     };
 
     if !node.children.is_empty() {
-        header_state
-            .show_header(ui, show_header)
-            .body_unindented(|ui| {
-                ui.indent(index, |ui| {
-                    for id in node.children.iter() {
-                        let index = scene.id_to_index(*id);
-                        display_entity(ui, selection, index, scene, action);
-                    }
-                });
-            });
+        header_state.show_header(ui, show_header).body(|ui| {
+            for id in node.children.iter() {
+                let index = scene.id_to_index(*id);
+                display_entity(ui, selection, index, scene, action);
+            }
+        });
     } else {
         show_header(ui);
     }
