@@ -4,7 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-egui = "0.28"
-hashbrown = "0.14"
-glam = "0.28"
+egui = "0.31"
+hashbrown = "0.15"
+glam = "0.29"
 crile = { path = "../crile" }

@@ -3,14 +3,14 @@ use std::str::FromStr;
 
 macro_rules! impl_enum_from_lua_str {
     ($type: ty) => {
-        impl<'lua> mlua::FromLua<'lua> for $type {
-            fn from_lua(value: mlua::Value<'lua>, _: &'lua mlua::Lua) -> mlua::Result<Self> {
+        impl mlua::FromLua for $type {
+            fn from_lua(value: mlua::Value, _: &mlua::Lua) -> mlua::Result<Self> {
                 let string = value
                     .as_string()
                     .ok_or_else(|| mlua::Error::RuntimeError(format!("Expected a string")))?
                     .to_str()?;
 
-                Self::from_str(string).map_err(|_| {
+                Self::from_str(&string).map_err(|_| {
                     mlua::Error::RuntimeError(format!(
                         "{} '{}' is not valid.",
                         stringify!($type),

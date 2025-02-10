@@ -57,7 +57,7 @@ impl crile::Application for CrileEditorApp {
             });
 
         egui::CentralPanel::default()
-            .frame(egui::Frame::none())
+            .frame(egui::Frame::NONE)
             .show(&ctx, |ui| {
                 if let Some(response) = self.state.editor_view.show(ui) {
                     if response.hovered() {

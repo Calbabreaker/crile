@@ -26,7 +26,7 @@ impl $wrapper_type {
 }
 
 impl mlua::UserData for $wrapper_type {
-    fn add_fields<'lua, F: UserDataFields<'lua, Self>>(fields: &mut F) {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         $(
             fields.add_field_method_get(stringify!($field), |_, this| {
                 Ok(this.0.$field)
@@ -38,7 +38,7 @@ impl mlua::UserData for $wrapper_type {
         )*
     }
 
-    fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
         macro_rules! add_operator_func {
             ($method: ident, $operator: tt) => {
                 methods.add_meta_function(
@@ -55,8 +55,8 @@ impl mlua::UserData for $wrapper_type {
     }
 }
 
-impl<'lua> mlua::FromLua<'lua> for $wrapper_type {
-    fn from_lua(value: mlua::Value<'lua>, _: &'lua mlua::Lua) -> mlua::Result<Self> {
+impl mlua::FromLua for $wrapper_type {
+    fn from_lua(value: mlua::Value, _: &mlua::Lua) -> mlua::Result<Self> {
         match value {
             mlua::Value::UserData(ud) => {
                 if let Ok(value) = ud.borrow::<Vector2>() {

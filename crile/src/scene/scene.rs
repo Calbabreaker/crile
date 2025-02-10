@@ -199,7 +199,7 @@ impl Scene {
     }
 
     pub fn random_hierarchy_id(&self) -> HierarchyId {
-        let id = HierarchyId(rand::thread_rng().gen());
+        let id = HierarchyId(rand::rng().random());
         if self.hierachy_id_index_map.contains_key(&id) {
             // Regen id if conflicts
             self.random_hierarchy_id()

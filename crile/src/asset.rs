@@ -42,7 +42,10 @@ impl Asset for Script {
     fn load(_: &WgpuContext, path: &Path) -> Option<Self> {
         let compiler = mlua::Compiler::default();
         Some(Script {
-            bytecode: compiler.compile(crate::read_file(path)?),
+            bytecode: compiler
+                .compile(crate::read_file(path)?)
+                .inspect_err(|err| log::error!("{err}"))
+                .ok()?,
             source: Some(path.to_str()?.into()),
         })
     }

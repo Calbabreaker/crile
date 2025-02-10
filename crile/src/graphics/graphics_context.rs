@@ -148,8 +148,8 @@ pub struct WgpuContext {
 impl WgpuContext {
     pub(crate) async fn new(winit: &Arc<winit::window::Window>) -> Self {
         // Init with backends from environment variables or the default
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::all()),
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::from_env().unwrap_or_default(),
             ..Default::default()
         });
 

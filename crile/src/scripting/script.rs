@@ -68,7 +68,7 @@ impl ScriptingEngine {
                 .globals()
                 .set("entity_index", signal.caller_entity_index)?;
 
-            signal.callback.call::<_, ()>(())?;
+            signal.callback.call::<()>(())?;
             Ok(())
         })?;
 
@@ -99,9 +99,9 @@ impl ScriptingEngine {
     }
 }
 
-struct Signal<'lua> {
-    callback: mlua::Function<'lua>,
+struct Signal {
+    callback: mlua::Function,
     caller_entity_index: usize,
 }
 
-impl_mlua_conversion!(Signal::<'lua>, [callback, caller_entity_index]);
+impl_mlua_conversion!(Signal, [callback, caller_entity_index]);

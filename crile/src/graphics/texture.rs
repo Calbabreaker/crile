@@ -107,7 +107,7 @@ impl Texture {
         data_bytes: &[u8],
     ) {
         wgpu.queue.write_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &self.gpu_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
@@ -118,7 +118,7 @@ impl Texture {
                 aspect: wgpu::TextureAspect::All,
             },
             data_bytes,
-            wgpu::ImageDataLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * source_size.x),
                 rows_per_image: Some(source_size.y),

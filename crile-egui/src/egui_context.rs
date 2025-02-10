@@ -57,15 +57,19 @@ impl EguiContext {
             .take()
             .expect("Tried to call egui begin frame before end frame or multiple times");
         ctx.set_pixels_per_point(self.scale_factor);
-        ctx.begin_frame(self.raw_input.clone());
+        ctx.begin_pass(self.raw_input.clone());
         ctx
     }
 
     pub fn end_frame(&mut self, engine: &mut crile::Engine, ctx: egui::Context) {
-        let full_output = ctx.end_frame();
-        let copied_text = &full_output.platform_output.copied_text;
-        if !copied_text.is_empty() {
-            engine.clipboard.set(copied_text.clone());
+        let full_output = ctx.end_pass();
+        for command in &full_output.platform_output.commands {
+            match command {
+                egui::OutputCommand::CopyText(text) if !text.is_empty() => {
+                    engine.clipboard.set(text.clone());
+                }
+                _ => (),
+            }
         }
 
         self.target_window(engine)

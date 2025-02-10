@@ -187,7 +187,7 @@ impl Inspectable for crile::CameraComponent {
         ui.end_row();
 
         ui.label("Projection");
-        egui::ComboBox::from_id_source("Projection")
+        egui::ComboBox::from_id_salt("Projection")
             .selected_text(format!("{:?}", self.projection_kind))
             .width(ui.available_width())
             .show_ui(ui, |ui| {

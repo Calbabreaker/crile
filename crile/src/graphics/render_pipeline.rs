@@ -84,13 +84,13 @@ fn create_pipeline(
         layout: Some(layout),
         vertex: wgpu::VertexState {
             module: &config.shader.module,
-            entry_point: "vs_main",
+            entry_point: Some("vs_main"),
             buffers: config.vertex_buffer_layouts,
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &config.shader.module,
-            entry_point: "fs_main",
+            entry_point: Some("fs_main"),
             targets: &[Some(wgpu::ColorTargetState {
                 format: config.format,
                 blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),

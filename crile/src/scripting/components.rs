@@ -6,7 +6,7 @@ use crate::{
 };
 
 impl mlua::UserData for &mut TransformComponent {
-    fn add_fields<'lua, F: mlua::prelude::LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+    fn add_fields<F: mlua::prelude::LuaUserDataFields<Self>>(fields: &mut F) {
         fields.add_field_method_get("translation", |_, this| Ok(Vector3(this.translation)));
         fields.add_field_method_set("translation", |_, this, val: Vector3| {
             this.translation = val.0;
@@ -28,7 +28,7 @@ impl mlua::UserData for &mut TransformComponent {
 }
 
 impl mlua::UserData for &mut CameraComponent {
-    fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("screen_to_world", |_, this, val: Vector2| {
             Ok(Vector2(this.screen_to_world(val.0)))
         });
